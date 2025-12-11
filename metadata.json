@@ -1,0 +1,8 @@
+{
+  "name": "easyMO Discovery",
+  "description": "A discovery-first mobility PWA connecting riders, drivers, and local businesses via ephemeral chat.",
+  "requestFramePermissions": [
+    "geolocation",
+    "camera"
+  ]
+}
