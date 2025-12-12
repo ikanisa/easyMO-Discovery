@@ -7,6 +7,8 @@ export interface CountryConfig {
   payFormat: string;
   currency: string;
   phoneHint: string;
+  callingCode: string;
+  flag: string;
 }
 
 export const COUNTRIES: CountryConfig[] = [
@@ -17,16 +19,20 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*182*1*1*{p}*{a}#',
     payFormat: '*182*8*1*{m}*{a}#',
     currency: 'RWF',
-    phoneHint: 'e.g. 078...'
+    phoneHint: '78...',
+    callingCode: '+250',
+    flag: '🇷🇼'
   },
   {
     id: 'bi',
     name: 'Burundi',
     provider: 'Econet EcoCash',
     sendFormat: '*151*1*1*{p}*{a}#',
-    payFormat: '*151*1*2*{m}*{a}#', // Inferred common format
+    payFormat: '*151*1*2*{m}*{a}#', 
     currency: 'BIF',
-    phoneHint: 'e.g. 79...'
+    phoneHint: '79...',
+    callingCode: '+257',
+    flag: '🇧🇮'
   },
   {
     id: 'cm',
@@ -35,7 +41,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*126*2*{p}*{a}#',
     payFormat: '*126*4*{m}*{a}#',
     currency: 'XAF',
-    phoneHint: 'e.g. 67...'
+    phoneHint: '67...',
+    callingCode: '+237',
+    flag: '🇨🇲'
   },
   {
     id: 'mg',
@@ -44,7 +52,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '#111*2*{p}*{a}#',
     payFormat: '#111*4*{m}*{a}#',
     currency: 'MGA',
-    phoneHint: 'e.g. 34...'
+    phoneHint: '34...',
+    callingCode: '+261',
+    flag: '🇲🇬'
   },
   {
     id: 'sc',
@@ -53,7 +63,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*202*{p}*{a}#',
     payFormat: '*202*{m}*{a}#',
     currency: 'SCR',
-    phoneHint: 'e.g. 2...'
+    phoneHint: '2...',
+    callingCode: '+248',
+    flag: '🇸🇨'
   },
   {
     id: 'tz',
@@ -62,7 +74,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*150*00*{p}*{a}#',
     payFormat: '*150*00*{m}*{a}#',
     currency: 'TZS',
-    phoneHint: 'e.g. 07...'
+    phoneHint: '07...',
+    callingCode: '+255',
+    flag: '🇹🇿'
   },
   {
     id: 'zm',
@@ -71,7 +85,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*115*2*{p}*{a}#',
     payFormat: '*115*5*{m}*{a}#',
     currency: 'ZMW',
-    phoneHint: 'e.g. 096...'
+    phoneHint: '096...',
+    callingCode: '+260',
+    flag: '🇿🇲'
   },
   {
     id: 'zw',
@@ -80,7 +96,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*151*1*1*{p}*{a}#',
     payFormat: '*151*2*{m}*{a}#',
     currency: 'ZWL',
-    phoneHint: 'e.g. 077...'
+    phoneHint: '077...',
+    callingCode: '+263',
+    flag: '🇿🇼'
   },
   {
     id: 'mw',
@@ -89,7 +107,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*211*{p}*{a}#',
     payFormat: '*211*{m}*{a}#',
     currency: 'MWK',
-    phoneHint: 'e.g. 099...'
+    phoneHint: '099...',
+    callingCode: '+265',
+    flag: '🇲🇼'
   },
   {
     id: 'na',
@@ -98,7 +118,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*140*682*{p}*{a}#',
     payFormat: '*140*682*{m}*{a}#',
     currency: 'NAD',
-    phoneHint: 'e.g. 081...'
+    phoneHint: '081...',
+    callingCode: '+264',
+    flag: '🇳🇦'
   },
   {
     id: 'gh',
@@ -107,7 +129,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*170*1*1*{p}*{a}#',
     payFormat: '*170*2*1*{m}*{a}#',
     currency: 'GHS',
-    phoneHint: 'e.g. 024...'
+    phoneHint: '024...',
+    callingCode: '+233',
+    flag: '🇬🇭'
   },
   {
     id: 'bj',
@@ -116,7 +140,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*880*1*{p}*{a}#',
     payFormat: '*880*3*{m}*{a}#',
     currency: 'XOF',
-    phoneHint: 'e.g. 01...'
+    phoneHint: '01...',
+    callingCode: '+229',
+    flag: '🇧🇯'
   },
   {
     id: 'bf',
@@ -125,7 +151,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*144*1*{p}*{a}#',
     payFormat: '*144*4*{m}*{a}#',
     currency: 'XOF',
-    phoneHint: 'e.g. 07...'
+    phoneHint: '07...',
+    callingCode: '+226',
+    flag: '🇧🇫'
   },
   {
     id: 'cf',
@@ -134,7 +162,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '#150*2*{p}*{a}#',
     payFormat: '#150*4*{m}*{a}#',
     currency: 'XAF',
-    phoneHint: 'e.g. 75...'
+    phoneHint: '75...',
+    callingCode: '+236',
+    flag: '🇨🇫'
   },
   {
     id: 'td',
@@ -143,7 +173,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*211*{p}*{a}#',
     payFormat: '*211*{m}*{a}#',
     currency: 'XAF',
-    phoneHint: 'e.g. 66...'
+    phoneHint: '66...',
+    callingCode: '+235',
+    flag: '🇹🇩'
   },
   {
     id: 'km',
@@ -152,7 +184,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*150*01*1*1*{p}*{a}#',
     payFormat: '*150*01*1*2*{m}*{a}#',
     currency: 'KMF',
-    phoneHint: 'e.g. 3...'
+    phoneHint: '3...',
+    callingCode: '+269',
+    flag: '🇰🇲'
   },
   {
     id: 'cg',
@@ -161,7 +195,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*133*2*{p}*{a}#',
     payFormat: '*133*5*{m}*{a}#',
     currency: 'XAF',
-    phoneHint: 'e.g. 06...'
+    phoneHint: '06...',
+    callingCode: '+242',
+    flag: '🇨🇬'
   },
   {
     id: 'ci',
@@ -170,7 +206,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*144*1*{p}*{a}#',
     payFormat: '*144*4*{m}*{a}#',
     currency: 'XOF',
-    phoneHint: 'e.g. 07...'
+    phoneHint: '07...',
+    callingCode: '+225',
+    flag: '🇨🇮'
   },
   {
     id: 'cd',
@@ -179,7 +217,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*144*1*{p}*{a}#',
     payFormat: '*144*4*{m}*{a}#',
     currency: 'CDF',
-    phoneHint: 'e.g. 089...'
+    phoneHint: '089...',
+    callingCode: '+243',
+    flag: '🇨🇩'
   },
   {
     id: 'dj',
@@ -188,7 +228,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*131*{p}*{a}#',
     payFormat: '*133*{m}*{a}#',
     currency: 'DJF',
-    phoneHint: 'e.g. 77...'
+    phoneHint: '77...',
+    callingCode: '+253',
+    flag: '🇩🇯'
   },
   {
     id: 'gq',
@@ -197,7 +239,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*222*2*{p}*{a}#',
     payFormat: '*222*4*{m}*{a}#',
     currency: 'XAF',
-    phoneHint: 'e.g. 222...'
+    phoneHint: '222...',
+    callingCode: '+240',
+    flag: '🇬🇶'
   },
   {
     id: 'ga',
@@ -206,7 +250,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*150*2*{p}*{a}#',
     payFormat: '*150*4*{m}*{a}#',
     currency: 'XAF',
-    phoneHint: 'e.g. 074...'
+    phoneHint: '074...',
+    callingCode: '+241',
+    flag: '🇬🇦'
   },
   {
     id: 'gn',
@@ -215,7 +261,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*144*1*{p}*{a}#',
     payFormat: '*144*4*{m}*{a}#',
     currency: 'GNF',
-    phoneHint: 'e.g. 622...'
+    phoneHint: '622...',
+    callingCode: '+224',
+    flag: '🇬🇳'
   },
   {
     id: 'ml',
@@ -224,7 +272,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '#144#*1*{p}*{a}#',
     payFormat: '#144#*2*{m}*{a}#',
     currency: 'XOF',
-    phoneHint: 'e.g. 70...'
+    phoneHint: '70...',
+    callingCode: '+223',
+    flag: '🇲🇱'
   },
   {
     id: 'mr',
@@ -233,7 +283,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*900*2*{p}*{a}#',
     payFormat: '*900*4*{m}*{a}#',
     currency: 'MRU',
-    phoneHint: 'e.g. 4...'
+    phoneHint: '4...',
+    callingCode: '+222',
+    flag: '🇲🇷'
   },
   {
     id: 'ne',
@@ -242,7 +294,9 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '*400*{p}*{a}#',
     payFormat: '*400*{m}*{a}#',
     currency: 'XOF',
-    phoneHint: 'e.g. 9...'
+    phoneHint: '9...',
+    callingCode: '+227',
+    flag: '🇳🇪'
   },
   {
     id: 'sn',
@@ -251,15 +305,19 @@ export const COUNTRIES: CountryConfig[] = [
     sendFormat: '#144*1*{p}*{a}#',
     payFormat: '#144*2*{m}*{a}#',
     currency: 'XOF',
-    phoneHint: 'e.g. 77...'
+    phoneHint: '77...',
+    callingCode: '+221',
+    flag: '🇸🇳'
   },
   {
     id: 'tg',
     name: 'Togo',
     provider: 'Togocom T-Money',
-    sendFormat: '*145*1*{a}*{p}#', // Note: amount before phone
-    payFormat: '*145*3*{m}*{a}#', // Agent withdrawal format as proxy
+    sendFormat: '*145*1*{a}*{p}#',
+    payFormat: '*145*3*{m}*{a}#',
     currency: 'XOF',
-    phoneHint: 'e.g. 90...'
+    phoneHint: '90...',
+    callingCode: '+228',
+    flag: '🇹🇬'
   }
 ];

@@ -1,9 +1,23 @@
+
 import { Location } from '../types';
+
+const getFriendlyError = (err: GeolocationPositionError): string => {
+  switch(err.code) {
+    case err.PERMISSION_DENIED:
+      return "Location permission denied. Please enable location access in your browser settings or address bar permissions.";
+    case err.POSITION_UNAVAILABLE:
+      return "Location information is unavailable. Please check your device GPS settings and signal.";
+    case err.TIMEOUT:
+      return "Location request timed out. Please ensure you have a clear signal and try again.";
+    default:
+      return err.message || "An unknown location error occurred. Please try again.";
+  }
+};
 
 export const getCurrentPosition = (): Promise<Location> => {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
-      reject(new Error('Geolocation not supported'));
+      reject(new Error('Geolocation is not supported by this browser.'));
       return;
     }
     navigator.geolocation.getCurrentPosition(
@@ -13,8 +27,8 @@ export const getCurrentPosition = (): Promise<Location> => {
           lng: pos.coords.longitude,
         });
       },
-      (err) => reject(err),
-      { enableHighAccuracy: true, timeout: 5000, maximumAge: 10000 }
+      (err) => reject(new Error(getFriendlyError(err))),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 10000 }
     );
   });
 };
@@ -77,11 +91,11 @@ export const LocationService = {
       },
       (err) => {
         console.error('Location Watch Error:', err);
-        onError(err.message);
+        onError(getFriendlyError(err));
       },
       {
         enableHighAccuracy: true, // Essential for drivers
-        timeout: 10000,
+        timeout: 15000,
         maximumAge: 0, // Force fresh location
       }
     );

@@ -1,8 +1,10 @@
 
 import React, { useState } from 'react';
 import { ICONS } from '../../constants';
-import { BusinessResultsPayload } from '../../types';
+import { BusinessResultsPayload, BusinessListing } from '../../types';
 import BusinessCardWidget from './BusinessCardWidget';
+import { sendWhatsAppBroadcastRequest, BroadcastPayload } from '../../services/whatsapp';
+import Button from '../Button';
 
 interface BusinessResultsMessageProps {
   payload: BusinessResultsPayload;
@@ -11,12 +13,45 @@ interface BusinessResultsMessageProps {
 
 const BusinessResultsMessage: React.FC<BusinessResultsMessageProps> = ({ payload, onLoadMore }) => {
   const [showAll, setShowAll] = useState(false);
-  const { matches, category, filters_applied, disclaimer, pagination } = payload;
+  const [broadcasting, setBroadcasting] = useState(false);
+  const [broadcastResult, setBroadcastResult] = useState<{success: boolean, message?: string, count?: number} | null>(null);
+  
+  const { matches, category, filters_applied, disclaimer, pagination, need_description, user_location_label } = payload;
   
   // By default show top 3, or all if less than 5
   const visibleCount = showAll ? matches.length : 3;
   const visibleResults = matches.slice(0, visibleCount);
   const hiddenCount = matches.length - visibleCount;
+
+  // Filter businesses valid for broadcast (must have phone)
+  const broadcastCandidates = matches.filter(b => !!b.phoneNumber);
+
+  const handleBroadcast = async () => {
+    if (!broadcastCandidates.length) return;
+    
+    setBroadcasting(true);
+    setBroadcastResult(null);
+
+    const requestId = `R${Date.now()}`;
+    
+    // Construct simplified list for API
+    const businessesForApi = broadcastCandidates.map(b => ({
+      name: b.name,
+      phone: b.phoneNumber || ''
+    }));
+
+    const reqPayload: BroadcastPayload = {
+      requestId,
+      userLocationLabel: user_location_label || 'Nearby',
+      needDescription: need_description || (category ? `Looking for ${category}` : 'Looking for products/services'),
+      businesses: businessesForApi
+    };
+
+    const result = await sendWhatsAppBroadcastRequest(reqPayload);
+    
+    setBroadcasting(false);
+    setBroadcastResult(result);
+  };
 
   if (!matches || matches.length === 0) return null;
 
@@ -54,6 +89,44 @@ const BusinessResultsMessage: React.FC<BusinessResultsMessageProps> = ({ payload
           </button>
         )}
       </div>
+
+      {/* Broadcast Action Area */}
+      {broadcastCandidates.length > 0 && !broadcastResult && (
+         <div className="glass-panel p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 mb-2 relative overflow-hidden">
+            <div className="flex flex-col gap-2 relative z-10">
+               <h3 className="font-bold text-emerald-100 flex items-center gap-2">
+                 <ICONS.Broadcast className="w-5 h-5 text-emerald-400" />
+                 Ask nearby businesses?
+               </h3>
+               <p className="text-xs text-slate-300 leading-relaxed">
+                 I can broadcast your request to {broadcastCandidates.length} businesses with phones. 
+                 They will reply directly to your WhatsApp.
+               </p>
+               <Button 
+                 variant="primary" 
+                 onClick={handleBroadcast}
+                 disabled={broadcasting}
+                 className="mt-2 bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20 h-10 text-xs"
+                 icon={broadcasting ? <span className="animate-spin text-xl">⟳</span> : <ICONS.WhatsApp className="w-4 h-4" />}
+               >
+                 {broadcasting ? 'Sending Request...' : `Broadcast via WhatsApp`}
+               </Button>
+            </div>
+         </div>
+      )}
+
+      {/* Broadcast Result Feedback */}
+      {broadcastResult && (
+         <div className={`p-4 rounded-xl border mb-2 text-sm ${broadcastResult.success ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200' : 'bg-red-500/10 border-red-500/20 text-red-200'}`}>
+            <div className="font-bold flex items-center gap-2 mb-1">
+               {broadcastResult.success ? <ICONS.Check className="w-5 h-5" /> : <ICONS.XMark className="w-5 h-5" />}
+               {broadcastResult.success ? 'Broadcast Sent!' : 'Broadcast Failed'}
+            </div>
+            <p className="opacity-90 text-xs leading-relaxed">
+               {broadcastResult.message || `I've contacted ${broadcastResult.count} nearby businesses. They will reply directly to your WhatsApp number if they have what you need.`}
+            </p>
+         </div>
+      )}
 
       {/* Cards Stack (Vertical in Chat) */}
       <div className="space-y-3">

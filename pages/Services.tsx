@@ -15,32 +15,17 @@ const Services: React.FC<ServicesProps> = ({ onStartChat, onNavigate }) => {
       {/* Header */}
       <div className="text-center mb-6">
         <h1 className="text-3xl font-black mb-1 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">Services</h1>
-        <p className="text-slate-400 text-sm">AI Assistants & Professional Tools</p>
+        <p className="text-slate-400 text-sm">Professional Tools & Assistance</p>
       </div>
 
       <div className="flex-1 space-y-6 max-w-md mx-auto w-full pb-24">
         
-        {/* Section 1: AI Agents */}
+        {/* Section 1: Professional Services */}
         <div>
-          <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 px-1">AI Assistants</h2>
+          <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 px-1">Professional Services</h2>
           
           <div className="space-y-3">
-            {/* Support AI */}
-            <button 
-              onClick={() => onStartChat('support')}
-              className="w-full glass-panel p-4 rounded-2xl flex items-center gap-4 hover:bg-white/5 active:scale-[0.98] transition-all group border-blue-500/10"
-            >
-              <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center text-blue-400 shrink-0 group-hover:scale-105 transition-transform">
-                <ICONS.Support className="w-6 h-6" />
-              </div>
-              <div className="flex-1 text-left">
-                <div className="font-bold">Customer Support AI</div>
-                <div className="text-xs text-slate-400 mt-0.5">Instant help with the app</div>
-              </div>
-              <ICONS.ChevronDown className="w-5 h-5 text-slate-500 -rotate-90" />
-            </button>
-
-            {/* Legal / Notary AI */}
+            {/* Notary Services AI */}
             <button 
               onClick={() => onStartChat('legal')}
               className="w-full glass-panel p-4 rounded-2xl flex items-center gap-4 hover:bg-white/5 active:scale-[0.98] transition-all group border-amber-500/20"
@@ -56,13 +41,25 @@ const Services: React.FC<ServicesProps> = ({ onStartChat, onNavigate }) => {
                  NEW
               </div>
             </button>
-          </div>
-        </div>
 
-        {/* Section 2: Tools */}
-        <div>
-          <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 px-1">Professional Tools</h2>
-          <div className="space-y-3">
+            {/* Insurance - WhatsApp Deep Link */}
+            <a 
+              href="https://wa.me/250795588248?text=Hello,%20I%20would%20like%20to%20inquire%20about%20insurance%20services."
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full glass-panel p-4 rounded-2xl flex items-center gap-4 hover:bg-white/5 active:scale-[0.98] transition-all group border-indigo-500/20"
+            >
+              <div className="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0 group-hover:scale-105 transition-transform">
+                <ICONS.ShieldCheck className="w-6 h-6" />
+              </div>
+              <div className="flex-1 text-left">
+                <div className="font-bold">Insurance</div>
+                <div className="text-xs text-slate-400 mt-0.5">Get quotes & coverage</div>
+              </div>
+              <div className="px-2 py-1 bg-indigo-500/10 rounded text-[10px] font-bold text-indigo-400 border border-indigo-500/20">
+                 RW
+              </div>
+            </a>
             
             {/* Waiter Mode */}
             <button 
@@ -96,11 +93,11 @@ const Services: React.FC<ServicesProps> = ({ onStartChat, onNavigate }) => {
           </div>
         </div>
 
-        {/* Section 3: Human Help */}
+        {/* Section 2: Human Contact */}
         <div>
            <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 px-1">Human Contact</h2>
            <a 
-            href="https://wa.me/1234567890" 
+            href="https://wa.me/250796884076?text=Hello,%20I%20need%20assistance%20with%20easyMO." 
             target="_blank"
             rel="noopener noreferrer"
             className="w-full glass-panel p-4 rounded-2xl flex items-center gap-4 hover:bg-white/5 active:scale-[0.98] transition-all group border-emerald-500/10"
@@ -109,8 +106,8 @@ const Services: React.FC<ServicesProps> = ({ onStartChat, onNavigate }) => {
               <ICONS.WhatsApp className="w-6 h-6" />
             </div>
             <div className="flex-1 text-left">
-              <div className="font-bold">WhatsApp Admin</div>
-              <div className="text-xs text-slate-400 mt-0.5">Escalate complex issues</div>
+              <div className="font-bold">Customer Support</div>
+              <div className="text-xs text-slate-400 mt-0.5">Chat with a human agent</div>
             </div>
             <ICONS.ChevronDown className="w-5 h-5 text-slate-500 -rotate-90" />
           </a>
@@ -119,7 +116,7 @@ const Services: React.FC<ServicesProps> = ({ onStartChat, onNavigate }) => {
          {/* Footer */}
         <div>
            <div className="glass-panel p-4 rounded-2xl flex items-center justify-between text-xs text-slate-400">
-             <span>Version 1.3.0</span>
+             <span>Version 1.4.0</span>
              <span>Terms & Privacy</span>
            </div>
         </div>

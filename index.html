@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -11,11 +12,16 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="manifest" href="/manifest.json" />
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+    <link rel="apple-touch-icon" href="/icon.svg" />
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             colors: {
@@ -31,17 +37,30 @@
         }
       }
     </script>
+    
+    <!-- Theme Initialization Script to avoid FOUC -->
+    <script>
+      (function() {
+        const storedTheme = localStorage.getItem('easyMO_theme');
+        if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      })();
+    </script>
+
     <style>
       /* Custom Scrollbar for Glass UI */
       ::-webkit-scrollbar {
         width: 4px;
-        height: 4px; /* Added height for horizontal scrollbars */
+        height: 4px;
       }
       ::-webkit-scrollbar-track {
         background: transparent;
       }
       ::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.2);
+        background: rgba(100, 116, 139, 0.5); /* Adapted for visibility on both backgrounds */
         border-radius: 10px;
       }
       /* Utility to hide scrollbar but keep functionality */
@@ -53,20 +72,44 @@
         scrollbar-width: none;  /* Firefox */
       }
       
+      /* Base Body - Default Light Mode */
       body {
-        background-color: #0f172a; /* Slate 900 */
-        color: #f8fafc;
+        background-color: #f8fafc; /* Slate 50 */
+        color: #0f172a; /* Slate 900 */
         -webkit-tap-highlight-color: transparent;
         overscroll-behavior-y: none;
+        transition: background-color 0.3s ease, color 0.3s ease;
       }
+      
+      /* Dark Mode Override */
+      html.dark body {
+        background-color: #0f172a;
+        color: #f8fafc;
+      }
+
+      /* Liquid Background Gradient */
       .liquid-bg {
+        background: radial-gradient(circle at 50% 10%, #e2e8f0 0%, #f8fafc 100%);
+      }
+      html.dark .liquid-bg {
         background: radial-gradient(circle at 50% 10%, #1e293b 0%, #0f172a 100%);
       }
+
+      /* Glass Panel - Adaptive */
       .glass-panel {
-        background: rgba(255, 255, 255, 0.05);
+        /* Light Mode Glass */
+        background: rgba(255, 255, 255, 0.7);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(0, 0, 0, 0.05);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      }
+      
+      html.dark .glass-panel {
+        /* Dark Mode Glass */
+        background: rgba(255, 255, 255, 0.05);
         border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: none;
       }
     </style>
   <script type="importmap">
@@ -82,7 +125,7 @@
 }
 </script>
 </head>
-  <body class="liquid-bg h-screen w-screen overflow-hidden text-slate-100 antialiased selection:bg-pink-500 selection:text-white">
+  <body class="liquid-bg h-screen w-screen overflow-hidden text-slate-900 dark:text-slate-100 antialiased selection:bg-pink-500 selection:text-white">
     <div id="root"></div>
   </body>
 </html>

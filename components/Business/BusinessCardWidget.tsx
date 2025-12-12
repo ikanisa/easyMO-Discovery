@@ -18,7 +18,7 @@ const getCategoryIcon = (category: string): string => {
   if (c.includes('auto') || c.includes('car') || c.includes('mechanic') || c.includes('spare')) return '🚗';
   if (c.includes('grocer') || c.includes('supermarket') || c.includes('market')) return '🛒';
   if (c.includes('fashion') || c.includes('cloth') || c.includes('boutique') || c.includes('tailor')) return '👗';
-  if (c.includes('restaurant') || c.includes('cafe') || c.includes('bar') || c.includes('food') || c.includes('lunch')) return '🍽️';
+  if (c.includes('restaurant') || c.includes('cafe') || c.includes('bar') || c.includes('food') || c.includes('lunch') || c.includes('night') || c.includes('club') || c.includes('pub')) return '🍽️';
   if (c.includes('hospital') || c.includes('clinic') || c.includes('doctor') || c.includes('health')) return '🏥';
   if (c.includes('school') || c.includes('educat') || c.includes('class')) return '🎓';
   if (c.includes('bank') || c.includes('financ') || c.includes('money')) return '🏦';
@@ -26,6 +26,7 @@ const getCategoryIcon = (category: string): string => {
   if (c.includes('salon') || c.includes('barber') || c.includes('hair') || c.includes('beauty')) return '✂️';
   if (c.includes('transport') || c.includes('logistic') || c.includes('move') || c.includes('truck')) return '🚚';
   if (c.includes('hotel') || c.includes('lodg')) return '🏨';
+  if (c.includes('bar') || c.includes('club') || c.includes('pub') || c.includes('lounge')) return '🥂';
   return '🏢';
 };
 
@@ -36,7 +37,6 @@ const BusinessCardWidget: React.FC<BusinessCardWidgetProps> = ({ biz, compact = 
   // Normalize data (handle potentially missing fields from AI)
   const isOpen = biz.isOpen === true;
   const isClosed = biz.isOpen === false;
-  const isUnknown = biz.isOpen === undefined;
   
   const handleWhatsApp = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -102,7 +102,7 @@ const BusinessCardWidget: React.FC<BusinessCardWidgetProps> = ({ biz, compact = 
         </div>
 
         {/* Meta Row */}
-        <div className="flex items-center gap-3 text-xs text-slate-300 mb-4 pl-1">
+        <div className="flex items-center gap-3 text-xs text-slate-300 mb-3 pl-1">
           <div className="flex items-center gap-1 text-emerald-400 font-medium bg-emerald-900/20 px-1.5 py-0.5 rounded">
             <ICONS.MapPin className="w-3 h-3" />
             {biz.distance}
@@ -110,54 +110,52 @@ const BusinessCardWidget: React.FC<BusinessCardWidgetProps> = ({ biz, compact = 
           {biz.address && <span className="opacity-60 truncate max-w-[140px]">• {biz.address}</span>}
         </div>
 
+        {/* Phone Number (Always Visible) */}
+        {biz.phoneNumber && (
+          <div className="flex items-center gap-2 mb-4 pl-1 text-xs text-slate-300">
+             <ICONS.Phone className="w-3 h-3 text-slate-500" />
+             <span className="font-mono">{biz.phoneNumber}</span>
+             <button 
+               onClick={handleCopyPhone}
+               className="ml-auto text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded transition-colors"
+             >
+               {copied ? <ICONS.Check className="w-3 h-3" /> : <ICONS.Copy className="w-3 h-3" />}
+               {copied ? 'Copied' : 'Copy'}
+             </button>
+          </div>
+        )}
+
         {/* Collapsible Details */}
         <div className={`
           overflow-hidden transition-all duration-300 ease-in-out
-          ${expanded || !compact ? 'max-h-40 opacity-100 mb-4' : 'max-h-0 opacity-0 mb-0'}
+          ${expanded || !compact ? 'max-h-[500px] opacity-100 mb-4' : 'max-h-0 opacity-0 mb-0'}
         `}>
            {biz.snippet && (
              <div className="text-xs text-slate-400 bg-black/20 p-2 rounded-lg border-l-2 border-slate-600 italic">
                "{biz.snippet}"
              </div>
            )}
-           {biz.phoneNumber && (
-             <div className="flex items-center gap-2 mt-3 text-xs text-slate-300">
-               <ICONS.Phone className="w-3 h-3 opacity-50" />
-               <span className="font-mono">{biz.phoneNumber}</span>
-               <button 
-                 onClick={handleCopyPhone}
-                 className="ml-auto text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 bg-blue-500/10 px-2 py-1 rounded"
-               >
-                 {copied ? <ICONS.Check className="w-3 h-3" /> : <ICONS.Copy className="w-3 h-3" />}
-                 {copied ? 'Copied' : 'Copy'}
-               </button>
-             </div>
-           )}
         </div>
 
         {/* Action Row */}
-        <div className="grid grid-cols-[1.5fr_1fr] gap-2 mt-auto">
+        <div className={`grid gap-2 mt-auto ${biz.phoneNumber ? 'grid-cols-[1.5fr_1fr]' : 'grid-cols-1'}`}>
           <button 
             onClick={handleWhatsApp}
             className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg shadow-emerald-500/20"
           >
             <ICONS.WhatsApp className="w-4 h-4" />
-            Msg
+            {biz.whatsappDraft ? 'Draft Message' : 'WhatsApp'}
           </button>
           
-          <button 
-            onClick={handleCall}
-            disabled={!biz.phoneNumber}
-            className={`
-              flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold border transition-all active:scale-95
-              ${biz.phoneNumber 
-                ? 'bg-white/5 hover:bg-white/10 text-slate-200 border-white/10' 
-                : 'bg-slate-800/50 text-slate-600 border-transparent cursor-not-allowed opacity-60'}
-            `}
-          >
-            <ICONS.Phone className="w-4 h-4" />
-            {biz.phoneNumber ? 'Call' : 'No #'}
-          </button>
+          {biz.phoneNumber && (
+            <button 
+              onClick={handleCall}
+              className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold border transition-all active:scale-95 bg-white/5 hover:bg-white/10 text-slate-200 border-white/10"
+            >
+              <ICONS.Phone className="w-4 h-4" />
+              Call
+            </button>
+          )}
         </div>
 
         {/* Footer */}

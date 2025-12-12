@@ -252,10 +252,26 @@ const Discovery: React.FC<DiscoveryProps> = ({ role, onStartChat, onBack }) => {
         </div>
       )}
 
-      {/* Permission Error */}
+      {/* Permission/Location Error Banner */}
       {locationError && (
-        <div className="p-4 bg-red-500/10 border border-red-500/20 text-red-200 rounded-xl text-sm mb-4 animate-in fade-in slide-in-from-top-2">
-          {locationError}
+        <div className="mx-0 mb-6 p-5 bg-red-500/10 border border-red-500/20 rounded-2xl flex flex-col gap-3 animate-in fade-in slide-in-from-top-2">
+          <div className="flex items-start gap-3">
+             <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 text-red-400">
+                <ICONS.MapPin className="w-5 h-5" />
+             </div>
+             <div>
+                <h3 className="font-bold text-red-200 text-sm">Location Access Required</h3>
+                <p className="text-xs text-red-200/70 mt-1 leading-relaxed">
+                  {locationError}
+                </p>
+             </div>
+          </div>
+          <button 
+             onClick={() => window.location.reload()} 
+             className="w-full py-3 bg-red-500/20 hover:bg-red-500/30 text-red-200 text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+          >
+             <ICONS.Check className="w-4 h-4" /> Reload to Retry
+          </button>
         </div>
       )}
 

@@ -5,6 +5,7 @@ import { Message } from '../types';
 import MessageBubble from '../components/Chat/MessageBubble';
 import { GeminiService } from '../services/gemini';
 import OrderSummaryBubble from '../components/Waiter/OrderSummaryBubble';
+import { getCurrentPosition } from '../services/location';
 
 interface WaiterGuestProps {
   onBack: () => void;
@@ -15,7 +16,7 @@ const WaiterGuest: React.FC<WaiterGuestProps> = ({ onBack }) => {
     {
       id: 'system-1',
       sender: 'system',
-      text: 'Welcome! I am your AI Waiter. I can help you order drinks and food.',
+      text: 'Hello! I am Dogo, your digital waiter. Getting your location to find which restaurant you are at...',
       timestamp: Date.now()
     }
   ]);
@@ -31,6 +32,30 @@ const WaiterGuest: React.FC<WaiterGuestProps> = ({ onBack }) => {
     scrollToBottom();
   }, [messages, isTyping]);
 
+  // Initial Location Fetch & Welcome
+  useEffect(() => {
+    const init = async () => {
+        try {
+            const loc = await getCurrentPosition();
+            setIsTyping(true);
+            const result = await GeminiService.chatDogo(messages, "I am here. Identify the venue.", loc, 'dynamic-biz-id');
+            
+            const aiMsg: Message = {
+                id: Date.now().toString(),
+                sender: 'ai',
+                text: result.text,
+                timestamp: Date.now()
+            };
+            setMessages(prev => [...prev, aiMsg]);
+        } catch (e) {
+            setMessages(prev => [...prev, { id: 'err', sender: 'system', text: 'Could not get location. Please tell me where you are.', timestamp: Date.now() }]);
+        } finally {
+            setIsTyping(false);
+        }
+    };
+    init();
+  }, []);
+
   const handleSend = async () => {
     if (!inputValue.trim()) return;
 
@@ -45,8 +70,10 @@ const WaiterGuest: React.FC<WaiterGuestProps> = ({ onBack }) => {
     setIsTyping(true);
 
     try {
-      // Hardcoded business ID for mock
-      const result = await GeminiService.chatWaiterAgent(messages, userMsg.text, 'biz-1');
+      let loc = { lat: -1.94, lng: 30.06 };
+      try { loc = await getCurrentPosition(); } catch(e){}
+
+      const result = await GeminiService.chatDogo([...messages, userMsg], userMsg.text, loc, 'biz-1');
       
       const aiMsg: Message = {
         id: (Date.now() + 1).toString(),
@@ -71,8 +98,8 @@ const WaiterGuest: React.FC<WaiterGuestProps> = ({ onBack }) => {
            <ICONS.ChevronDown className="w-6 h-6 rotate-90" />
         </button>
         <div className="flex flex-col items-center">
-          <div className="font-semibold text-sm">Table 4</div>
-          <span className="text-[10px] text-emerald-400 font-medium">Ordering Active</span>
+          <div className="font-semibold text-sm">Dogo (Waiter)</div>
+          <span className="text-[10px] text-emerald-400 font-medium">Smart Ordering</span>
         </div>
         <div className="w-8" />
       </div>
@@ -108,7 +135,7 @@ const WaiterGuest: React.FC<WaiterGuestProps> = ({ onBack }) => {
           <input
             type="text"
             className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-5 text-sm focus:outline-none focus:border-emerald-500/50 text-white placeholder-slate-500 transition-all focus:bg-white/10"
-            placeholder="I'll have a beer and fries..."
+            placeholder="Order drinks or food..."
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}

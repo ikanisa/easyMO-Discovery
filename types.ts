@@ -49,11 +49,19 @@ export interface SearchFilters {
 
 export interface BusinessResultsPayload {
   query_summary?: string;
+  need_description?: string; // Extracted user need for broadcast
+  user_location_label?: string; // Inferred user location label
   category?: string;
   filters_applied?: SearchFilters;
   pagination?: PaginationMeta;
   matches: BusinessListing[];
   disclaimer?: string;
+}
+
+export interface VerifiedBusinessPayload {
+  title: string;
+  item_found: string;
+  matches: BusinessListing[]; // These are specifically the ones who said YES
 }
 // ------------------------------
 
@@ -99,10 +107,10 @@ export interface LegalListing {
   category: 'Notary' | 'Lawyer' | 'Bailiff' | 'Agency' | 'Other';
   distance: string;
   approx_distance_km?: number;
-  isOpen?: boolean;
+  isOpen?: boolean; // true = Open, false = Closed, undefined = Unknown
   confidence: 'High' | 'Medium' | 'Low';
-  snippet?: string;
-  address?: string;
+  snippet?: string; // "why_recommended"
+  address?: string; // "area"
   phoneNumber?: string;
   whatsappDraft?: string;
 }
@@ -160,6 +168,9 @@ export interface Message {
   
   // New structured data for Buy & Sell Agent
   businessPayload?: BusinessResultsPayload;
+  
+  // NEW: Confirmed matches from broadcast
+  verifiedPayload?: VerifiedBusinessPayload;
 
   // New structured data for Real Estate Agent
   propertyPayload?: PropertyResultsPayload;

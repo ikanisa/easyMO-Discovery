@@ -5,6 +5,7 @@ import { ICONS } from '../../constants';
 import BusinessResultsMessage from '../Business/BusinessResultsMessage';
 import PropertyResultsMessage from '../RealEstate/PropertyResultsMessage';
 import LegalResultsMessage from '../Legal/LegalResultsMessage';
+import VerifiedBusinessList from '../Business/VerifiedBusinessList';
 
 interface MessageBubbleProps {
   message: Message;
@@ -30,6 +31,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply }) => {
   const hasBusinessPayload = !!message.businessPayload && message.businessPayload.matches.length > 0;
   const hasPropertyPayload = !!message.propertyPayload && message.propertyPayload.matches.length > 0;
   const hasLegalPayload = !!message.legalPayload && message.legalPayload.matches.length > 0;
+  const hasVerifiedPayload = !!message.verifiedPayload && message.verifiedPayload.matches.length > 0;
 
   return (
     <div className={`flex w-full mb-6 gap-3 ${isMe ? 'justify-end' : 'justify-start'}`}>
@@ -49,7 +51,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply }) => {
       )}
 
       {/* Content Container */}
-      <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[80%]`}>
+      <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-[85%]`}>
         
         {/* 1. Image Attachment */}
         {message.image && (
@@ -102,8 +104,29 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply }) => {
             )}
           </div>
         )}
+        
+        {/* 3. Location Bubble */}
+        {message.location && (
+          <div className={`mt-2 p-3 rounded-xl border border-white/10 ${isMe ? 'bg-white/10' : 'bg-slate-900/50'} flex flex-col gap-2 w-full shadow-sm`}>
+             <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wide opacity-80">
+               <ICONS.MapPin className="w-4 h-4 text-red-400" />
+               <span>Pinned Location</span>
+             </div>
+             <div className="text-xs text-slate-300 font-mono bg-black/20 p-2 rounded">
+               {message.location.lat.toFixed(5)}, {message.location.lng.toFixed(5)}
+             </div>
+             <a
+               href={`https://www.google.com/maps/search/?api=1&query=${message.location.lat},${message.location.lng}`}
+               target="_blank"
+               rel="noopener noreferrer"
+               className="text-xs text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1 mt-1 font-semibold"
+             >
+               Open in Maps <ICONS.ChevronDown className="w-3 h-3 -rotate-90" />
+             </a>
+          </div>
+        )}
 
-        {/* 3. Structured Business Results Widget */}
+        {/* 4. Structured Business Results Widget */}
         {hasBusinessPayload && (
           <div className="w-full mt-2">
              <BusinessResultsMessage 
@@ -113,7 +136,15 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply }) => {
           </div>
         )}
 
-        {/* 4. Structured Property Results Widget */}
+        {/* 5. VERIFIED MATCHES WIDGET (New) */}
+        {hasVerifiedPayload && (
+           <VerifiedBusinessList 
+              matches={message.verifiedPayload!.matches}
+              itemFound={message.verifiedPayload!.item_found}
+           />
+        )}
+
+        {/* 6. Structured Property Results Widget */}
         {hasPropertyPayload && (
           <div className="w-full mt-2">
              <PropertyResultsMessage 
@@ -123,7 +154,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply }) => {
           </div>
         )}
 
-        {/* 5. Structured Legal Results Widget */}
+        {/* 7. Structured Legal Results Widget */}
         {hasLegalPayload && (
           <div className="w-full mt-2">
              <LegalResultsMessage 
