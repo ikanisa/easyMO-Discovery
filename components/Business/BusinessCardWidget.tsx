@@ -2,10 +2,13 @@
 import React, { useState } from 'react';
 import { ICONS } from '../../constants';
 import { BusinessListing } from '../../types';
+import { triggerWhatsAppBroadcast } from '../../services/whatsapp';
 
 interface BusinessCardWidgetProps {
   biz: BusinessListing;
   compact?: boolean;
+  contextLocation?: string;
+  contextNeed?: string;
 }
 
 const getCategoryIcon = (category: string): string => {
@@ -30,9 +33,15 @@ const getCategoryIcon = (category: string): string => {
   return '🏢';
 };
 
-const BusinessCardWidget: React.FC<BusinessCardWidgetProps> = ({ biz, compact = false }) => {
+const BusinessCardWidget: React.FC<BusinessCardWidgetProps> = ({ 
+  biz, 
+  compact = false,
+  contextLocation,
+  contextNeed
+}) => {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [requestQueued, setRequestQueued] = useState(false);
 
   // Normalize data (handle potentially missing fields from AI)
   const isOpen = biz.isOpen === true;
@@ -65,6 +74,31 @@ const BusinessCardWidget: React.FC<BusinessCardWidgetProps> = ({ biz, compact = 
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
+  };
+
+  const handleCheckStock = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!biz.phoneNumber) return;
+    
+    // Optimistic UI update
+    setRequestQueued(true);
+
+    // Call the broadcast service
+    await triggerWhatsAppBroadcast(
+      biz.name,
+      biz.phoneNumber,
+      contextLocation || "Nearby",
+      contextNeed || "General Inquiry"
+    );
+
+    // Show toast (custom implementation to avoid dependency)
+    const toast = document.createElement('div');
+    toast.className = "fixed bottom-24 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-5 py-3 rounded-2xl text-xs font-bold shadow-2xl z-[100] animate-in fade-in zoom-in slide-in-from-bottom-4 duration-300 flex items-center gap-2";
+    toast.innerHTML = `<span>Request queued! Watch for a WhatsApp reply.</span>`;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.remove();
+    }, 3000);
   };
 
   const handleExpand = () => setExpanded(!expanded);
@@ -138,24 +172,50 @@ const BusinessCardWidget: React.FC<BusinessCardWidgetProps> = ({ biz, compact = 
         </div>
 
         {/* Action Row */}
-        <div className={`grid gap-2 mt-auto ${biz.phoneNumber ? 'grid-cols-[1.5fr_1fr]' : 'grid-cols-1'}`}>
-          <button 
-            onClick={handleWhatsApp}
-            className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white py-2.5 rounded-xl text-xs font-bold transition-all shadow-lg shadow-emerald-500/20"
-          >
-            <ICONS.WhatsApp className="w-4 h-4" />
-            {biz.whatsappDraft ? 'Draft Message' : 'WhatsApp'}
-          </button>
-          
-          {biz.phoneNumber && (
-            <button 
-              onClick={handleCall}
-              className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold border transition-all active:scale-95 bg-white/5 hover:bg-white/10 text-slate-200 border-white/10"
-            >
-              <ICONS.Phone className="w-4 h-4" />
-              Call
-            </button>
-          )}
+        <div className="flex flex-col gap-2 mt-auto">
+           {/* Broadcast Action (New) */}
+           {biz.phoneNumber && (
+             <button 
+               onClick={handleCheckStock}
+               disabled={requestQueued}
+               className={`
+                 w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold transition-all shadow-lg
+                 ${requestQueued 
+                    ? 'bg-slate-700 text-slate-400 cursor-default' 
+                    : 'bg-emerald-600 hover:bg-emerald-500 text-white active:scale-95 shadow-emerald-500/20'}
+               `}
+             >
+               {requestQueued ? (
+                 <>
+                   <ICONS.Check className="w-4 h-4" /> Request Queued
+                 </>
+               ) : (
+                 <>
+                   <ICONS.Broadcast className="w-4 h-4" /> Check Stock (WhatsApp)
+                 </>
+               )}
+             </button>
+           )}
+
+           <div className={`grid gap-2 ${biz.phoneNumber ? 'grid-cols-[1.5fr_1fr]' : 'grid-cols-1'}`}>
+              <button 
+                onClick={handleWhatsApp}
+                className="flex items-center justify-center gap-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 border border-white/5 py-2.5 rounded-xl text-xs font-bold transition-all"
+              >
+                <ICONS.WhatsApp className="w-4 h-4 text-emerald-500" />
+                {biz.whatsappDraft ? 'Draft Msg' : 'Chat'}
+              </button>
+              
+              {biz.phoneNumber && (
+                <button 
+                  onClick={handleCall}
+                  className="flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-xs font-bold border transition-all active:scale-95 bg-white/5 hover:bg-white/10 text-slate-200 border-white/10"
+                >
+                  <ICONS.Phone className="w-4 h-4" />
+                  Call
+                </button>
+              )}
+           </div>
         </div>
 
         {/* Footer */}

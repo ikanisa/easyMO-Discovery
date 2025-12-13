@@ -1,86 +1,53 @@
+
 import { PresenceUser, Role, VehicleType, Location } from '../types';
-import { formatDistance, calculateDistance } from './location';
-
-// Mock DB in memory - shared state
-// Using a Map to easily handle upserts and removals by sessionId
-const worldState = new Map<string, PresenceUser>();
-
-let currentUserSessionId: string | null = null;
-
-// Mock data generation
-const generateMockUsers = (center: Location, type: 'drivers' | 'vendors' | 'passengers') => {
-  if (type === 'drivers') {
-    const types: VehicleType[] = ['moto', 'moto', 'moto', 'cab', 'truck'];
-    for (let i = 0; i < 5; i++) {
-      const id = `mock-driver-${i}`;
-      if (!worldState.has(id)) {
-        const latOffset = (Math.random() - 0.5) * 0.01;
-        const lngOffset = (Math.random() - 0.5) * 0.01;
-        worldState.set(id, {
-          sessionId: id,
-          role: 'driver',
-          vehicleType: types[i % types.length],
-          location: { lat: center.lat + latOffset, lng: center.lng + lngOffset },
-          lastSeen: Date.now(),
-          isOnline: true,
-          displayName: `Driver ${i + 1}`
-        });
-      }
-    }
-  } else if (type === 'vendors') {
-    const shopNames = ['Kiosk 1', 'Fresh Market', 'Mobile Money', 'Tech Fix'];
-    for (let i = 0; i < 4; i++) {
-      const id = `mock-vendor-${i}`;
-      if (!worldState.has(id)) {
-        const latOffset = (Math.random() - 0.5) * 0.008;
-        const lngOffset = (Math.random() - 0.5) * 0.008;
-        worldState.set(id, {
-          sessionId: id,
-          role: 'vendor',
-          vehicleType: 'shop',
-          location: { lat: center.lat + latOffset, lng: center.lng + lngOffset },
-          lastSeen: Date.now(),
-          isOnline: true,
-          displayName: shopNames[i]
-        });
-      }
-    }
-  } else if (type === 'passengers') {
-    // Generate some mock passengers for drivers/vendors to see
-    for (let i = 0; i < 3; i++) {
-      const id = `mock-pax-${i}`;
-      if (!worldState.has(id)) {
-        const latOffset = (Math.random() - 0.5) * 0.01;
-        const lngOffset = (Math.random() - 0.5) * 0.01;
-        worldState.set(id, {
-          sessionId: id,
-          role: 'passenger',
-          location: { lat: center.lat + latOffset, lng: center.lng + lngOffset },
-          lastSeen: Date.now(),
-          isOnline: true,
-          displayName: `Passenger ${i + 1}`
-        });
-      }
-    }
-  }
-};
+import { formatDistance } from './location';
+import { supabase } from './supabase';
 
 export const PresenceService = {
+  /**
+   * Driver/Vendor: Upsert location to Supabase 'presence' table.
+   * Supabase Auth user_id is handled automatically.
+   */
   upsertPresence: async (
     role: Role, 
     location: Location, 
     vehicleType?: VehicleType, 
     isOnline: boolean = true
   ): Promise<PresenceUser> => {
-    // Simulate API delay
-    await new Promise(r => setTimeout(r, 200));
-
-    if (!currentUserSessionId) {
-      currentUserSessionId = `user-${Date.now()}`;
+    
+    // Get current authenticated user
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    // GRACEFUL FALLBACK: If auth is broken/disabled (Offline Mode), don't crash
+    if (!user) {
+        // Return dummy data so the UI thinks it succeeded
+        return {
+            sessionId: 'offline-guest',
+            role,
+            location,
+            vehicleType,
+            isOnline,
+            lastSeen: Date.now(),
+            displayName: 'Guest (Offline)'
+        };
     }
 
-    const user: PresenceUser = {
-      sessionId: currentUserSessionId,
+    // Update the DB
+    const { error } = await supabase
+      .from('presence')
+      .upsert({
+        user_id: user.id,
+        role: role,
+        vehicle_type: vehicleType || 'other',
+        location: `POINT(${location.lng} ${location.lat})`, // PostGIS format
+        is_online: isOnline,
+        last_seen: new Date().toISOString()
+      });
+
+    if (error) console.error("Presence Upsert Error:", error);
+
+    return {
+      sessionId: user.id,
       role,
       location,
       vehicleType,
@@ -88,69 +55,56 @@ export const PresenceService = {
       lastSeen: Date.now(),
       displayName: 'Me'
     };
-    
-    // Update world state
-    if (isOnline) {
-      worldState.set(user.sessionId, user);
-    } else {
-      worldState.delete(user.sessionId);
-    }
-
-    return user;
   },
 
+  /**
+   * Passenger: Query drivers using PostGIS RPC function 'get_nearby_drivers'.
+   */
   getNearby: async (role: Role, location: Location, vehicleTypeFilter?: VehicleType): Promise<PresenceUser[]> => {
-    // Simulate API delay
-    await new Promise(r => setTimeout(r, 500));
-
-    // Ensure we have some mocks around to make the app feel alive
-    const hasDrivers = Array.from(worldState.values()).some(u => u.role === 'driver' && !u.sessionId.startsWith('user-'));
-    const hasVendors = Array.from(worldState.values()).some(u => u.role === 'vendor' && !u.sessionId.startsWith('user-'));
-    const hasPax = Array.from(worldState.values()).some(u => u.role === 'passenger' && !u.sessionId.startsWith('user-'));
-
-    if (!hasDrivers) generateMockUsers(location, 'drivers');
-    if (!hasVendors) generateMockUsers(location, 'vendors');
-    if (!hasPax) generateMockUsers(location, 'passengers');
-
-    // Filtering Logic
-    let results = Array.from(worldState.values());
-
-    // Filter out self
-    if (currentUserSessionId) {
-      results = results.filter(u => u.sessionId !== currentUserSessionId);
-    }
-
-    if (role === 'passenger') {
-      // Passengers look for: Vendors (if shop) OR Drivers (if transport)
-      if (vehicleTypeFilter === 'shop') {
-        results = results.filter(u => u.role === 'vendor' && u.isOnline);
-      } else {
-        results = results.filter(u => u.role === 'driver' && u.isOnline);
-        if (vehicleTypeFilter) {
-          results = results.filter(u => u.vehicleType === vehicleTypeFilter);
-        }
-      }
-    } else {
-      // Drivers/Vendors look for Passengers
-      results = results.filter(u => u.role === 'passenger');
-    }
     
-    // Calculate distances and sort
-    return results
-      .map(u => {
-        const distKm = calculateDistance(location, u.location);
-        return {
-          ...u,
-          distance: formatDistance(distKm),
-          _distKm: distKm
-        };
-      })
-      .sort((a, b) => a._distKm - b._distKm);
+    // Check auth before query to avoid RLS errors being noisy
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return [];
+
+    // Call the SQL Function we defined
+    const { data, error } = await supabase.rpc('get_nearby_drivers', {
+      lat: location.lat,
+      lng: location.lng,
+      radius_meters: 5000 // 5km radius
+    });
+
+    if (error) {
+      console.error("Radar Error:", error);
+      return [];
+    }
+
+    if (!data) return [];
+
+    // Transform DB result to App Type
+    const results = (data as any[]).map(d => ({
+      sessionId: d.user_id,
+      role: 'driver' as Role,
+      vehicleType: d.vehicle_type || 'moto',
+      location: { lat: d.lat, lng: d.lng },
+      lastSeen: new Date(d.last_seen).getTime(),
+      isOnline: true,
+      displayName: `Driver ${d.user_id.slice(0, 4)}`,
+      distance: formatDistance(d.dist_meters / 1000),
+      _distKm: d.dist_meters / 1000
+    }));
+
+    // Filter by type if requested
+    const filtered = vehicleTypeFilter 
+      ? results.filter(d => d.vehicleType === vehicleTypeFilter)
+      : results;
+
+    return filtered;
   },
 
   goOffline: async () => {
-    if (currentUserSessionId) {
-       worldState.delete(currentUserSessionId);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from('presence').update({ is_online: false }).eq('user_id', user.id);
     }
   }
 };

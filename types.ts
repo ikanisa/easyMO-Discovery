@@ -16,6 +16,7 @@ export interface PresenceUser {
   isOnline: boolean;
   displayName?: string;
   distance?: string; // formatted string for display
+  _distKm?: number; // Internal for sorting
 }
 
 // --- Shared Pagination Interface ---

@@ -1,19 +1,24 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Layout from './components/Layout';
-import Discovery from './pages/Discovery';
-import Services from './pages/Services';
-import Business from './pages/Business';
-import WaiterGuest from './pages/WaiterGuest';
-import Manager from './pages/Manager';
-import ChatSession from './pages/ChatSession';
-import MomoGenerator from './pages/MomoGenerator';
-import QRScanner from './pages/QRScanner';
-import Login from './pages/Login'; // Import Login Page
+import ErrorBoundary from './components/ErrorBoundary';
+import LoadingScreen from './components/LoadingScreen';
 import { AppMode, ChatSession as ChatSessionType, Role, PresenceUser } from './types';
 import { ICONS } from './constants';
 import { useTheme } from './context/ThemeContext';
 import { sendCategoryRequest } from './services/requestLogger';
+import InstallPrompt from './components/InstallPrompt';
+import { supabase } from './services/supabase';
+
+// Lazy Load Pages for Performance Code Splitting
+const Discovery = React.lazy(() => import('./pages/Discovery'));
+const Services = React.lazy(() => import('./pages/Services'));
+const Business = React.lazy(() => import('./pages/Business'));
+const WaiterGuest = React.lazy(() => import('./pages/WaiterGuest'));
+const Manager = React.lazy(() => import('./pages/Manager'));
+const ChatSession = React.lazy(() => import('./pages/ChatSession'));
+const MomoGenerator = React.lazy(() => import('./pages/MomoGenerator'));
+const QRScanner = React.lazy(() => import('./pages/QRScanner'));
 
 // Helper Widget Component for Home Screen
 const HomeWidget = ({ 
@@ -70,18 +75,60 @@ const App: React.FC = () => {
   const [userRole, setUserRole] = useState<Role | null>(null);
   const [activeChat, setActiveChat] = useState<ChatSessionType | null>(null);
 
-  // Check login status on mount
+  // Initialize Auth (Anonymous)
   useEffect(() => {
-    const storedPhone = localStorage.getItem('easyMO_user_phone');
-    if (storedPhone) {
-      setIsAuthenticated(true);
-    }
-    setIsAuthChecking(false);
-  }, []);
+    const initAuth = async () => {
+      try {
+        // 1. Check if we have an active session
+        const { data: { session } } = await supabase.auth.getSession();
+        let user = session?.user;
 
-  const handleLoginSuccess = (phone: string) => {
-    setIsAuthenticated(true);
-  };
+        // 2. If no session, try sign in anonymously
+        if (!user) {
+          console.log("No session found, attempting anonymous sign-in...");
+          const { data, error } = await supabase.auth.signInAnonymously();
+          
+          if (error) {
+            console.warn("Anonymous auth failed (likely disabled in Supabase). Proceeding in Offline Guest Mode.", error.message);
+            // Do NOT throw. Allow app to load in "Local/Offline" mode.
+          } else {
+            user = data.user;
+          }
+        }
+
+        // 3. Ensure a Profile exists in the DB (Only if auth succeeded)
+        if (user) {
+           const guestName = `Guest ${user.id.slice(0, 4)}`;
+           const guestPhone = `Anon-${user.id.slice(0, 6)}`;
+
+           const { error: profileError } = await supabase
+             .from('profiles')
+             .upsert({
+               id: user.id,
+               display_name: guestName,
+               role: 'passenger',
+               phone: guestPhone
+             }, { onConflict: 'id' });
+            
+           if (profileError) {
+             console.warn("Profile sync warning:", profileError);
+           }
+        }
+
+        // Always allow entry, even if auth failed (Offline Mode)
+        setIsAuthenticated(true);
+
+      } catch (error) {
+        console.error("Initialization Error:", error);
+        // Fallback to allow UI rendering even on critical failures
+        setIsAuthenticated(true);
+      } finally {
+        setIsAuthChecking(false);
+      }
+    };
+
+    initAuth();
+  }, []);
 
   const startChat = (type: 'mobility' | 'support' | 'business' | 'real_estate' | 'legal', peer?: PresenceUser, isDemoMode: boolean = false, initialQuery?: string) => {
     let initialText = '';
@@ -105,6 +152,13 @@ const App: React.FC = () => {
       }],
       lastUpdated: Date.now()
     });
+  };
+
+  const handleNavigation = (newMode: AppMode) => {
+    setMode(newMode);
+    if (newMode === AppMode.HOME) {
+      setUserRole(null);
+    }
   };
 
   const renderContent = () => {
@@ -134,7 +188,7 @@ const App: React.FC = () => {
           {/* Main Grid Section */}
           <div className="px-6 pb-6 space-y-6">
             
-            {/* Section: Mobility (RESTORED) */}
+            {/* Section: Mobility */}
             <div>
               <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 px-1 flex items-center gap-2">
                 <span className="w-8 h-px bg-slate-300 dark:bg-slate-800"></span>
@@ -177,7 +231,7 @@ const App: React.FC = () => {
                 <span className="flex-1 h-px bg-slate-300 dark:bg-slate-800"></span>
               </h2>
               <div className="grid grid-cols-2 gap-4">
-                {/* Feature 3: MoMo Generator (Tool) */}
+                {/* Tool 1: MoMo Generator */}
                 <HomeWidget 
                    icon={ICONS.QrCode} 
                    label="MoMo QR" 
@@ -186,7 +240,7 @@ const App: React.FC = () => {
                    gradient="from-emerald-500 to-teal-400"
                    delay={200}
                 />
-                {/* Feature 4: Scanner (Tool) */}
+                {/* Tool 2: Scanner */}
                 <HomeWidget 
                    icon={ICONS.Scan} 
                    label="Scan" 
@@ -261,56 +315,63 @@ const App: React.FC = () => {
       );
     }
 
-    // 2. Main Modes
-    switch (mode) {
-      case AppMode.HOME:
-      case AppMode.DISCOVERY:
-        return (
-          <Discovery 
-            role={userRole || 'passenger'} 
-            onStartChat={(peer) => startChat('mobility', peer)} 
-            onBack={() => { setUserRole(null); setMode(AppMode.HOME); }}
-          />
-        );
-      case AppMode.SERVICES:
-        return <Services onStartChat={(type) => startChat(type || 'support')} onNavigate={setMode} />;
-      case AppMode.BUSINESS:
-        return <Business onStartChat={(isDemo, type, query) => startChat(type || 'business', undefined, isDemo, query)} />;
-      case AppMode.WAITER_GUEST:
-        return <WaiterGuest onBack={() => setMode(AppMode.SERVICES)} />;
-      case AppMode.MANAGER:
-        return <Manager onBack={() => setMode(AppMode.SERVICES)} />;
-      case AppMode.MOMO_GENERATOR:
-        return <MomoGenerator onBack={() => setMode(AppMode.HOME)} />;
-      case AppMode.SCANNER:
-        return <QRScanner onBack={() => setMode(AppMode.HOME)} />;
-      default:
-        return null;
-    }
+    // 2. Main Modes - Wrapped in Suspense
+    return (
+      <Suspense fallback={<LoadingScreen />}>
+        {(() => {
+          switch (mode) {
+            case AppMode.HOME:
+            case AppMode.DISCOVERY:
+              return (
+                <Discovery 
+                  role={userRole || 'passenger'} 
+                  onStartChat={(peer) => startChat('mobility', peer)} 
+                  onBack={() => { setUserRole(null); setMode(AppMode.HOME); }}
+                />
+              );
+            case AppMode.SERVICES:
+              return <Services onStartChat={(type) => startChat(type || 'support')} onNavigate={handleNavigation} />;
+            case AppMode.BUSINESS:
+              return <Business onStartChat={(isDemo, type, query) => startChat(type || 'business', undefined, isDemo, query)} />;
+            case AppMode.WAITER_GUEST:
+              return <WaiterGuest onBack={() => handleNavigation(AppMode.SERVICES)} />;
+            case AppMode.MANAGER:
+              return <Manager onBack={() => handleNavigation(AppMode.SERVICES)} />;
+            case AppMode.MOMO_GENERATOR:
+              return <MomoGenerator onBack={() => handleNavigation(AppMode.HOME)} />;
+            case AppMode.SCANNER:
+              return <QRScanner onBack={() => handleNavigation(AppMode.HOME)} />;
+            default:
+              return null;
+          }
+        })()}
+      </Suspense>
+    );
   };
 
-  if (isAuthChecking) {
-    return <div className="h-screen w-screen bg-slate-50 dark:bg-[#0f172a]" />; // Loading flash
-  }
-
-  if (!isAuthenticated) {
-    return <Login onLoginSuccess={handleLoginSuccess} />;
+  if (isAuthChecking || !isAuthenticated) {
+    return <LoadingScreen />;
   }
 
   return (
-    <>
-      <Layout currentMode={mode} onNavigate={setMode}>
+    <ErrorBoundary>
+      <Layout currentMode={mode} onNavigate={handleNavigation}>
         {renderContent()}
       </Layout>
+      
+      {/* Install PWA Prompt */}
+      <InstallPrompt />
 
-      {/* Full Screen Chat Overlay */}
+      {/* Full Screen Chat Overlay - Also Lazy Loaded */}
       {activeChat && (
-        <ChatSession 
-          session={activeChat} 
-          onClose={() => setActiveChat(null)} 
-        />
+        <Suspense fallback={<LoadingScreen />}>
+          <ChatSession 
+            session={activeChat} 
+            onClose={() => setActiveChat(null)} 
+          />
+        </Suspense>
       )}
-    </>
+    </ErrorBoundary>
   );
 };
 

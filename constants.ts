@@ -41,15 +41,64 @@ export const ICONS = {
       React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "m4.5 12.75 6 6 9-13.5", key: "check" })
     )
   ),
-  Bike: createIcon([
-    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z", key: "bike" })
+  Bike: (props: React.SVGProps<SVGSVGElement>) => (
+    React.createElement('svg', { fill: "none", viewBox: "0 0 24 24", strokeWidth: 1.5, stroke: "currentColor", ...props },
+       React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M5.5 17.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z", key: "wheel_back" }), 
+       React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M18.5 17.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z", key: "wheel_front" }),
+       React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M5.5 15h13", key: "chassis" }),
+       React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M15.5 15l-3-6h-4l-2 3", key: "body" }),
+       React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M12.5 9l-1-3h3", key: "handle" })
+    )
+  ),
+  // New Moto Icon for Selector
+  Moto: createIcon([
+    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M2 17.5a2.5 2.5 0 1 0 5 0 2.5 2.5 0 0 0-5 0", key: "w1" }),
+    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M17 17.5a2.5 2.5 0 1 0 5 0 2.5 2.5 0 0 0-5 0", key: "w2" }),
+    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M4.5 17.5h15", key: "line" }),
+    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M14 9l-2 6-2.5-1.5", key: "frame" }),
+    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M12 9l2.5-3.5h3", key: "top" }),
+    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M9 13.5l-2-2.5", key: "seat" })
   ]),
   Car: createIcon([
-    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12", key: "car" })
+    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M5 17a2 2 0 1 0 4 0 2 2 0 0 0-4 0m10 0a2 2 0 1 0 4 0 2 2 0 0 0-4 0", key: "wheels" }),
+    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M2 12h20a1 1 0 0 1 1 1v4h-2v-1a3 3 0 0 0-6 0v1H9v-1a3 3 0 0 0-6 0v1H1v-4a1 1 0 0 1 1-1", key: "body" }),
+    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M5 12l2-5h10l2 5", key: "top" })
+  ]),
+  // New Taxi Icon
+  Taxi: createIcon([
+     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M19.5 16.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z", key: "w1" }),
+     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M7.5 16.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z", key: "w2" }),
+     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M2.25 12.75h19.5", key: "bumper" }),
+     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M3.75 12.75v3a1.5 1.5 0 0 0 1.5 1.5h13.5a1.5 1.5 0 0 0 1.5-1.5v-3", key: "body" }),
+     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M5.25 12.75 7.5 6.75h9l2.25 6", key: "top" }),
+     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M10.5 4.5h3v2.25h-3v-2.25Z", key: "sign", fill: "currentColor" })
+  ]),
+  // New Sedan Icon (Liffan)
+  Sedan: createIcon([
+    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M20.25 16.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z", key: "w1" }),
+    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M6.75 16.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z", key: "w2" }),
+    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M2.25 12.75h19.5v2.25a1.5 1.5 0 0 1-1.5 1.5H3.75a1.5 1.5 0 0 1-1.5-1.5v-2.25Z", key: "body" }),
+    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M3.75 12.75 6 7.5h12l2.25 5.25", key: "top" })
   ]),
   Truck: createIcon([
-    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M8.25 18.75a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 0 1-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 0 0-3.213-9.193 2.056 2.056 0 0 0-1.58-.86H14.25M16.5 18.75h-2.25m0-11.177v-.958c0-.568-.422-1.048-.987-1.106a48.554 48.554 0 0 0-10.026 0 1.106 1.106 0 0 0-.987 1.106v7.635m12-6.677v6.677m0 4.5v-4.5m0 0h-12", key: "truck_fallback" }),
-    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M15.75 18.75a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zM5.25 18.75a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zM3 16.5v-9a2.25 2.25 0 012.25-2.25h9a2.25 2.25 0 012.25 2.25v9M16.5 7.5h3.75a2.25 2.25 0 012.25 2.25v6.75h-2.25", key: "truck" })
+    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M5.5 19a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5m13 0a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5", key: "wheels" }),
+    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M2 17V5h13v12H2m13 0h5v-5l-2-3h-3v8", key: "body" })
+  ]),
+  // New Pickup Icon
+  Pickup: createIcon([
+     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M19.5 16.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z", key: "w1" }),
+     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M7.5 16.5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z", key: "w2" }),
+     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M2.25 12.75H12v-5.25h-3L6 10.5l-2.25 2.25h-1.5v3.75a1.5 1.5 0 0 0 1.5 1.5h.75", key: "front" }),
+     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M12 12.75h9.75v3a1.5 1.5 0 0 1-1.5 1.5h-2.25", key: "bed" }),
+     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M12 12.75v-3.75h9.75v3.75", key: "cargo" })
+  ]),
+  // New Bus Icon (Other)
+  Bus: createIcon([
+     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M18 17.25a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z", key: "w1" }),
+     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M9 17.25a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0Z", key: "w2" }),
+     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M3.75 15.75V5.25a2.25 2.25 0 0 1 2.25-2.25h12a2.25 2.25 0 0 1 2.25 2.25v10.5", key: "body" }),
+     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M3.75 11.25h16.5", key: "belt" }),
+     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M3.75 15.75h1.5m13.5 0h1.5m-10.5 0h6", key: "bottom" })
   ]),
   More: createIcon([
     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M6.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM12.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM18.75 12a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z", key: "more" })
@@ -126,7 +175,7 @@ export const ICONS = {
      React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M20.25 10.5V6a2.25 2.25 0 0 0-2.25-2.25H6a2.25 2.25 0 0 0-2.25 2.25v4.5m16.5 0a2.25 2.25 0 0 0-2.25-2.25h-12a2.25 2.25 0 0 0-2.25 2.25m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.555 18 12 18s-8.25-1.847-8.25-4.5v-3.75m16.5 0c0 2.653-3.697 4.5-8.25 4.5s-8.25-1.847-8.25-4.5", key: "bed" })
   ]),
   Bath: createIcon([
-     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M8.25 19.5h7.5m-7.5-3h7.5m-7.5-3h7.5m-7.5-3h7.5m-7.5-3h7.5", key: "bath" })
+     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M8.25 19.5h7.5m-7.5-3h7.5m-7.5-3h7.5m-7.5-3h7.5m-7.5-3h7.5m-7.5-3h7.5", key: "bath" })
   ]),
   Grid: createIcon([
      React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z", key: "grid" })
@@ -142,10 +191,10 @@ export const ICONS = {
     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15", key: "scan" })
   ]),
   Shield: createIcon([
-    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z", key: "shield" })
+    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z", key: "shield" })
   ]),
   ShieldCheck: createIcon([
-    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z", key: "shield-check" })
+    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z", key: "shield-check" })
   ]),
   Globe: createIcon([
     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418", key: "globe" })
@@ -166,3 +215,4 @@ export const ICONS = {
     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M21.752 15.002A9.72 9.72 0 0 1 18 15.75c-5.385 0-9.75-4.365-9.75-9.75 0-1.33.266-2.597.748-3.752A9.753 9.753 0 0 0 3 11.25C3 16.635 7.365 21 12.75 21a9.753 9.753 0 0 0 9.002-5.998Z", key: "moon" })
   ]),
 };
+    

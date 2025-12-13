@@ -6,13 +6,15 @@ import BusinessResultsMessage from '../Business/BusinessResultsMessage';
 import PropertyResultsMessage from '../RealEstate/PropertyResultsMessage';
 import LegalResultsMessage from '../Legal/LegalResultsMessage';
 import VerifiedBusinessList from '../Business/VerifiedBusinessList';
+import { BusinessContact } from '../../services/whatsapp';
 
 interface MessageBubbleProps {
   message: Message;
   onReply?: (text: string) => void;
+  onBroadcastInitiated?: (requestId: string, businesses: BusinessContact[], item: string) => void;
 }
 
-const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply }) => {
+const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply, onBroadcastInitiated }) => {
   const isMe = message.sender === 'user';
   const isSystem = message.sender === 'system';
   const isAI = message.sender === 'ai';
@@ -132,6 +134,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply }) => {
              <BusinessResultsMessage 
                payload={message.businessPayload!} 
                onLoadMore={(page) => onReply?.(`Show page ${page} of results`)}
+               onBroadcastInitiated={onBroadcastInitiated}
              />
           </div>
         )}

@@ -24,60 +24,51 @@ const getVehicleIcon = (type?: VehicleType) => {
 };
 
 const NearbyListCard: React.FC<NearbyListCardProps> = ({ user, onChat, index }) => {
-  const TypeIcon = getVehicleIcon(user.vehicleType);
   
   return (
     <div 
-      className="glass-panel p-4 rounded-xl flex items-center justify-between hover:bg-white/10 transition-colors animate-in slide-in-from-bottom-2 fade-in fill-mode-backwards"
+      className="glass-panel p-3 rounded-2xl flex items-center justify-between border border-white/5 bg-slate-800/40 hover:bg-slate-800/60 transition-all shadow-lg animate-in slide-in-from-bottom-2 fade-in fill-mode-backwards backdrop-blur-md"
       style={{ animationDelay: `${index * 100}ms` }}
     >
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3.5">
         <div className={`
-            w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold shadow-lg shrink-0
-            ${user.role === 'vendor' ? 'bg-gradient-to-br from-orange-500 to-pink-600 shadow-orange-500/20' : 'bg-gradient-to-br from-blue-500 to-purple-600 shadow-blue-500/20'}
+            w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold shadow-lg shrink-0 relative border border-white/10
+            ${user.role === 'vendor' ? 'bg-gradient-to-br from-orange-500 to-pink-600' : 'bg-gradient-to-br from-blue-600 to-indigo-600'}
         `}>
-           {user.role === 'vendor' ? <ICONS.Store className="w-6 h-6 text-white" /> : <span className="text-lg">{user.displayName?.[0]}</span>}
+           {user.role === 'vendor' ? <ICONS.Store className="w-4 h-4 text-white" /> : <span className="text-sm text-white">{user.displayName?.[0]}</span>}
+           
+           {/* Online Status Dot */}
+           {user.isOnline && (
+              <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-[#0f172a] rounded-full flex items-center justify-center">
+                 <div className="w-2 h-2 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)]"></div>
+              </div>
+           )}
         </div>
+        
         <div>
-          <div className="font-semibold text-sm flex items-center gap-2">
+          <div className="font-bold text-sm text-white flex items-center gap-2">
             {user.displayName || 'Unknown'}
-            
-            {/* Vehicle Type Icon for Drivers/Vendors */}
             {user.role !== 'passenger' && (
-               <div className="bg-white/5 p-1 rounded-md flex items-center justify-center border border-white/5" title={user.vehicleType}>
-                 <TypeIcon className="w-3.5 h-3.5 text-blue-400" />
-               </div>
-            )}
-            
-            {/* Pulsing Dot Indicator for Active Location Sharing */}
-            {user.isOnline && (
-              <span className="relative flex h-2.5 w-2.5 ml-1" title="Live Location">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500 border border-[#0f172a]"></span>
-              </span>
+               <span className="text-[9px] px-1.5 py-0.5 bg-white/5 border border-white/5 rounded text-slate-300 uppercase tracking-wider font-bold">
+                 {user.vehicleType}
+               </span>
             )}
           </div>
           
-          <div className="text-xs text-slate-400 flex items-center gap-2 mt-1">
-            <span className="font-medium text-emerald-400 bg-emerald-400/10 px-1.5 py-0.5 rounded flex items-center gap-1">
-                <span className="w-1 h-1 bg-emerald-400 rounded-full"></span>
+          <div className="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5 font-medium">
+            <span className="text-emerald-400 flex items-center gap-1">
+                <ICONS.MapPin className="w-3 h-3" />
                 {user.distance}
             </span>
-            <span className="text-slate-600">|</span>
-            <div className="flex items-center gap-1 text-slate-300">
-                {user.role === 'passenger' ? (
-                    <ICONS.Chat className="w-3.5 h-3.5 opacity-70" />
-                ) : (
-                    <TypeIcon className="w-3.5 h-3.5 opacity-70" />
-                )}
-                <span className="capitalize">{user.role === 'vendor' ? 'Shop' : (user.role === 'passenger' ? 'Passenger' : user.vehicleType)}</span>
-            </div>
+            <span className="w-1 h-1 rounded-full bg-slate-600"></span>
+            <span className="capitalize">{user.role === 'vendor' ? 'Shop' : (user.role === 'passenger' ? 'Passenger' : 'Driver')}</span>
           </div>
         </div>
       </div>
+      
       <Button 
         variant="primary" 
-        className="!py-2.5 !px-4 !text-xs !rounded-xl !font-bold tracking-wide shadow-blue-500/20"
+        className="!py-2 !px-4 !text-xs !rounded-xl !font-bold tracking-wide shadow-lg shadow-blue-500/20 active:scale-95 transition-transform bg-blue-600 hover:bg-blue-500 border-none"
         onClick={() => onChat(user)}
         icon={<ICONS.Chat className="w-3.5 h-3.5"/>}
       >

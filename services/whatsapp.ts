@@ -1,6 +1,7 @@
 
 import { normalizePhoneNumber } from '../utils/phone';
 import { BusinessListing } from '../types';
+import { callBackend } from './api';
 
 export interface BusinessContact {
   name: string;
@@ -12,7 +13,7 @@ export interface BroadcastPayload {
   userLocationLabel: string;
   needDescription: string;
   businesses: BusinessContact[];
-  tableNumber?: string; // For Waiter Mode
+  tableNumber?: string;
   type?: 'broadcast' | 'order' | 'welcome';
 }
 
@@ -22,124 +23,80 @@ export interface BroadcastResponse {
   count?: number;
 }
 
-const WEBHOOK_URL = (typeof process !== 'undefined' && process.env.NEXT_PUBLIC_WHATSAPP_SERVICE_URL) || "https://nadiral-colleen-subarticulative.ngrok-free.dev/broadcast-business-request";
+const EXCLUDED_PREFIXES = [/^\+256/, /^\+254/, /^\+234/, /^\+27/];
+const isExcluded = (phone: string): boolean => EXCLUDED_PREFIXES.some(regex => regex.test(phone));
 
-// Country exclusion regex patterns for phone numbers (E.164 format)
-const EXCLUDED_PREFIXES = [
-  /^\+256/, // Uganda
-  /^\+254/, // Kenya
-  /^\+234/, // Nigeria
-  /^\+27/,  // South Africa
-];
+/**
+ * Triggers a stock check via Google Apps Script Backend.
+ */
+export const triggerWhatsAppBroadcast = async (
+  businessName: string, 
+  businessPhone: string, 
+  userLocation: string, 
+  need: string
+): Promise<boolean> => {
+  
+  const cleanPhone = normalizePhoneNumber(businessPhone);
+  if (!cleanPhone) return false;
 
-const isExcluded = (phone: string): boolean => {
-  return EXCLUDED_PREFIXES.some(regex => regex.test(phone));
-};
+  const payload = {
+    action: "queue_broadcast",
+    requestId: "REQ-" + Date.now(),
+    userLocation: userLocation || "Unknown Location",
+    need: need || "General Inquiry",
+    businessName: businessName,
+    businessPhone: cleanPhone
+  };
 
-export const sendWhatsAppBroadcastRequest = async (payload: BroadcastPayload): Promise<BroadcastResponse> => {
   try {
-    // 1. Strict Normalization and Filtering
-    const seenNumbers = new Set<string>();
-    
-    const validBusinesses: BusinessContact[] = [];
-
-    for (const biz of payload.businesses) {
-      // Normalize to E.164
-      const formattedPhone = normalizePhoneNumber(biz.phone);
-
-      // Criteria:
-      // 1. Must result in a valid E.164 string
-      // 2. Must not be in the excluded country list
-      // 3. Must not be a duplicate in this specific batch
-      if (formattedPhone && !isExcluded(formattedPhone) && !seenNumbers.has(formattedPhone)) {
-        validBusinesses.push({ 
-          name: biz.name.trim(), 
-          phone: formattedPhone 
-        });
-        seenNumbers.add(formattedPhone);
-      }
-    }
-
-    // 2. Validation Checks
-    if (validBusinesses.length === 0) {
-      // Return specific errors based on type context
-      if (payload.type === 'order') {
-         return { success: false, message: "Venue has no valid, supported WhatsApp number configured." };
-      }
-      if (payload.type === 'welcome') {
-         return { success: false, message: "Invalid user phone number format." };
-      }
-      return { 
-        success: false, 
-        message: "No valid contactable businesses found (check number formats or country exclusions)." 
-      };
-    }
-
-    // 3. Construct Clean Payload
-    const finalPayload: BroadcastPayload = {
-      ...payload,
-      businesses: validBusinesses
-    };
-
-    console.log("Sending WhatsApp Request (E.164):", finalPayload);
-
-    // 4. MOCK NETWORK CALL if URL is placeholder or we are offline
-    if (WEBHOOK_URL.includes("ngrok")) {
-        // Simulate network delay
-        await new Promise(r => setTimeout(r, 800));
-        
-        if (payload.type === 'welcome') {
-            console.log(`[Mock] Welcome message sent to ${validBusinesses[0].phone}`);
-            return { success: true, message: "Welcome message sent.", count: 1 };
-        }
-
-        return {
-            success: true,
-            count: validBusinesses.length,
-            message: `Request sent to ${validBusinesses.length} businesses. I will notify you as they reply.`
-        };
-    }
-
-    // 5. Real Network Call
-    const response = await fetch(WEBHOOK_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(finalPayload),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Service Error: ${response.statusText}`);
-    }
-    
-    const responseData = await response.json().catch(() => ({}));
-
-    return { 
-      success: true, 
-      count: validBusinesses.length,
-      message: responseData.message || "Broadcast initiated successfully."
-    };
-
-  } catch (error: any) {
-    console.error("WhatsApp Broadcast Error:", error);
-    return { 
-      success: false, 
-      message: error.message || "Failed to connect to broadcast service." 
-    };
+    const response = await callBackend(payload);
+    return response.status === 'success' || response.result === 'success';
+  } catch (error) {
+    console.error("Broadcast Error", error);
+    return false;
   }
 };
 
 /**
- * SIMULATION ONLY:
- * Checks if businesses have replied "Yes" to a specific broadcast ID.
- * In a real app, this would query the backend or listen to a socket.
- * 
- * Logic:
- * - We fake a progressive response. 
- * - elapsedSeconds 0-5: 0 replies
- * - elapsedSeconds 5-15: 1-2 replies
- * - elapsedSeconds 15+: 3-5 replies
+ * Batch broadcast (for 'Ask All').
+ */
+export const sendWhatsAppBroadcastRequest = async (payload: BroadcastPayload): Promise<BroadcastResponse> => {
+  try {
+    const validBusinesses = payload.businesses
+      .map(b => ({ name: b.name, phone: normalizePhoneNumber(b.phone) }))
+      .filter(b => b.phone && !isExcluded(b.phone));
+
+    if (validBusinesses.length === 0) {
+      return { success: false, message: "No valid numbers found." };
+    }
+
+    const backendPayload = {
+      action: "batch_broadcast",
+      ...payload,
+      businesses: validBusinesses
+    };
+
+    const response = await callBackend(backendPayload);
+
+    if (response.status === 'success' || response.result === 'success') {
+       return { 
+         success: true, 
+         count: validBusinesses.length,
+         message: `Request sent to ${validBusinesses.length} businesses.`
+       };
+    } else {
+       return { success: false, message: response.message || "Backend rejected request." };
+    }
+
+  } catch (error: any) {
+    console.error("Batch Broadcast Error:", error);
+    return { success: false, message: "Failed to connect to backend." };
+  }
+};
+
+/**
+ * Polling for "Yes" replies via Backend.
+ * Uses action: "check_broadcast_status"
  */
 export const pollBroadcastResponses = async (
   requestId: string, 
@@ -147,36 +104,30 @@ export const pollBroadcastResponses = async (
   elapsedSeconds: number
 ): Promise<BusinessListing[]> => {
     
-    // Simulate delay
-    await new Promise(r => setTimeout(r, 400));
+    try {
+        const response = await callBackend({
+            action: "check_broadcast_status",
+            requestId: requestId
+        });
 
-    // No replies immediately
-    if (elapsedSeconds < 4) return [];
-
-    // Determine how many verified matches based on time
-    // We deterministically pick based on request ID and time so it feels "stable" for the demo
-    const seed = requestId.length; 
-    const maxMatches = Math.min(originalBusinesses.length, 5); // Cap at 5 verified matches
+        // Backend should return { matches: [ { name, phone, item_found, ... } ] }
+        if (response.matches && Array.isArray(response.matches)) {
+            // Map backend matches to BusinessListing
+            return response.matches.map((m: any, idx: number) => ({
+                id: `verified-${m.phone}-${idx}`,
+                name: m.name || "Verified Business",
+                category: "Verified",
+                distance: "Nearby",
+                confidence: 'High',
+                phoneNumber: m.phone,
+                // These are specific to verified items
+                snippet: `Confirmed stock: ${m.item_found || 'Yes'}`,
+                whatsappDraft: `Hello, I saw your confirmation for "${m.item_found}". I would like to order.`
+            }));
+        }
+    } catch (e) {
+        console.warn("Polling error:", e);
+    }
     
-    let targetCount = 0;
-    if (elapsedSeconds > 4 && elapsedSeconds < 10) targetCount = 1;
-    else if (elapsedSeconds >= 10 && elapsedSeconds < 20) targetCount = 2;
-    else if (elapsedSeconds >= 20) targetCount = 3 + (seed % 2); // 3 or 4
-
-    targetCount = Math.min(targetCount, maxMatches);
-
-    // Pick top 'targetCount' businesses from the original list and "Verify" them
-    const verified: BusinessListing[] = originalBusinesses.slice(0, targetCount).map((biz, idx) => ({
-       id: `verified-${idx}`,
-       name: biz.name,
-       category: 'Verified Supplier', // Override
-       distance: 'Nearby',
-       confidence: 'High',
-       phoneNumber: biz.phone,
-       snippet: `Verified Availability: Responded "YES" just now.`,
-       isOpen: true,
-       whatsappDraft: "I am coming to pick up the item you confirmed is in stock."
-    }));
-
-    return verified;
+    return [];
 };

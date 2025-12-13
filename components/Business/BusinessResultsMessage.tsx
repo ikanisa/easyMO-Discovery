@@ -3,15 +3,16 @@ import React, { useState } from 'react';
 import { ICONS } from '../../constants';
 import { BusinessResultsPayload, BusinessListing } from '../../types';
 import BusinessCardWidget from './BusinessCardWidget';
-import { sendWhatsAppBroadcastRequest, BroadcastPayload } from '../../services/whatsapp';
+import { sendWhatsAppBroadcastRequest, BroadcastPayload, BusinessContact } from '../../services/whatsapp';
 import Button from '../Button';
 
 interface BusinessResultsMessageProps {
   payload: BusinessResultsPayload;
   onLoadMore?: (page: number) => void;
+  onBroadcastInitiated?: (requestId: string, businesses: BusinessContact[], item: string) => void;
 }
 
-const BusinessResultsMessage: React.FC<BusinessResultsMessageProps> = ({ payload, onLoadMore }) => {
+const BusinessResultsMessage: React.FC<BusinessResultsMessageProps> = ({ payload, onLoadMore, onBroadcastInitiated }) => {
   const [showAll, setShowAll] = useState(false);
   const [broadcasting, setBroadcasting] = useState(false);
   const [broadcastResult, setBroadcastResult] = useState<{success: boolean, message?: string, count?: number} | null>(null);
@@ -51,6 +52,10 @@ const BusinessResultsMessage: React.FC<BusinessResultsMessageProps> = ({ payload
     
     setBroadcasting(false);
     setBroadcastResult(result);
+
+    if (result.success && onBroadcastInitiated) {
+        onBroadcastInitiated(requestId, businessesForApi, reqPayload.needDescription);
+    }
   };
 
   if (!matches || matches.length === 0) return null;
@@ -90,17 +95,16 @@ const BusinessResultsMessage: React.FC<BusinessResultsMessageProps> = ({ payload
         )}
       </div>
 
-      {/* Broadcast Action Area */}
+      {/* Broadcast Action Area (Batch) */}
       {broadcastCandidates.length > 0 && !broadcastResult && (
          <div className="glass-panel p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 mb-2 relative overflow-hidden">
             <div className="flex flex-col gap-2 relative z-10">
                <h3 className="font-bold text-emerald-100 flex items-center gap-2">
                  <ICONS.Broadcast className="w-5 h-5 text-emerald-400" />
-                 Ask nearby businesses?
+                 Mass Inquiry
                </h3>
                <p className="text-xs text-slate-300 leading-relaxed">
-                 I can broadcast your request to {broadcastCandidates.length} businesses with phones. 
-                 They will reply directly to your WhatsApp.
+                 Or ask all {broadcastCandidates.length} businesses at once?
                </p>
                <Button 
                  variant="primary" 
@@ -109,7 +113,7 @@ const BusinessResultsMessage: React.FC<BusinessResultsMessageProps> = ({ payload
                  className="mt-2 bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20 h-10 text-xs"
                  icon={broadcasting ? <span className="animate-spin text-xl">⟳</span> : <ICONS.WhatsApp className="w-4 h-4" />}
                >
-                 {broadcasting ? 'Sending Request...' : `Broadcast via WhatsApp`}
+                 {broadcasting ? 'Sending Request...' : `Ask All ${broadcastCandidates.length}`}
                </Button>
             </div>
          </div>
@@ -132,7 +136,12 @@ const BusinessResultsMessage: React.FC<BusinessResultsMessageProps> = ({ payload
       <div className="space-y-3">
         {visibleResults.map((biz, idx) => (
           <div key={biz.id} className="animate-in slide-in-from-bottom-2 fill-mode-backwards" style={{ animationDelay: `${idx * 100}ms` }}>
-            <BusinessCardWidget biz={biz} compact={false} />
+            <BusinessCardWidget 
+               biz={biz} 
+               compact={false} 
+               contextNeed={need_description}
+               contextLocation={user_location_label}
+            />
           </div>
         ))}
       </div>

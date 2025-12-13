@@ -39,7 +39,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
 
   // --- Broadcast Polling Effect ---
   useEffect(() => {
-    let interval: any;
+    let timer: any;
 
     const checkUpdates = async () => {
       if (!activeBroadcastRef.current) return;
@@ -47,13 +47,13 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
       const { id, startTime, businesses, item } = activeBroadcastRef.current;
       const elapsed = (Date.now() - startTime) / 1000;
 
-      // Stop polling after 60 seconds
-      if (elapsed > 60) {
+      // Stop polling after 90 seconds
+      if (elapsed > 90) {
         activeBroadcastRef.current = null;
-        clearInterval(interval);
-        return;
+        return; // End polling
       }
 
+      // Poll Backend
       const confirmedMatches = await pollBroadcastResponses(id, businesses, elapsed);
       
       // Filter out matches we've already shown
@@ -62,6 +62,22 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
       if (newMatches.length > 0) {
          // Mark as seen
          newMatches.forEach(m => knownVerifiedIdsRef.current.add(m.id));
+
+         // TRIGGER TOAST (New UI Requirement)
+         const toastMsg = newMatches.length === 1 
+            ? `${newMatches[0].name} has confirmed availability!`
+            : `${newMatches.length} businesses confirmed availability!`;
+            
+         const toast = document.createElement('div');
+         toast.className = "fixed bottom-32 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-3 rounded-full text-xs font-bold shadow-2xl z-[100] animate-in fade-in zoom-in slide-in-from-bottom-4 duration-500 flex items-center gap-2 border border-emerald-400/30 backdrop-blur-md";
+         toast.innerHTML = `<span>✅</span> <span>${toastMsg}</span>`;
+         document.body.appendChild(toast);
+         
+         // Remove toast after 4s
+         setTimeout(() => {
+            toast.classList.add('fade-out', 'zoom-out');
+            setTimeout(() => { if(document.body.contains(toast)) toast.remove(); }, 300);
+         }, 4000);
 
          // Inject "System/AI" update message
          const updateMsg: Message = {
@@ -77,14 +93,33 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
          };
          setMessages(prev => [...prev, updateMsg]);
       }
+
+      // Recursive timeout for better network behavior than setInterval
+      timer = setTimeout(checkUpdates, 5000); 
     };
 
     if (activeBroadcastRef.current) {
-        interval = setInterval(checkUpdates, 4000); // Poll every 4s
+        timer = setTimeout(checkUpdates, 2000);
     }
 
-    return () => clearInterval(interval);
-  }, [messages]); // Dependency on messages ensures effect re-evaluates if needed, but ref persistence handles logic
+    return () => clearTimeout(timer);
+  }, [activeBroadcastRef.current]); // Rely on ref change triggering re-mount of effect or internal loop
+
+  // Callback to start polling when user clicks "Ask All"
+  const handleBroadcastInitiated = (requestId: string, businesses: BusinessContact[], item: string) => {
+      console.log("Starting Polling for:", requestId);
+      activeBroadcastRef.current = {
+          id: requestId,
+          startTime: Date.now(),
+          businesses,
+          item
+      };
+      // Reset seen set for new request
+      knownVerifiedIdsRef.current.clear();
+      // Force re-render to trigger effect if needed (though ref mutation + effect dep usually requires state, 
+      // but here the polling is a side effect. To be safe, we can use a dummy state)
+      setMessages(prev => [...prev]); 
+  };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -117,56 +152,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
         setMessages(prev => [...prev, aiMsg]);
 
       } else if (initialSession.type === 'business') {
-        // Intercept: If the AI returns a broadcast function response, we hook into it here
         const result = await GeminiService.chatBob(history, userText, loc, initialSession.isDemoMode, userImage);
-        
-        // Check if a broadcast was just initiated in the last turn
-        // The service returns text, but we need to know if tool was called.
-        // For simplicity, we detect it via a specific marker in the text or relying on the Service to return metadata
-        // In the updated GeminiService, we will detect the tool usage.
-        
-        // HACK: Since GeminiService abstracts the tool call, we look for the "Broadcast sent" acknowledgment in text or payload
-        // Ideally, GeminiService should return the `broadcastId` if one was created.
-        
-        // For now, if the result text contains "Broadcast initiated" or similar, we trigger the poller
-        // A better way is to pass the broadcast info up from GeminiService. 
-        // For this Demo, we will assume if the user said "Yes" and Bob replied, a broadcast happened.
-        
-        // Actually, let's modify GeminiService to return `broadcastMeta`
-        // Since I cannot modify GeminiService signature in this specific XML block comfortably without losing context,
-        // I will rely on a secondary mechanism:
-        // If the `businessPayload` is NOT present, but text implies broadcast, OR if we add a field to the return type.
-        
-        // Let's assume GeminiService updates `activeBroadcastRef` via a global or we parse the text.
-        // Or better: Inspect the `history` or `result`. 
-        
-        // CORRECT APPROACH: Since I am editing `ChatSession.tsx`, I can see what I send.
-        // But the Tool Call happens inside `GeminiService`.
-        // Let's rely on the result text for the demo trigger.
-        if (result.text.includes("Broadcast initiated") || result.text.includes("contacted") && result.text.includes("WhatsApp")) {
-             // Mock trigger for the demo
-             // We need the businesses list. 
-             // In a real app, the `result` object would contain `toolCalls` data.
-             
-             // For this PWA Demo, we'll re-use the last known business payload or mock it
-             // Let's try to find the "item" from user text
-             const itemWanted = userText.replace(/yes|contact|broadcast|please/gi, '').trim() || "Requested Item";
-             
-             // Extract businesses from the PREVIOUS message if it had a payload
-             const lastBizMsg = history.slice().reverse().find(m => m.businessPayload?.matches);
-             const bizList = lastBizMsg?.businessPayload?.matches.map(m => ({ name: m.name, phone: m.phoneNumber || '' })) || [];
-             
-             if (bizList.length > 0) {
-                activeBroadcastRef.current = {
-                    id: `req-${Date.now()}`,
-                    startTime: Date.now(),
-                    businesses: bizList.filter(b => b.phone), // Only ones with phones
-                    item: itemWanted.length < 3 ? "your item" : itemWanted
-                };
-                knownVerifiedIdsRef.current.clear();
-             }
-        }
-
         const aiMsg: Message = {
             id: Date.now().toString(),
             sender: 'ai',
@@ -301,7 +287,12 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
 
       <div className="flex-1 overflow-y-auto p-4 pt-4 space-y-6">
         {messages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} onReply={(text) => handleSend(text)} />
+          <MessageBubble 
+            key={msg.id} 
+            message={msg} 
+            onReply={(text) => handleSend(text)} 
+            onBroadcastInitiated={handleBroadcastInitiated}
+          />
         ))}
         {isTyping && (
            <div className="flex justify-start animate-pulse">

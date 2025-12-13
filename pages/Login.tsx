@@ -4,7 +4,7 @@ import { ICONS } from '../constants';
 import Button from '../components/Button';
 import { ALL_COUNTRIES } from '../data/allCountries';
 import { useTheme } from '../context/ThemeContext';
-import { sendWhatsAppBroadcastRequest } from '../services/whatsapp';
+import { supabase } from '../services/supabase';
 
 interface LoginProps {
   onLoginSuccess: (phone: string) => void;
@@ -21,56 +21,57 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!phone) return;
-
     setLoading(true);
 
-    // Combine Country Code + Phone
-    // Remove leading zero from local phone if present
     const cleanLocalPhone = phone.startsWith('0') ? phone.substring(1) : phone;
     const fullPhoneNumber = `${selectedCountry.dial_code}${cleanLocalPhone}`;
 
     try {
-      const BACKEND_URL = "https://script.google.com/macros/s/AKfycbwz5dainA_f7SPKxLBvlN7yDuP53ZPyQOxVRXkbxrMpLOFy-52unhxy94VTcr7qX_yO/exec";
-
-      await fetch(BACKEND_URL, {
-        method: "POST",
-        mode: "no-cors", 
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          phone: fullPhoneNumber,
-          role: "user"
-        }),
-      });
-
-      // Save user session
-      localStorage.setItem('easyMO_user_phone', fullPhoneNumber);
+      // 1. Authenticate Anonymously (Supabase)
+      const { data, error } = await supabase.auth.signInAnonymously();
       
-      // Fire and forget welcome message
-      sendWhatsAppBroadcastRequest({
-        requestId: `welcome-${Date.now()}`,
-        userLocationLabel: "Login",
-        needDescription: "Welcome to easyMO",
-        businesses: [{ name: "User", phone: fullPhoneNumber }],
-        type: 'welcome'
-      }).catch(err => console.error("Failed to send welcome msg", err));
+      if (error) throw error;
+      if (!data.user) throw new Error("No user created");
 
+      // 2. Create Profile in DB
+      // We upsert the phone number so we can identify them later
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: data.user.id,
+          phone: fullPhoneNumber,
+          display_name: `User ${cleanLocalPhone.slice(-4)}`,
+          role: 'passenger'
+        });
+
+      if (profileError) throw profileError;
+
+      // 3. Success
+      localStorage.setItem('easyMO_user_phone', fullPhoneNumber);
       onLoginSuccess(fullPhoneNumber);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login Error", error);
-      alert("Connection failed. Please check your internet connection.");
+      alert(`Login failed: ${error.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGuestLogin = () => {
-    // Generate a temporary guest session ID
-    const guestId = `guest-${Date.now().toString().slice(-6)}`;
-    localStorage.setItem('easyMO_user_phone', guestId);
-    onLoginSuccess(guestId);
+  const handleGuestLogin = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInAnonymously();
+      if (error) throw error;
+      
+      const guestId = `Guest-${data.user?.id.slice(0,4)}`;
+      localStorage.setItem('easyMO_user_phone', guestId);
+      onLoginSuccess(guestId);
+    } catch (e: any) {
+      alert(e.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -86,18 +87,12 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         </button>
       </div>
 
-      {/* Background Decor */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-         <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/10 dark:bg-blue-600/20 rounded-full blur-[100px]" />
-         <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-purple-600/10 dark:bg-purple-600/20 rounded-full blur-[100px]" />
-      </div>
-
       <div className="glass-panel w-full max-w-sm p-8 rounded-3xl border border-white/20 dark:border-white/10 shadow-2xl relative z-10 animate-in zoom-in duration-500">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-emerald-500 dark:from-blue-400 dark:to-emerald-400 mb-2">
             easyMO
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">Sign in to continue</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">Supabase Powered</p>
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
@@ -107,7 +102,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             </label>
             
             <div className="flex gap-2">
-              {/* Country Selector */}
               <div className="relative w-[120px] shrink-0">
                 <select 
                   value={selectedCountryCode}
@@ -125,7 +119,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 </div>
               </div>
 
-              {/* Phone Input */}
               <div className="relative flex-1">
                 <input
                   type="tel"
@@ -137,9 +130,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
                 />
               </div>
             </div>
-            <div className="mt-2 text-[10px] text-slate-500 text-right truncate">
-               {selectedCountry.name}
-            </div>
           </div>
 
           <Button
@@ -150,7 +140,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
             className="h-14 text-base shadow-lg shadow-blue-500/20"
             icon={loading ? <span className="animate-spin text-xl">⟳</span> : undefined}
           >
-            {loading ? 'Authenticating...' : 'Login'}
+            {loading ? 'Connecting...' : 'Start Now'}
           </Button>
         </form>
 
@@ -168,12 +158,6 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
         >
           Continue as Guest
         </Button>
-
-        <div className="mt-8 text-center">
-           <p className="text-[10px] text-slate-400 dark:text-slate-600 font-bold uppercase tracking-wider">
-             Secured by Master User System
-           </p>
-        </div>
       </div>
     </div>
   );

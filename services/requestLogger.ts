@@ -1,7 +1,6 @@
 
 import { getCurrentPosition } from './location';
-
-const BACKEND_URL = "https://script.google.com/macros/s/AKfycbwz5dainA_f7SPKxLBvlN7yDuP53ZPyQOxVRXkbxrMpLOFy-52unhxy94VTcr7qX_yO/exec";
+import { callBackend } from './api';
 
 export const sendCategoryRequest = async (categoryName: string) => {
   // 1. Show Toast immediately for instant feedback
@@ -34,23 +33,13 @@ export const sendCategoryRequest = async (categoryName: string) => {
     console.debug("Location unavailable for background log", e);
   }
 
-  // 3. Send Request to Google Sheet
-  const payload = {
-    action: "create_request",
-    phone: phone,
-    need: categoryName,
-    location: location
-  };
-
+  // 3. Send Request to Google Sheet using safe API helper
   try {
-    // Using no-cors mode for simple fire-and-forget to Google Scripts
-    await fetch(BACKEND_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
+    await callBackend({
+      action: "create_request",
+      phone: phone,
+      need: categoryName,
+      location: location
     });
   } catch (e) {
     console.error("Failed to send category request log", e);
