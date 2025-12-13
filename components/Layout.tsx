@@ -10,9 +10,6 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children, currentMode, onNavigate }) => {
-  // Hide bottom nav for full-screen focused modes
-  const hideNav = currentMode === AppMode.WAITER_GUEST || currentMode === AppMode.MANAGER;
-
   return (
     <div className="flex flex-col h-full relative">
       {/* Content Area - Scrollable */}
@@ -21,36 +18,34 @@ const Layout: React.FC<LayoutProps> = ({ children, currentMode, onNavigate }) =>
       </main>
 
       {/* Bottom Navigation - Glassmorphism */}
-      {!hideNav && (
-        <nav className="fixed bottom-0 left-0 w-full z-50 px-4 pb-6 pt-2 pointer-events-none">
-          <div className="glass-panel rounded-2xl flex justify-around items-center h-16 shadow-2xl shadow-black/50 pointer-events-auto">
-            <NavButton 
-              active={currentMode === AppMode.HOME} 
-              onClick={() => onNavigate(AppMode.HOME)}
-              icon={ICONS.Home}
-              label="Home"
-            />
-            <NavButton 
-              active={currentMode === AppMode.DISCOVERY} 
-              onClick={() => onNavigate(AppMode.DISCOVERY)}
-              icon={ICONS.Bike}
-              label="Ride"
-            />
-            <NavButton 
-              active={currentMode === AppMode.BUSINESS} 
-              onClick={() => onNavigate(AppMode.BUSINESS)}
-              icon={ICONS.Store}
-              label="Market"
-            />
-            <NavButton 
-              active={currentMode === AppMode.SERVICES} 
-              onClick={() => onNavigate(AppMode.SERVICES)}
-              icon={ICONS.Grid}
-              label="Services"
-            />
-          </div>
-        </nav>
-      )}
+      <nav className="fixed bottom-0 left-0 w-full z-50 px-4 pb-6 pt-2 pointer-events-none">
+        <div className="glass-panel rounded-2xl flex justify-around items-center h-16 shadow-2xl shadow-black/50 pointer-events-auto">
+          <NavButton 
+            active={currentMode === AppMode.HOME} 
+            onClick={() => onNavigate(AppMode.HOME)}
+            icon={ICONS.Home}
+            label="Home"
+          />
+          <NavButton 
+            active={currentMode === AppMode.DISCOVERY} 
+            onClick={() => onNavigate(AppMode.DISCOVERY)}
+            icon={ICONS.Bike}
+            label="Ride"
+          />
+          <NavButton 
+            active={currentMode === AppMode.BUSINESS} 
+            onClick={() => onNavigate(AppMode.BUSINESS)}
+            icon={ICONS.Store}
+            label="Market"
+          />
+          <NavButton 
+            active={currentMode === AppMode.SERVICES} 
+            onClick={() => onNavigate(AppMode.SERVICES)}
+            icon={ICONS.Grid}
+            label="Services"
+          />
+        </div>
+      </nav>
     </div>
   );
 };

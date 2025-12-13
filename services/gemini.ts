@@ -1,5 +1,5 @@
 
-import { Message, BusinessResultsPayload, Order, PropertyResultsPayload, LegalResultsPayload } from '../types';
+import { Message, BusinessResultsPayload, PropertyResultsPayload, LegalResultsPayload } from '../types';
 import { normalizePhoneNumber } from '../utils/phone';
 import { callBackend } from './api';
 
@@ -237,22 +237,9 @@ export const GeminiService = {
 
     return { text: cleanText || "Here are legal professionals nearby:", legalPayload: payload };
   },
-
-  chatDogo: async (
-    history: Message[], 
-    userMessage: string, 
-    userLocation: { lat: number, lng: number }, 
-    businessId: string
-  ): Promise<{ text: string, orderSummary?: Order }> => {
-    // Simplified Dogo for now
-    const prompt = formatPromptFromHistory(history, "You are Dogo, a waiter. Take order.", userMessage, "Restaurant");
-    const text = await askGemini(prompt);
-    return { text };
-  },
   
   // Aliases
   chatBuySellAgent: (h: any, m: any, l: any, d: any, i: any) => GeminiService.chatBob(h, m, l, d, i),
   chatRealEstateAgent: (h: any, m: any, l: any, d: any, i: any) => GeminiService.chatKeza(h, m, l, d, i),
   chatLegalAgent: (h: any, m: any, l: any, d: any, i: any) => GeminiService.chatGatera(h, m, l, d, i),
-  chatWaiterAgent: (h: any, m: any, id: any) => GeminiService.chatDogo(h, m, {lat: 0, lng: 0}, id),
 };

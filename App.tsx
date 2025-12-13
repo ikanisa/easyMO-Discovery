@@ -14,8 +14,6 @@ import { supabase } from './services/supabase';
 const Discovery = React.lazy(() => import('./pages/Discovery'));
 const Services = React.lazy(() => import('./pages/Services'));
 const Business = React.lazy(() => import('./pages/Business'));
-const WaiterGuest = React.lazy(() => import('./pages/WaiterGuest'));
-const Manager = React.lazy(() => import('./pages/Manager'));
 const ChatSession = React.lazy(() => import('./pages/ChatSession'));
 const MomoGenerator = React.lazy(() => import('./pages/MomoGenerator'));
 const QRScanner = React.lazy(() => import('./pages/QRScanner'));
@@ -333,10 +331,6 @@ const App: React.FC = () => {
               return <Services onStartChat={(type) => startChat(type || 'support')} onNavigate={handleNavigation} />;
             case AppMode.BUSINESS:
               return <Business onStartChat={(isDemo, type, query) => startChat(type || 'business', undefined, isDemo, query)} />;
-            case AppMode.WAITER_GUEST:
-              return <WaiterGuest onBack={() => handleNavigation(AppMode.SERVICES)} />;
-            case AppMode.MANAGER:
-              return <Manager onBack={() => handleNavigation(AppMode.SERVICES)} />;
             case AppMode.MOMO_GENERATOR:
               return <MomoGenerator onBack={() => handleNavigation(AppMode.HOME)} />;
             case AppMode.SCANNER:

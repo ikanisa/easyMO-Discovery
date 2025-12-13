@@ -124,40 +124,6 @@ export interface LegalResultsPayload {
 }
 // ------------------------------
 
-// --- Waiter AI Types ---
-export interface MenuItem {
-  id: string;
-  name: string;
-  category: string;
-  price: number;
-  currency: string;
-  isAvailable: boolean;
-  description?: string;
-}
-
-export interface OrderItem {
-  id: string;
-  menuItemId: string;
-  name: string;
-  qty: number;
-  price: number;
-  notes?: string;
-}
-
-export interface Order {
-  id: string;
-  businessId: string;
-  guestSessionId: string;
-  tableLabel?: string;
-  items: OrderItem[];
-  total: number;
-  currency: string;
-  status: 'submitted' | 'seen';
-  createdAt: number;
-  notes?: string;
-}
-// -----------------------
-
 export interface Message {
   id: string;
   sender: 'user' | 'system' | 'ai' | 'peer';
@@ -179,9 +145,6 @@ export interface Message {
   // New structured data for Legal Agent
   legalPayload?: LegalResultsPayload;
   
-  // Waiter Agent Payload
-  orderSummary?: Order;
-
   // Rich Media
   image?: {
     previewUrl: string;
@@ -205,7 +168,7 @@ export interface ChatSession {
   id: string;
   peerId?: string; // if p2p chat
   peerName?: string;
-  type: 'mobility' | 'support' | 'business' | 'waiter' | 'real_estate' | 'legal';
+  type: 'mobility' | 'support' | 'business' | 'real_estate' | 'legal';
   messages: Message[];
   lastUpdated: number;
   
@@ -219,8 +182,6 @@ export enum AppMode {
   DISCOVERY = 'discovery',
   SERVICES = 'services',
   BUSINESS = 'business',
-  WAITER_GUEST = 'waiter_guest',
-  MANAGER = 'manager',
   CHAT = 'chat', // specific active chat
   SETTINGS = 'settings',
   MOMO_GENERATOR = 'momo_generator',

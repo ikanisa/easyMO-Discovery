@@ -60,36 +60,6 @@ const Services: React.FC<ServicesProps> = ({ onStartChat, onNavigate }) => {
                  RW
               </div>
             </a>
-            
-            {/* Waiter Mode */}
-            <button 
-              onClick={() => onNavigate(AppMode.WAITER_GUEST)}
-              className="w-full glass-panel p-4 rounded-2xl flex items-center gap-4 hover:bg-white/5 active:scale-[0.98] transition-all"
-            >
-              <div className="w-12 h-12 rounded-xl bg-orange-500/20 flex items-center justify-center text-orange-400 shrink-0">
-                <ICONS.Utensils className="w-6 h-6" />
-              </div>
-              <div className="flex-1 text-left">
-                <div className="font-bold">Waiter Guest Mode</div>
-                <div className="text-xs text-slate-400 mt-0.5">Order food & drinks at your table</div>
-              </div>
-              <ICONS.ChevronDown className="w-5 h-5 text-slate-500 -rotate-90" />
-            </button>
-
-            {/* Manager Mode */}
-            <button 
-              onClick={() => onNavigate(AppMode.MANAGER)}
-              className="w-full glass-panel p-4 rounded-2xl flex items-center gap-4 hover:bg-white/5 active:scale-[0.98] transition-all"
-            >
-              <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
-                <ICONS.Clipboard className="w-6 h-6" />
-              </div>
-              <div className="flex-1 text-left">
-                <div className="font-bold">Manager Dashboard</div>
-                <div className="text-xs text-slate-400 mt-0.5">Manage orders & menus</div>
-              </div>
-              <ICONS.ChevronDown className="w-5 h-5 text-slate-500 -rotate-90" />
-            </button>
           </div>
         </div>
 
