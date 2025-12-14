@@ -18,6 +18,7 @@ const ChatSession = React.lazy(() => import('./pages/ChatSession'));
 const MomoGenerator = React.lazy(() => import('./pages/MomoGenerator'));
 const QRScanner = React.lazy(() => import('./pages/QRScanner'));
 const Settings = React.lazy(() => import('./pages/Settings'));
+const BusinessOnboarding = React.lazy(() => import('./pages/BusinessOnboarding'));
 
 // Helper Widget Component for Home Screen
 const HomeWidget = ({ 
@@ -191,8 +192,9 @@ const App: React.FC = () => {
             <h1 className="text-5xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-br from-blue-600 via-emerald-500 to-purple-600 dark:from-blue-400 dark:via-emerald-400 dark:to-purple-400 drop-shadow-sm mb-3">
               easyMO
             </h1>
-            <p className="text-slate-500 dark:text-slate-400 font-medium text-sm tracking-wide max-w-xs mx-auto">
-              Your AI-Powered City Guide & Tools
+            <p className="text-slate-500 dark:text-slate-400 font-medium text-sm tracking-wide max-w-xs mx-auto leading-relaxed">
+              Your Everyday Companion<br/>
+              <span className="text-xs opacity-75 font-bold mt-1 block">Move • Shop • Legal • Business</span>
             </p>
           </div>
 
@@ -244,11 +246,10 @@ const App: React.FC = () => {
                    label="Driver" 
                    subLabel="Earn Money"
                    onClick={() => { 
-                     sendCategoryRequest('Driver Mode');
                      setUserRole('driver'); 
                      setMode(AppMode.DISCOVERY); 
                    }}
-                   gradient="from-fuchsia-600 to-pink-600"
+                   gradient="from-pink-500 to-rose-500"
                    delay={100}
                 />
               </div>
@@ -370,6 +371,16 @@ const App: React.FC = () => {
               return <QRScanner onBack={() => handleNavigation(AppMode.HOME)} />;
             case AppMode.SETTINGS:
               return <Settings onBack={() => handleNavigation(AppMode.SERVICES)} />;
+            case AppMode.ONBOARDING:
+              return (
+                <BusinessOnboarding 
+                  onComplete={(newRole) => {
+                    setUserRole(newRole);
+                    setMode(AppMode.DISCOVERY);
+                  }}
+                  onCancel={() => setMode(AppMode.SERVICES)}
+                />
+              );
             default:
               return null;
           }

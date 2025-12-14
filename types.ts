@@ -218,5 +218,6 @@ export enum AppMode {
   CHAT = 'chat', // specific active chat
   SETTINGS = 'settings',
   MOMO_GENERATOR = 'momo_generator',
-  SCANNER = 'scanner'
+  SCANNER = 'scanner',
+  ONBOARDING = 'onboarding' // Business onboarding flow
 }
