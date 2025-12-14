@@ -183,7 +183,6 @@ export default defineConfig(({ mode }) => {
           }
         })
       ],
-      plugins: [react()],
       publicDir: 'public',
       build: {
         outDir: 'dist',
