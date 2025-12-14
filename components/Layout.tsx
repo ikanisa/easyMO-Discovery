@@ -19,6 +19,18 @@ interface LayoutProps {
  */
 const Layout: React.FC<LayoutProps> = ({ children, currentMode, onNavigate }) => {
   return (
+    // AppFrame: Center the whole app on large screens so desktop looks like the mobile prototype
+    // Uses a phone canvas width (~420px / max-w-md) centered with backdrop
+    <div className="app-frame-backdrop min-h-screen w-full flex justify-center bg-slate-100 dark:bg-slate-950">
+      <div className="app-frame w-full max-w-md min-h-screen relative bg-slate-50 dark:bg-[#0f172a] shadow-2xl shadow-black/5 dark:shadow-black/50">
+        {/* Content Area - Scrollable */}
+        <main className="min-h-screen overflow-auto pb-24 no-scrollbar scroll-smooth">
+          {children}
+        </main>
+
+        {/* Bottom Navigation - Glassmorphism (constrained to app frame width) */}
+        <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-50 px-4 pb-6 pt-2 pointer-events-none">
+          <div className="glass-panel rounded-2xl flex justify-around items-center h-16 shadow-2xl shadow-black/10 dark:shadow-black/50 pointer-events-auto bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10">
     <AppFrame>
       {/* Content Area - Scrollable */}
       <main className="min-h-screen overflow-auto pb-24 no-scrollbar scroll-smooth">

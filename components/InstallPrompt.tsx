@@ -90,6 +90,8 @@ const InstallPrompt: React.FC = () => {
   if (!isVisible) return null;
 
   return (
+    // Constrain to app frame width and center
+    <div className="fixed bottom-24 left-1/2 -translate-x-1/2 w-full max-w-md px-4 z-[60] animate-in slide-in-from-bottom-6 duration-700">
     <div className="fixed inset-0 flex justify-center pointer-events-none z-[60]">
       <div className="w-full relative" style={{ maxWidth: '448px' }}>
         <div className="absolute bottom-24 left-4 right-4 animate-in slide-in-from-bottom-6 duration-700 pointer-events-auto">
