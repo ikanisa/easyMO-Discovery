@@ -335,7 +335,7 @@ const App: React.FC = () => {
                   </div>
                </button>
             </div>
-          </div>
+          </section>
 
           {/* Footer Branding */}
           <div className="w-full text-center mt-auto pb-8 opacity-40">
