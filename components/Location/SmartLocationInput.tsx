@@ -121,7 +121,7 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
             console.warn("Maps SDK not ready, falling back.");
         });
     }
-  }, []);
+  }, [onChange, onLocationResolved]);
 
   // --- 3. GEMINI ADDRESS RESOLUTION ---
   const handleVerifyGemini = async () => {
@@ -129,7 +129,11 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
     setIsVerifying(true);
     try {
       let userLoc;
-      try { userLoc = await getCurrentPosition(); } catch (e) {}
+      try { 
+        userLoc = await getCurrentPosition(); 
+      } catch (e) {
+        console.warn('Could not get current position:', e);
+      }
 
       const result = await GeminiService.resolveLocation(value, userLoc?.lat, userLoc?.lng);
       
@@ -150,6 +154,25 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
 
   // --- 4. MAP INITIALIZATION ---
   useEffect(() => {
+    const handleMarkerDragEnd = async () => {
+       if (!marker.current || !googleMap.current) return;
+       const pos = marker.current.getPosition();
+       const lat = pos.lat();
+       const lng = pos.lng();
+       
+       googleMap.current.panTo(pos);
+
+       const geocoder = new window.google.maps.Geocoder();
+       geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
+           if (status === "OK" && results[0]) {
+               setResolvedAddress(results[0].formatted_address);
+               setResolvedCoords({ lat, lng });
+           }
+       });
+
+       updateGeminiInsight(lat, lng);
+    };
+
     if (showMap && mapRef.current && !googleMap.current) {
       loadGoogleMaps().then(async () => {
         let lat = -1.9441;
@@ -159,7 +182,9 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
             const pos = await getCurrentPosition();
             lat = pos.lat;
             lng = pos.lng;
-        } catch(e) {}
+        } catch(e) {
+            console.warn('Could not get position for map:', e);
+        }
 
         const { Map } = await window.google.maps.importLibrary("maps");
         const { Marker } = await window.google.maps.importLibrary("marker");
@@ -199,25 +224,6 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
       });
     }
   }, [showMap]);
-
-  const handleMarkerDragEnd = async () => {
-     if (!marker.current || !googleMap.current) return;
-     const pos = marker.current.getPosition();
-     const lat = pos.lat();
-     const lng = pos.lng();
-     
-     googleMap.current.panTo(pos);
-
-     const geocoder = new window.google.maps.Geocoder();
-     geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
-         if (status === "OK" && results[0]) {
-             setResolvedAddress(results[0].formatted_address);
-             setResolvedCoords({ lat, lng });
-         }
-     });
-
-     updateGeminiInsight(lat, lng);
-  };
 
   const updateGeminiInsight = async (lat: number, lng: number) => {
       setGeminiInsight("Analyzing area...");

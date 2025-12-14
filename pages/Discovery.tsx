@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ICONS } from '../../constants';
+import { ICONS } from '../constants';
 import VehicleSelector from '../components/Discovery/VehicleSelector';
 import NearbyListCard from '../components/Discovery/NearbyListCard';
 import ScheduleModal from '../components/Scheduling/ScheduleModal';

@@ -107,7 +107,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
     }
 
     return () => clearTimeout(timer);
-  }, [activeBroadcastRef.current]); // Rely on ref change triggering re-mount of effect or internal loop
+  }, []);
 
   // Callback to start polling when user clicks "Ask All"
   const handleBroadcastInitiated = (requestId: string, businesses: BusinessContact[], item: string) => {
@@ -285,7 +285,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
       handleSend(initialSession.initialInput);
       initialSession.initialInput = undefined;
     }
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const getTitle = () => {
     switch (initialSession.type) {

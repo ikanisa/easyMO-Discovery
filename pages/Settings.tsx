@@ -51,7 +51,7 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
     loadProfile();
     // Load Memories
     setMemories(MemoryService.getLocalMemories());
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const loadProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser();
