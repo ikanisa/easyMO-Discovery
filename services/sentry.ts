@@ -27,12 +27,8 @@ export const initSentry = () => {
     // Set environment based on mode
     environment: import.meta.env.MODE,
     
-    // Performance Monitoring
-    tracesSampleRate: 0.1, // Capture 10% of transactions
-    
-    // Session Replay (optional - can be removed to reduce bundle size)
-    replaysSessionSampleRate: 0.01, // Capture 1% of sessions
-    replaysOnErrorSampleRate: 1.0, // Capture 100% of sessions with errors
+    // Performance Monitoring - sample 10% of transactions
+    tracesSampleRate: 0.1,
     
     // Filter out development errors
     beforeSend(event) {

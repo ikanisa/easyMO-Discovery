@@ -72,21 +72,21 @@ describe('isValidRwandanPhoneNumber', () => {
   });
 
   it('should reject sequential digit patterns', () => {
-    // The isSequentialDigits function checks if ALL digits form a sequence
-    // +250781234567 starts with valid prefix 78 so 781234567 is checked
-    // 7-8-1-2-3-4-5-6-7 is NOT strictly sequential (7->8 ok, 8->1 breaks)
-    // So these should actually pass validation since they're not fully sequential
-    expect(isValidRwandanPhoneNumber('+250788654321')).toBe(true); // Valid, not sequential
-    // Test a genuinely sequential pattern (if it started with valid prefix)
-    expect(isValidRwandanPhoneNumber('+250780123456')).toBe(true); // 80123456 is sequential but 780 prefix is valid
+    // The isSequentialDigits function checks if ALL digits form a strict ascending/descending sequence
+    // For a number to be "sequential", every consecutive digit must differ by exactly 1
+    // e.g., "123456789" or "987654321" - each digit increments/decrements by 1
+    // Numbers starting with valid carrier prefixes (78, 79, 72, 73) won't form 9-digit sequences
+    // because the prefix already breaks the sequence (7->8 is valid, but next must be 9 for ascending)
+    expect(isValidRwandanPhoneNumber('+250788654321')).toBe(true); // Valid - not a strict sequence
+    expect(isValidRwandanPhoneNumber('+250780123456')).toBe(true); // Valid - prefix 78 breaks any sequence
   });
 
   it('should reject all same digit patterns', () => {
-    // The regex ^(\d)\1{8}$ requires ALL 9 digits to be identical
-    // +250788888888 has localNumber 788888888 which is NOT all same (7 != 8)
-    // These patterns would need the prefix digit to also match
-    expect(isValidRwandanPhoneNumber('+250788888888')).toBe(true); // 788888888 is NOT all same digit
-    // The pattern detection only catches truly degenerate cases
+    // The regex ^(\d)\1{8}$ requires all 9 local digits to be identical
+    // +250788888888 has local number 788888888 which starts with 7, not all 8s
+    // This pattern detection only catches truly degenerate cases like 999999999
+    // which can't occur with valid carrier prefixes (78x, 79x, 72x, 73x)
+    expect(isValidRwandanPhoneNumber('+250788888888')).toBe(true); // Valid - starts with 7, not all same
   });
 
   it('should reject repeating patterns', () => {
