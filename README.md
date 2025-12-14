@@ -25,13 +25,13 @@ View your app in AI Studio: https://ai.studio/apps/drive/1Ergpo9qShjEXsBGtV41JqJ
 
 Gatera is the AI Legal Expert with **exactly 2 modes**:
 
-1. **Legal Advisor** - Answers legal questions using Rwandan law (IRAC method)
+1. **Legal Advisor** - Answers legal questions using Rwandan law (IRAC method) via Google Search
 2. **Contract Drafter** - Generates professional legal documents
 
 **Critical Rules:**
 - Gatera does NOT use Google Maps
 - Gatera does NOT find lawyers, notaries, or bailiffs
 - Gatera ONLY uses Google Search for legal research
-- To find legal professionals, users must use Bob agent
+- To find legal professionals, users must use Bob agent in the Market tab
 
 **Why?** Gatera is designed for legal content generation and advice, not as a business directory. Finding professionals is Bob's responsibility.
