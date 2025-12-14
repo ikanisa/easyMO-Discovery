@@ -21,7 +21,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentMode, onNavigate }) =>
     <div className="app-frame">
       <div className="app-frame-inner">
         {/* Content Area - Scrollable */}
-        <main className="min-h-screen overflow-auto pb-24 no-scrollbar scroll-smooth liquid-bg w-full">
+        <main className="min-h-[100dvh] overflow-auto pb-24 no-scrollbar scroll-smooth liquid-bg">
           {children}
         </main>
       </div>

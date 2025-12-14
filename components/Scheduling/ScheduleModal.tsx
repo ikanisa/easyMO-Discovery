@@ -30,7 +30,8 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ onClose, onSchedule }) =>
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/60 dark:bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
-      <div className="bg-white dark:bg-[#0f172a] border-t sm:border border-slate-200 dark:border-white/10 w-full max-w-sm rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 ring-1 ring-white/10">
+      <div className="w-full max-w-sm mx-auto">
+        <div className="bg-white dark:bg-[#0f172a] border-t sm:border border-slate-200 dark:border-white/10 w-full rounded-t-3xl sm:rounded-3xl flex flex-col shadow-2xl overflow-hidden animate-in slide-in-from-bottom-10 ring-1 ring-white/10">
         
         {/* Header */}
         <div className="p-5 border-b border-slate-100 dark:border-white/5 flex items-center justify-between bg-white dark:bg-[#0f172a] sticky top-0 z-20">
@@ -145,6 +146,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ onClose, onSchedule }) =>
                     Confirm Schedule
                 </Button>
             </div>
+        </div>
         </div>
       </div>
     </div>

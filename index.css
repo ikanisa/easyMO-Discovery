@@ -29,11 +29,16 @@
    ============================================================================ */
 
 /* Base Body - Desktop backdrop, not the app itself */
+html, body {
+  height: 100%;
+}
+
 body {
   background-color: #e5e7eb; /* Gray backdrop for desktop */
   color: #0f172a;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
+  overflow-x: hidden;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
@@ -159,6 +164,7 @@ html.dark .soft-border {
   max-width: var(--frame-max);
   min-height: 100vh;
   position: relative;
+  overflow-x: hidden;
 }
 
 /* Fixed Element Helper - Constrain to frame */

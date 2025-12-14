@@ -377,7 +377,7 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
       {/* Google Maps Modal */}
       {showMap && (
           <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in duration-300">
-              <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[75vh]">
+              <div className="bg-white dark:bg-slate-900 w-full max-w-[420px] rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[75vh]">
                   
                   <div className="p-4 border-b border-slate-200 dark:border-white/10 flex justify-between items-center bg-slate-50 dark:bg-white/5">
                       <div>
