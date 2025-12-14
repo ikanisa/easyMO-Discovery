@@ -41,8 +41,8 @@ const VehicleSelector: React.FC<VehicleSelectorProps> = ({ selected, onSelect })
             
             {/* Content */}
             <div className="relative z-10 flex flex-col items-center gap-2">
-               <Icon className={`w-8 h-8 transition-all duration-300 ${isSelected ? 'text-white scale-110' : 'text-slate-400 dark:text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200'}`} />
-               <span className={`text-[10px] font-bold tracking-wider uppercase ${isSelected ? 'text-white' : 'text-slate-500 dark:text-slate-500'}`}>
+               <Icon className={`w-8 h-8 transition-all duration-300 ${isSelected ? 'text-white scale-110' : 'text-slate-600 dark:text-slate-400 group-hover:text-slate-800 dark:group-hover:text-slate-200'}`} />
+               <span className={`text-[10px] font-bold tracking-wider uppercase ${isSelected ? 'text-white' : 'text-slate-600 dark:text-slate-500'}`}>
                  {v.label}
                </span>
             </div>

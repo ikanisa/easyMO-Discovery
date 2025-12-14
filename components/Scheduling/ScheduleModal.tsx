@@ -16,6 +16,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ onClose, onSchedule }) =>
   const [recurrence, setRecurrence] = useState<RecurrenceType>('none');
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
+  const [notes, setNotes] = useState('');
   const [coords, setCoords] = useState<{origin?: {lat: number, lng: number}, dest?: {lat: number, lng: number}}>({});
 
   const handleSubmit = () => {
@@ -23,7 +24,7 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ onClose, onSchedule }) =>
         alert("Please fill in all fields.");
         return;
     }
-    onSchedule({ date, time, recurrence, origin, destination, coords });
+    onSchedule({ date, time, recurrence, origin, destination, coords, notes });
     onClose();
   };
 
@@ -119,6 +120,19 @@ const ScheduleModal: React.FC<ScheduleModalProps> = ({ onClose, onSchedule }) =>
                         placeholder="Where to?"
                     />
                 </div>
+            </div>
+
+            {/* Optional Notes */}
+            <div className="space-y-2 pt-2">
+                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest pl-1">
+                    Trip Details (Optional)
+                </label>
+                <textarea
+                    value={notes}
+                    onChange={e => setNotes(e.target.value)}
+                    placeholder="e.g. 2 passengers, luggage, specific pickup spot..."
+                    className="w-full bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/10 rounded-2xl px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all shadow-sm resize-none h-24 placeholder-slate-400 dark:placeholder-slate-500 leading-relaxed"
+                />
             </div>
 
             <div className="pt-2 pb-2">

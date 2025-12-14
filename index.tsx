@@ -3,10 +3,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ThemeProvider } from './context/ThemeContext';
-import { initSentry } from './services/sentry';
-
-// Initialize Sentry for error monitoring (production only)
-initSentry();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

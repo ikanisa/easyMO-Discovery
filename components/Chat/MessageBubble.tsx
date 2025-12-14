@@ -72,7 +72,20 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply, onBroad
           </div>
         )}
 
-        {/* 2. Text Bubble */}
+        {/* 2. File Attachment (Bubble) */}
+        {message.file && (
+          <div className={`mb-2 p-3 rounded-2xl border flex items-center gap-3 w-full max-w-[280px] shadow-sm backdrop-blur-md ${isMe ? 'bg-blue-600/90 border-blue-500 text-white rounded-tr-sm' : 'bg-white dark:bg-slate-800/80 border-slate-200 dark:border-white/10 rounded-tl-sm'}`}>
+             <div className={`p-2 rounded-xl flex items-center justify-center ${isMe ? 'bg-white/20' : 'bg-slate-100 dark:bg-white/10 text-blue-500 dark:text-blue-400'}`}>
+                <ICONS.File className="w-5 h-5" />
+             </div>
+             <div className="flex-1 min-w-0">
+                <div className={`text-sm font-bold truncate ${isMe ? 'text-white' : 'text-slate-900 dark:text-white'}`}>{message.file.fileName}</div>
+                <div className={`text-[10px] font-medium ${isMe ? 'text-blue-100' : 'text-slate-500 dark:text-slate-400'}`}>{message.file.fileSize}</div>
+             </div>
+          </div>
+        )}
+
+        {/* 3. Text Bubble */}
         {message.text && (
           <div
             className={`
@@ -107,7 +120,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply, onBroad
           </div>
         )}
         
-        {/* 3. Location Bubble */}
+        {/* 4. Location Bubble */}
         {message.location && (
           <div className={`mt-2 p-3 rounded-xl border border-slate-200 dark:border-white/10 ${isMe ? 'bg-white/20 dark:bg-white/10' : 'bg-white dark:bg-slate-900/50'} flex flex-col gap-2 w-full shadow-sm`}>
              <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wide opacity-80 text-slate-700 dark:text-slate-300">
@@ -128,7 +141,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply, onBroad
           </div>
         )}
 
-        {/* 4. Structured Business Results Widget */}
+        {/* 5. Structured Business Results Widget */}
         {hasBusinessPayload && (
           <div className="w-full mt-2">
              <BusinessResultsMessage 
@@ -139,7 +152,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply, onBroad
           </div>
         )}
 
-        {/* 5. VERIFIED MATCHES WIDGET (New) */}
+        {/* 6. VERIFIED MATCHES WIDGET (New) */}
         {hasVerifiedPayload && (
            <VerifiedBusinessList 
               matches={message.verifiedPayload!.matches}
@@ -147,7 +160,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply, onBroad
            />
         )}
 
-        {/* 6. Structured Property Results Widget */}
+        {/* 7. Structured Property Results Widget */}
         {hasPropertyPayload && (
           <div className="w-full mt-2">
              <PropertyResultsMessage 
@@ -157,7 +170,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply, onBroad
           </div>
         )}
 
-        {/* 7. Structured Legal Results Widget */}
+        {/* 8. Structured Legal Results Widget */}
         {hasLegalPayload && (
           <div className="w-full mt-2">
              <LegalResultsMessage 

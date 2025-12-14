@@ -146,6 +146,17 @@ export interface LegalResultsPayload {
 }
 // ------------------------------
 
+// --- MEMORY SYSTEM TYPES ---
+export interface AgentMemory {
+  id: string;
+  content: string; // "User prefers Moto taxis", "User lives in Kicukiro"
+  category: 'preference' | 'fact' | 'context' | 'legal_context';
+  confidence: number; // 0.0 to 1.0
+  timestamp: number;
+  embedding?: number[]; // For future vector search
+}
+// ---------------------------
+
 export interface Message {
   id: string;
   sender: 'user' | 'system' | 'ai' | 'peer';

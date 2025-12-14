@@ -26,6 +26,10 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Generic File Upload State
+  const [selectedGenericFile, setSelectedGenericFile] = useState<File | null>(null);
+  const genericFileInputRef = useRef<HTMLInputElement>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -35,7 +39,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isTyping, previewUrl]);
+  }, [messages, isTyping, previewUrl, selectedGenericFile]);
 
   // --- Broadcast Polling Effect ---
   useEffect(() => {
@@ -134,10 +138,21 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
     }
   };
 
+  const handleGenericFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedGenericFile(e.target.files[0]);
+    }
+  };
+
   const clearFile = () => {
     setSelectedFile(null);
     setPreviewUrl(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const clearGenericFile = () => {
+    setSelectedGenericFile(null);
+    if (genericFileInputRef.current) genericFileInputRef.current.value = '';
   };
   
   // Helper to handle AI response generation
@@ -230,22 +245,36 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
     }
   };
 
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
   const handleSend = async (textOverride?: string) => {
     const textToSend = textOverride || inputValue.trim();
-    if (!textToSend && !selectedFile) return;
+    if (!textToSend && !selectedFile && !selectedGenericFile) return;
 
     const newUserMsg: Message = {
       id: Date.now().toString(),
       sender: 'user',
       text: textToSend,
       timestamp: Date.now(),
-      image: previewUrl ? { previewUrl: previewUrl } : undefined
+      image: previewUrl ? { previewUrl: previewUrl } : undefined,
+      file: selectedGenericFile ? {
+        fileName: selectedGenericFile.name,
+        fileSize: formatFileSize(selectedGenericFile.size),
+        fileType: selectedGenericFile.type
+      } : undefined
     };
 
     setMessages(prev => [...prev, newUserMsg]);
     if (!textOverride) {
       setInputValue('');
       clearFile();
+      clearGenericFile();
     }
     setIsTyping(true);
     await handleAIResponse([...messages, newUserMsg], textToSend, previewUrl || undefined);
@@ -314,14 +343,37 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
           </div>
         )}
 
+        {selectedGenericFile && (
+          <div className="absolute bottom-full left-0 w-full p-3 bg-slate-900/90 backdrop-blur-md border-t border-white/10 flex items-center gap-3 animate-in slide-in-from-bottom-2">
+            <div className="p-2 bg-slate-800 rounded-lg text-blue-400">
+               <ICONS.File className="w-5 h-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+               <div className="text-sm font-bold text-white truncate">{selectedGenericFile.name}</div>
+               <div className="text-[10px] text-slate-400">{formatFileSize(selectedGenericFile.size)}</div>
+            </div>
+            <button onClick={clearGenericFile} className="p-2 bg-slate-800 rounded-full hover:bg-red-500/20 text-slate-400 hover:text-red-500 transition-colors">
+               <ICONS.XMark className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         <div className="p-4 flex gap-3 items-end">
           <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} />
-          <button onClick={() => fileInputRef.current?.click()} className="p-3.5 rounded-2xl bg-slate-800 text-slate-400 border border-white/5">
+          <input type="file" ref={genericFileInputRef} className="hidden" onChange={handleGenericFileSelect} />
+          
+          <button onClick={() => fileInputRef.current?.click()} className="p-3.5 rounded-2xl bg-slate-800 text-slate-400 border border-white/5 hover:text-white transition-colors">
             <ICONS.Camera className="w-5 h-5" />
           </button>
-          <button onClick={handleShareLocation} disabled={isSharingLocation} className="p-3.5 rounded-2xl bg-slate-800 text-slate-400 border border-white/5">
+          
+          <button onClick={() => genericFileInputRef.current?.click()} className="p-3.5 rounded-2xl bg-slate-800 text-slate-400 border border-white/5 hover:text-white transition-colors">
+            <ICONS.PaperClip className="w-5 h-5" />
+          </button>
+
+          <button onClick={handleShareLocation} disabled={isSharingLocation} className="p-3.5 rounded-2xl bg-slate-800 text-slate-400 border border-white/5 hover:text-white transition-colors">
             {isSharingLocation ? <span className="animate-spin">⟳</span> : <ICONS.MapPin className="w-5 h-5" />}
           </button>
+          
           <input
             type="text"
             className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-sm focus:outline-none focus:border-primary/50 text-white placeholder-slate-500"
@@ -331,7 +383,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             autoFocus
           />
-          <button onClick={() => handleSend()} disabled={(!inputValue.trim() && !selectedFile) || isTyping} className="bg-primary text-white p-3.5 rounded-2xl">
+          <button onClick={() => handleSend()} disabled={(!inputValue.trim() && !selectedFile && !selectedGenericFile) || isTyping} className="bg-primary text-white p-3.5 rounded-2xl">
             <ICONS.Send className="w-5 h-5" />
           </button>
         </div>

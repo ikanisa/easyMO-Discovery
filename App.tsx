@@ -39,7 +39,7 @@ const HomeWidget = ({
 }) => (
   <button
     onClick={onClick}
-    className={`group relative flex flex-col items-start justify-between p-5 w-full h-40 rounded-[2rem] border border-black/5 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-2xl overflow-hidden transition-all duration-300 active:scale-95 hover:bg-slate-50 dark:hover:bg-white/10 shadow-xl shadow-black/5 dark:shadow-black/20 animate-in zoom-in fill-mode-backwards ${className}`}
+    className={`group relative flex flex-col items-start justify-between p-5 w-full h-40 rounded-[2rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-2xl overflow-hidden transition-all duration-300 active:scale-95 hover:bg-slate-50 dark:hover:bg-white/10 shadow-xl shadow-slate-200 dark:shadow-black/20 animate-in zoom-in fill-mode-backwards ${className}`}
     style={{ animationDelay: `${delay}ms` }}
   >
     {/* Hover Gradient Overlay */}
@@ -52,14 +52,14 @@ const HomeWidget = ({
 
     {/* Text Content */}
     <div className="text-left z-10 w-full">
-      <span className="block font-bold text-lg text-slate-800 dark:text-slate-100 leading-tight mb-1">{label}</span>
-      {subLabel && <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider block">{subLabel}</span>}
+      <span className="block font-bold text-lg text-slate-900 dark:text-slate-100 leading-tight mb-1">{label}</span>
+      {subLabel && <span className="text-[11px] text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider block">{subLabel}</span>}
     </div>
 
     {/* Decorative Elements */}
     <div className={`absolute -bottom-6 -right-6 w-32 h-32 rounded-full opacity-10 dark:opacity-20 bg-gradient-to-br ${gradient} blur-2xl pointer-events-none group-hover:opacity-20 dark:group-hover:opacity-30 transition-opacity`} />
     <div className="absolute top-0 right-0 p-4 opacity-50">
-       <div className="w-2 h-2 rounded-full bg-slate-900/10 dark:bg-white/20" />
+       <div className="w-2 h-2 rounded-full bg-slate-300 dark:bg-white/20" />
     </div>
   </button>
 );
@@ -139,7 +139,7 @@ const App: React.FC = () => {
     if (type === 'real_estate') initialText = 'Hello! I am "Keza", your Real Estate Concierge. I search across Agencies, Facebook, and Instagram to find properties. Are you looking for rent or sale?';
     
     // UPDATED GATERA GREETING
-    if (type === 'legal') initialText = 'Muraho! Ndi "Gatera", your AI Notary. I draft contracts, sales agreements, and official letters instantly. What document do you need me to write?';
+    if (type === 'legal') initialText = 'Muraho! Ndi "Gatera", your Legal Expert. I can draft contracts AND provide legal advice based on Rwandan Law. Ask me a question or tell me what to draft.';
 
     setActiveChat({
       id: Date.now().toString(),
@@ -181,7 +181,7 @@ const App: React.FC = () => {
           {/* Theme Toggle Button */}
           <button 
             onClick={toggleTheme}
-            className="absolute top-6 right-6 p-2 rounded-full bg-white/50 dark:bg-black/20 backdrop-blur-md border border-black/5 dark:border-white/10 text-slate-600 dark:text-slate-300 z-50 hover:scale-105 active:scale-95 transition-all shadow-sm"
+            className="absolute top-6 right-6 p-2 rounded-full bg-white/50 dark:bg-black/20 backdrop-blur-md border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 z-50 hover:scale-105 active:scale-95 transition-all shadow-sm"
           >
             {theme === 'dark' ? <ICONS.Sun className="w-5 h-5" /> : <ICONS.Moon className="w-5 h-5" />}
           </button>
@@ -205,7 +205,7 @@ const App: React.FC = () => {
                    onChange={(e) => setHomeSearchQuery(e.target.value)}
                    onKeyDown={(e) => e.key === 'Enter' && handleHomeSearch()}
                    placeholder="Search for products, services, or places..."
-                   className="w-full bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl pl-5 pr-12 py-4 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white dark:focus:bg-slate-900/80 transition-all shadow-lg shadow-black/5"
+                   className="w-full bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl pl-5 pr-12 py-4 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white dark:focus:bg-slate-900/80 transition-all shadow-lg shadow-slate-200/50 dark:shadow-black/5"
                 />
                 <button 
                    onClick={handleHomeSearch}
@@ -293,44 +293,44 @@ const App: React.FC = () => {
                {/* Quick Action 1: Notary - Updated Label */}
                <button 
                   onClick={() => startChat('legal')}
-                  className="min-w-[140px] h-32 rounded-3xl bg-white dark:bg-slate-800/50 border border-black/5 dark:border-white/5 p-4 flex flex-col justify-between hover:bg-slate-50 dark:hover:bg-white/10 transition-colors animate-in slide-in-from-right-4 duration-700 shadow-sm"
+                  className="min-w-[140px] h-32 rounded-3xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 p-4 flex flex-col justify-between hover:bg-slate-50 dark:hover:bg-white/10 transition-colors animate-in slide-in-from-right-4 duration-700 shadow-sm"
                >
                   <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
                      <ICONS.Scale className="w-4 h-4" />
                   </div>
                   <div className="text-left">
-                     <div className="text-sm font-bold text-slate-800 dark:text-slate-200">Notary AI</div>
-                     <div className="text-[10px] text-slate-500">Draft Contracts</div>
+                     <div className="text-sm font-bold text-slate-900 dark:text-slate-200">Legal Advisor</div>
+                     <div className="text-[10px] text-slate-500 font-medium">Research & Draft</div>
                   </div>
                </button>
 
                {/* Quick Action 2: Insurance */}
                <button 
                   onClick={() => window.open('https://wa.me/250795588248?text=Hello,%20I%20would%20like%20to%20inquire%20about%20insurance%20services.', '_blank')}
-                  className="min-w-[140px] h-32 rounded-3xl bg-white dark:bg-slate-800/50 border border-black/5 dark:border-white/5 p-4 flex flex-col justify-between hover:bg-slate-50 dark:hover:bg-white/10 transition-colors animate-in slide-in-from-right-4 duration-700 shadow-sm"
+                  className="min-w-[140px] h-32 rounded-3xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 p-4 flex flex-col justify-between hover:bg-slate-50 dark:hover:bg-white/10 transition-colors animate-in slide-in-from-right-4 duration-700 shadow-sm"
                   style={{ animationDelay: '100ms' }}
                >
                   <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                      <ICONS.ShieldCheck className="w-4 h-4" />
                   </div>
                   <div className="text-left">
-                     <div className="text-sm font-bold text-slate-800 dark:text-slate-200">Insurance</div>
-                     <div className="text-[10px] text-slate-500">Get Covered</div>
+                     <div className="text-sm font-bold text-slate-900 dark:text-slate-200">Insurance</div>
+                     <div className="text-[10px] text-slate-500 font-medium">Get Covered</div>
                   </div>
                </button>
 
                {/* Quick Action 3: Support */}
                <button 
                   onClick={() => startChat('support')}
-                  className="min-w-[140px] h-32 rounded-3xl bg-white dark:bg-slate-800/50 border border-black/5 dark:border-white/5 p-4 flex flex-col justify-between hover:bg-slate-50 dark:hover:bg-white/10 transition-colors animate-in slide-in-from-right-4 duration-700 shadow-sm"
+                  className="min-w-[140px] h-32 rounded-3xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 p-4 flex flex-col justify-between hover:bg-slate-50 dark:hover:bg-white/10 transition-colors animate-in slide-in-from-right-4 duration-700 shadow-sm"
                   style={{ animationDelay: '200ms' }}
                >
                   <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-500/20 flex items-center justify-center text-slate-600 dark:text-slate-400">
                      <ICONS.Support className="w-4 h-4" />
                   </div>
                   <div className="text-left">
-                     <div className="text-sm font-bold text-slate-800 dark:text-slate-200">Support</div>
-                     <div className="text-[10px] text-slate-500">Help Center</div>
+                     <div className="text-sm font-bold text-slate-900 dark:text-slate-200">Support</div>
+                     <div className="text-[10px] text-slate-500 font-medium">Help Center</div>
                   </div>
                </button>
             </div>

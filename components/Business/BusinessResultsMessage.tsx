@@ -106,7 +106,7 @@ const BusinessResultsMessage: React.FC<BusinessResultsMessageProps> = ({ payload
                  Mass Inquiry
                </h3>
                <p className="text-xs text-slate-300 leading-relaxed">
-                 Or ask all {broadcastCandidates.length} businesses at once?
+                 Maximise your chances: Broadcast to the top <strong>{broadcastCandidates.length} closest matches</strong> instantly.
                </p>
                <Button 
                  variant="primary" 
@@ -115,7 +115,7 @@ const BusinessResultsMessage: React.FC<BusinessResultsMessageProps> = ({ payload
                  className="mt-2 bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20 h-10 text-xs"
                  icon={broadcasting ? <span className="animate-spin text-xl">⟳</span> : <ICONS.WhatsApp className="w-4 h-4" />}
                >
-                 {broadcasting ? 'Processing Request...' : `Ask All ${broadcastCandidates.length}`}
+                 {broadcasting ? 'Sending Requests...' : `Ask All ${broadcastCandidates.length} Businesses`}
                </Button>
             </div>
          </div>

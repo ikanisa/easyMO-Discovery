@@ -7,6 +7,8 @@ import { useTheme } from '../context/ThemeContext';
 import { ALL_COUNTRIES, CountryData } from '../data/allCountries';
 import { normalizePhoneNumber } from '../utils/phone';
 import AddressBook from '../components/Address/AddressBook';
+import { MemoryService } from '../services/memory';
+import { AgentMemory } from '../types';
 
 interface SettingsProps {
   onBack: () => void;
@@ -15,13 +17,13 @@ interface SettingsProps {
 const Settings: React.FC<SettingsProps> = ({ onBack }) => {
   const { theme, toggleTheme } = useTheme();
   const [loading, setLoading] = useState(false);
-  const [notificationEnabled, setNotificationEnabled] = useState(true); // Default to true (Consent by default)
+  const [notificationEnabled, setNotificationEnabled] = useState(true);
   
   // Profile State
   const [displayName, setDisplayName] = useState('');
   const [role, setRole] = useState('passenger');
   const [bio, setBio] = useState('');
-  const [vehiclePlate, setVehiclePlate] = useState(''); // New State
+  const [vehiclePlate, setVehiclePlate] = useState('');
   
   // Phone State
   const [selectedCountry, setSelectedCountry] = useState<CountryData>(ALL_COUNTRIES.find(c => c.code === 'rw') || ALL_COUNTRIES[0]);
@@ -31,10 +33,12 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
   const [showCountryModal, setShowCountryModal] = useState(false);
   const [countrySearch, setCountrySearch] = useState('');
 
-  // Helper to parse phone
+  // Memory State
+  const [memories, setMemories] = useState<AgentMemory[]>([]);
+  const [showMemory, setShowMemory] = useState(false);
+
   const parsePhone = (fullPhone: string) => {
     if (!fullPhone) return { country: ALL_COUNTRIES.find(c => c.code === 'rw')!, local: '' };
-    // Sort to match longest prefix first
     const match = ALL_COUNTRIES.slice().sort((a, b) => b.dial_code.length - a.dial_code.length)
         .find(c => fullPhone.startsWith(c.dial_code));
     if (match) {
@@ -45,6 +49,8 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
 
   useEffect(() => {
     loadProfile();
+    // Load Memories
+    setMemories(MemoryService.getLocalMemories());
   }, []);
 
   const loadProfile = async () => {
@@ -55,13 +61,10 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
         setDisplayName(data.display_name || '');
         setRole(data.role || 'passenger');
         setBio(data.bio || '');
-        setVehiclePlate(data.vehicle_plate || ''); // Load Plate
-        
-        // Load Notification/Consent Preference
+        setVehiclePlate(data.vehicle_plate || '');
         if (data.whatsapp_consent !== undefined) {
             setNotificationEnabled(data.whatsapp_consent);
         }
-        
         const { country, local } = parsePhone(data.phone || '');
         setSelectedCountry(country);
         setLocalPhone(local);
@@ -79,11 +82,7 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
-      // 1. Construct raw phone from inputs
       const rawFullPhone = `${selectedCountry.dial_code}${localPhone}`;
-      
-      // 2. Robustly Normalize (handles leading zeros mixed with country codes)
-      // Remove + from dial_code to get the purely numeric country code for the normalizer default
       const defaultCode = selectedCountry.dial_code.replace('+', '');
       const normalizedPhone = normalizePhoneNumber(rawFullPhone, defaultCode);
 
@@ -99,20 +98,30 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
         phone: normalizedPhone,
         role: role,
         bio: bio,
-        vehicle_plate: role === 'driver' ? vehiclePlate.toUpperCase() : null, // Save Plate
-        whatsapp_consent: notificationEnabled, // Saving Consent
+        vehicle_plate: role === 'driver' ? vehiclePlate.toUpperCase() : null,
+        whatsapp_consent: notificationEnabled,
         updated_at: new Date().toISOString()
       });
 
       if (error) {
         console.error("Error saving profile:", error);
       }
-      
-      // Update local storage for immediate offline fallback
       localStorage.setItem('easyMO_user_phone', normalizedPhone);
     }
     setLoading(false);
     onBack();
+  };
+
+  const handleDeleteMemory = (id: string) => {
+    MemoryService.forgetMemory(id);
+    setMemories(MemoryService.getLocalMemories());
+  };
+
+  const handleWipeMemory = () => {
+    if (confirm("Are you sure? The AI will forget everything it learned about you.")) {
+        MemoryService.wipeMemory();
+        setMemories([]);
+    }
   };
 
   const handleSignOut = async () => {
@@ -239,7 +248,6 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
                     />
                 </div>
               </div>
-              <p className="text-[10px] text-slate-400 px-2">Used for business inquiries and receipts.</p>
            </div>
 
            <div className="space-y-2">
@@ -261,7 +269,6 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
               </div>
            </div>
 
-           {/* Driver Specific Fields */}
            {role === 'driver' && (
               <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1 flex items-center gap-2">
@@ -279,16 +286,70 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
               </div>
            )}
 
-           {/* Saved Addresses Section */}
            <div className="pt-4 border-t border-slate-200 dark:border-white/5">
               <AddressBook />
            </div>
 
         </div>
 
+        {/* AI Memory Control */}
+        <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-white/5">
+           <h3 className="text-sm font-bold text-slate-900 dark:text-white px-1 flex items-center justify-between">
+              <span>Agent Memory</span>
+              <span className="text-[10px] text-slate-400 font-normal">{memories.length} facts learned</span>
+           </h3>
+           
+           <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-2">
+                 <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-purple-100 dark:bg-purple-500/20 rounded-xl text-purple-600 dark:text-purple-400">
+                        <ICONS.Sparkles className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <div className="font-bold text-slate-900 dark:text-white text-sm">Long-Term Recall</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">Agent remembers your preferences</div>
+                    </div>
+                 </div>
+                 <button 
+                   onClick={() => setShowMemory(!showMemory)}
+                   className="text-xs font-bold text-blue-500 hover:text-blue-400"
+                 >
+                   {showMemory ? 'Hide' : 'View'}
+                 </button>
+              </div>
+
+              {showMemory && (
+                 <div className="mt-4 pt-4 border-t border-slate-200 dark:border-white/5 space-y-2 animate-in slide-in-from-top-2">
+                    {memories.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic text-center py-2">No memories yet. Chat more!</p>
+                    ) : (
+                        <div className="space-y-2 max-h-40 overflow-y-auto no-scrollbar">
+                            {memories.map(m => (
+                                <div key={m.id} className="flex justify-between items-start text-xs bg-slate-50 dark:bg-black/20 p-2 rounded-lg">
+                                    <div>
+                                        <span className="text-[9px] uppercase font-bold text-slate-400 block mb-0.5">{m.category}</span>
+                                        <span className="text-slate-700 dark:text-slate-300">{m.content}</span>
+                                    </div>
+                                    <button onClick={() => handleDeleteMemory(m.id)} className="text-slate-400 hover:text-red-500 p-1">
+                                        <ICONS.XMark className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    {memories.length > 0 && (
+                        <button onClick={handleWipeMemory} className="w-full text-center text-[10px] text-red-500 hover:text-red-400 font-bold mt-2 pt-2">
+                            Delete All Memory
+                        </button>
+                    )}
+                 </div>
+              )}
+           </div>
+        </div>
+
         {/* Preferences */}
         <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-white/5">
-           <h3 className="text-sm font-bold text-slate-900 dark:text-white px-1">Preferences</h3>
+           <h3 className="text-sm font-bold text-slate-900 dark:text-white px-1">App Settings</h3>
            
            <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-sm">
               <div className="flex items-center gap-3">
@@ -305,24 +366,6 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
                 className={`w-14 h-8 rounded-full transition-colors relative ${theme === 'dark' ? 'bg-blue-600' : 'bg-slate-200'}`}
               >
                  <div className={`w-6 h-6 bg-white rounded-full absolute top-1 shadow-md transition-all ${theme === 'dark' ? 'left-7' : 'left-1'}`} />
-              </button>
-           </div>
-
-           <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl p-4 flex items-center justify-between shadow-sm">
-              <div className="flex items-center gap-3">
-                 <div className="p-2.5 bg-slate-100 dark:bg-white/10 rounded-xl text-slate-600 dark:text-slate-300">
-                    <ICONS.Bell className="w-5 h-5" />
-                 </div>
-                 <div>
-                    <div className="font-bold text-slate-900 dark:text-white text-sm">Notifications</div>
-                    <div className="text-xs text-slate-500 dark:text-slate-400">WhatsApp broadcast updates</div>
-                 </div>
-              </div>
-              <button 
-                onClick={() => setNotificationEnabled(!notificationEnabled)}
-                className={`w-14 h-8 rounded-full transition-colors relative ${notificationEnabled ? 'bg-emerald-500' : 'bg-slate-200 dark:bg-slate-700'}`}
-              >
-                 <div className={`w-6 h-6 bg-white rounded-full absolute top-1 shadow-md transition-all ${notificationEnabled ? 'left-7' : 'left-1'}`} />
               </button>
            </div>
         </div>
@@ -348,7 +391,7 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
            </button>
            
            <div className="text-center text-[10px] text-slate-400 pt-4">
-              v2.0.0-secure • {selectedCountry.dial_code}{localPhone || 'Anonymous'}
+              v2.2.0-memory • {selectedCountry.dial_code}{localPhone || 'Anonymous'}
            </div>
         </div>
 
