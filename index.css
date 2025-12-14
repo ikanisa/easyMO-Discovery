@@ -61,3 +61,10 @@ html.dark .glass-panel {
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: none;
 }
+
+/* Safe Area Insets for iOS and notched devices */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
