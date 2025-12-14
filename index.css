@@ -29,11 +29,16 @@
    ============================================================================ */
 
 /* Base Body - Desktop backdrop, not the app itself */
+html, body {
+  height: 100%;
+}
+
 body {
   background-color: #e5e7eb; /* Gray backdrop for desktop */
   color: #0f172a;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
+  overflow-x: hidden;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
@@ -42,35 +47,20 @@ html.dark body {
   color: #f8fafc;
 }
 
-/* App Frame - The actual "phone canvas" */
+/* App Root */
 #root {
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
+  min-height: 100dvh;
+  width: 100%;
   background: transparent;
 }
 
-/* Main App Container - Constrained to phone width */
+/* Frame Outer Wrapper - Centers the phone canvas */
 .app-frame {
   width: 100%;
-  max-width: 420px;
-  min-height: 100vh;
-  background-color: #f8fafc;
-  margin: 0 auto;
-  position: relative;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.1); /* Subtle frame shadow on desktop */
-}
-
-html.dark .app-frame {
-  background-color: #0f172a;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.3);
-}
-
-/* On mobile, remove shadow and extend full width */
-@media (max-width: 420px) {
-  .app-frame {
-    box-shadow: none;
-  }
+  min-height: 100dvh;
+  display: flex;
+  justify-content: center;
+  background: transparent;
 }
 
 /* Liquid Background Gradient - Inside app frame */
@@ -147,7 +137,7 @@ html.dark .soft-border {
 
 /* Frame Outer Wrapper - Centers content with backdrop */
 .app-frame-outer {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   justify-content: center;
   background: transparent;
@@ -157,8 +147,26 @@ html.dark .soft-border {
 .app-frame-inner {
   width: 100%;
   max-width: var(--frame-max);
-  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100dvh;
   position: relative;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: #f8fafc;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.1); /* Subtle frame shadow on desktop */
+}
+
+html.dark .app-frame-inner {
+  background-color: #0f172a;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.3);
+}
+
+/* On mobile, remove shadow and extend full width */
+@media (max-width: 420px) {
+  .app-frame-inner {
+    box-shadow: none;
+  }
 }
 
 /* Fixed Element Helper - Constrain to frame */
