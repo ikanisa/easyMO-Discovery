@@ -1,7 +1,6 @@
 import React from 'react';
 import { ICONS } from '../constants';
 import { AppMode } from '../types';
-import AppFrame from './AppFrame';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -55,6 +54,42 @@ const Layout: React.FC<LayoutProps> = ({ children, currentMode, onNavigate }) =>
         </div>
       </nav>
     </AppFrame>
+    <div className="app-frame">
+      <div className="app-frame-inner">
+        <main className="min-h-[100dvh] overflow-auto pb-24 no-scrollbar scroll-smooth liquid-bg">
+          {children}
+        </main>
+
+        <nav className="frame-fixed bottom-0 z-50 px-4 pb-6 pt-2 pointer-events-none">
+          <div className="glass-panel soft-border rounded-pill flex justify-around items-center h-16 shadow-glass pointer-events-auto bg-white/70 dark:bg-slate-900/85 dark:border-white/5">
+            <NavButton
+              active={currentMode === AppMode.HOME}
+              onClick={() => onNavigate(AppMode.HOME)}
+              icon={ICONS.Home}
+              label="Home"
+            />
+            <NavButton
+              active={currentMode === AppMode.DISCOVERY}
+              onClick={() => onNavigate(AppMode.DISCOVERY)}
+              icon={ICONS.Bike}
+              label="Ride"
+            />
+            <NavButton
+              active={currentMode === AppMode.BUSINESS}
+              onClick={() => onNavigate(AppMode.BUSINESS)}
+              icon={ICONS.Store}
+              label="Market"
+            />
+            <NavButton
+              active={currentMode === AppMode.SERVICES}
+              onClick={() => onNavigate(AppMode.SERVICES)}
+              icon={ICONS.Grid}
+              label="Services"
+            />
+          </div>
+        </nav>
+      </div>
+    </div>
   );
 };
 
@@ -80,3 +115,4 @@ const NavButton: React.FC<NavButtonProps> = ({ active, onClick, icon: Icon, labe
 );
 
 export default Layout;
+

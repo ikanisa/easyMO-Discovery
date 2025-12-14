@@ -1,8 +1,47 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "./tailwind.config.js";
 
-/* Custom Scrollbar for Glass UI */
+/* ============================================
+   DESIGN SYSTEM TOKENS
+   Centralized values for consistent UI
+   ============================================ */
+
+:root {
+  /* Spacing */
+  --app-frame-width: 28rem; /* 448px - max-w-md equivalent */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  
+  /* Border Radius */
+  --radius-sm: 0.5rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 2rem;
+  --radius-full: 9999px;
+  
+  /* Shadows */
+  --shadow-card: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-elevated: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  
+  /* Glass Effect */
+  --glass-bg-light: rgba(255, 255, 255, 0.7);
+  --glass-bg-dark: rgba(30, 41, 59, 0.7);
+  --glass-border-light: rgba(0, 0, 0, 0.06);
+  --glass-border-dark: rgba(255, 255, 255, 0.08);
+  --glass-blur: 16px;
+}
+
+html.dark {
+  --glass-blur: 20px;
+}
+
+/* ============================================
+   SCROLLBAR STYLES
+   ============================================ */
+
 ::-webkit-scrollbar {
   width: 4px;
   height: 4px;
@@ -15,7 +54,6 @@
   border-radius: 10px;
 }
 
-/* Utility to hide scrollbar but keep functionality */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -23,6 +61,29 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ============================================
+   APP FRAME - Phone Canvas Container
+   Centers content on desktop, constrains to mobile width
+   ============================================ */
+
+.app-frame-backdrop {
+  /* Backdrop behind the phone frame on desktop */
+  background: linear-gradient(135deg, #e2e8f0 0%, #f1f5f9 50%, #e2e8f0 100%);
+}
+
+html.dark .app-frame-backdrop {
+  background: linear-gradient(135deg, #020617 0%, #0f172a 50%, #020617 100%);
+}
+
+.app-frame {
+  /* The phone canvas itself */
+  max-width: var(--app-frame-width);
+}
+
+/* ============================================
+   BASE BODY STYLES
+   ============================================ */
 
 /* ============================================================================
    DESIGN SYSTEM - Mobile-First Layout
@@ -46,6 +107,61 @@ html.dark body {
   background-color: #0a0a0a; /* Dark backdrop for desktop */
   color: #f8fafc;
 }
+
+/* ============================================
+   COMPONENT TOKENS (Tailwind Components Layer)
+   ============================================ */
+
+@layer components {
+  .glass-panel {
+    background-color: var(--glass-bg-light);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border-light);
+  }
+
+  html.dark .glass-panel {
+    background-color: var(--glass-bg-dark);
+    border: 1px solid var(--glass-border-dark);
+  }
+
+  .card-shadow {
+    box-shadow: var(--shadow-card);
+  }
+
+  .soft-border {
+    border: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  html.dark .soft-border {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .app-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .app-subtitle {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #64748b;
+  }
+
+  html.dark .app-subtitle {
+    color: #94a3b8;
+  }
+
+  .app-body {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+}
+
+/* ============================================
+   LIQUID BACKGROUND GRADIENT
+   ============================================ */
 
 /* App Root */
 #root {
@@ -139,6 +255,9 @@ html.dark .app-subtitle {
 
 html.dark .soft-border {
   border: 1px solid rgba(255, 255, 255, 0.1);
+
+html.dark .liquid-bg {
+  background: linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
 }
 
 /* ============================================================================

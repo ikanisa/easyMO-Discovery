@@ -405,19 +405,19 @@ const Discovery: React.FC<DiscoveryProps> = ({ role, onStartChat, onBack }) => {
         </div>
       </div>
       
-      {/* FAB for Scheduling (Passenger Only) */}
+      {/* FAB for Scheduling (Passenger Only) - positioned within app frame */}
       {role === 'passenger' && (
-        <button
-            onClick={() => setShowScheduleModal(true)}
-            className="frame-fixed bottom-24 z-40 pointer-events-none"
-            aria-label="Schedule a Trip"
-        >
-            <div className="flex justify-end pr-5 pointer-events-auto">
-              <div className="w-14 h-14 rounded-full bg-blue-600 text-white shadow-xl shadow-blue-600/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all animate-in zoom-in duration-500">
-                <ICONS.Calendar className="w-6 h-6" />
-              </div>
-            </div>
-        </button>
+        <div className="frame-fixed bottom-24 z-40 pointer-events-none">
+          <div className="flex justify-end px-4 pointer-events-auto">
+            <button
+              onClick={() => setShowScheduleModal(true)}
+              className="w-14 h-14 rounded-full bg-blue-600 text-white shadow-xl shadow-blue-600/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all animate-in zoom-in duration-500"
+              aria-label="Schedule a Trip"
+            >
+              <ICONS.Calendar className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
       )}
 
     </div>

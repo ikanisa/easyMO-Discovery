@@ -1,11 +1,13 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Message, ChatSession as ChatSessionType, BusinessListing } from '../types';
+import { AIFunctionCall, Message, ChatSession as ChatSessionType, BusinessListing, PropertyListing } from '../types';
 import { ICONS } from '../constants';
 import MessageBubble from '../components/Chat/MessageBubble';
 import { GeminiService } from '../services/gemini';
 import { getCurrentPosition } from '../services/location';
 import { pollBroadcastResponses, BusinessContact } from '../services/whatsapp';
+import { addFavorite, addViewingRequest, getUserPhoneFromStorage } from '../services/realEstateActions';
+import { logAgentEvent } from '../services/telemetry';
 
 interface ChatSessionProps {
   session: ChatSessionType;
@@ -155,16 +157,145 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
     if (genericFileInputRef.current) genericFileInputRef.current.value = '';
   };
   
-  // Helper to handle AI response generation
-  const handleAIResponse = async (history: Message[], userText: string, userImage?: string) => {
-    try {
-      let loc = { lat: -1.9441, lng: 30.0619 }; // Default Kigali
-      try { loc = await getCurrentPosition(); } catch (e) { console.warn("Using default loc"); }
+	  // Helper to handle AI response generation
+	  const handleAIResponse = async (history: Message[], userText: string, userImage?: string) => {
+	    try {
+	      let loc = { lat: -1.9441, lng: 30.0619 }; // Default Kigali
+	      try { loc = await getCurrentPosition(); } catch (e) { console.warn("Using default loc"); }
 
-      if (initialSession.type === 'support') {
-        const responseText = await GeminiService.chatSupport(history, userText, userImage);
-        const aiMsg: Message = { id: Date.now().toString(), sender: 'ai', text: responseText, timestamp: Date.now() };
-        setMessages(prev => [...prev, aiMsg]);
+	      const findPropertyById = (lookup: Message[], propertyId: string): PropertyListing | null => {
+	        if (!propertyId) return null;
+	        for (let i = lookup.length - 1; i >= 0; i--) {
+	          const payload = lookup[i].propertyPayload;
+	          if (!payload) continue;
+	          const match = payload.matches.find((m) => m.id === propertyId);
+	          if (match) return match;
+	        }
+	        return null;
+	      };
+
+	      const handleKezaFunctionCalls = async (calls: AIFunctionCall[], lookup: Message[]) => {
+	        if (!Array.isArray(calls) || calls.length === 0) return;
+	        const now = Date.now();
+	        const followUps: Message[] = [];
+
+	        for (const call of calls) {
+	          const args = call?.args || {};
+
+	          if (call.name === 'save_favorite') {
+	            const property_id = typeof (args as any).property_id === 'string' ? (args as any).property_id : '';
+	            const notes = typeof (args as any).notes === 'string' ? (args as any).notes : undefined;
+	            const property = findPropertyById(lookup, property_id);
+	            if (!property) {
+	              followUps.push({
+	                id: `sys-${now}-fav-missing`,
+	                sender: 'system',
+	                text: `⚠️ I couldn't find property "${property_id}" to save. Ask me for listings again.`,
+	                timestamp: Date.now(),
+	              });
+	              continue;
+	            }
+
+	            const favorite = addFavorite(property, notes);
+	            void logAgentEvent('keza_save_favorite', {
+	              favorite_id: favorite.id,
+	              property_id,
+	              source_url: property.source_url || null,
+	            });
+
+	            followUps.push({
+	              id: `sys-${now}-fav-${favorite.id}`,
+	              sender: 'system',
+	              text: `✅ Saved to favorites: ${property.title}`,
+	              timestamp: Date.now(),
+	            });
+	          }
+
+	          if (call.name === 'schedule_viewing') {
+	            const property_id = typeof (args as any).property_id === 'string' ? (args as any).property_id : '';
+	            const preferred_date = typeof (args as any).preferred_date === 'string' ? (args as any).preferred_date : undefined;
+	            const preferred_time = typeof (args as any).preferred_time === 'string' ? (args as any).preferred_time : undefined;
+	            const notes = typeof (args as any).notes === 'string' ? (args as any).notes : undefined;
+	            const user_phone =
+	              typeof (args as any).user_phone === 'string'
+	                ? (args as any).user_phone
+	                : getUserPhoneFromStorage() || undefined;
+
+	            const property = findPropertyById(lookup, property_id);
+	            if (!property) {
+	              followUps.push({
+	                id: `sys-${now}-view-missing`,
+	                sender: 'system',
+	                text: `⚠️ I couldn't find property "${property_id}" to schedule. Ask me for listings again.`,
+	                timestamp: Date.now(),
+	              });
+	              continue;
+	            }
+
+	            const viewing = addViewingRequest({
+	              property,
+	              preferred_date,
+	              preferred_time,
+	              user_phone,
+	              notes,
+	              status: 'pending',
+	            });
+
+	            void logAgentEvent('keza_schedule_viewing', {
+	              viewing_id: viewing.id,
+	              property_id,
+	              preferred_date: preferred_date || null,
+	              preferred_time: preferred_time || null,
+	              source_url: property.source_url || null,
+	            });
+
+	            const when = [preferred_date, preferred_time].filter(Boolean).join(' ');
+	            followUps.push({
+	              id: `sys-${now}-view-${viewing.id}`,
+	              sender: 'system',
+	              text: `📅 Viewing request saved for: ${property.title}${when ? ` (${when})` : ''}`,
+	              timestamp: Date.now(),
+	            });
+	          }
+
+	          if (call.name === 'compare_neighborhoods') {
+	            const neighborhoods = Array.isArray((args as any).neighborhoods)
+	              ? ((args as any).neighborhoods as unknown[]).map((n) => String(n))
+	              : [];
+	            const criteria = Array.isArray((args as any).criteria)
+	              ? ((args as any).criteria as unknown[]).map((c) => String(c))
+	              : undefined;
+
+	            if (neighborhoods.length < 2) {
+	              followUps.push({
+	                id: `sys-${now}-cmp-missing`,
+	                sender: 'system',
+	                text: '⚠️ Please provide at least two neighborhoods to compare.',
+	                timestamp: Date.now(),
+	              });
+	              continue;
+	            }
+
+	            void logAgentEvent('keza_compare_neighborhoods', { neighborhoods, criteria: criteria || [] });
+
+	            const comparison = await GeminiService.compareNeighborhoods(neighborhoods, criteria, loc);
+	            followUps.push({
+	              id: `ai-${Date.now()}-cmp`,
+	              sender: 'ai',
+	              text: comparison.text,
+	              groundingLinks: comparison.groundingLinks,
+	              timestamp: Date.now(),
+	            });
+	          }
+	        }
+
+	        if (followUps.length > 0) setMessages((prev) => [...prev, ...followUps]);
+	      };
+
+	      if (initialSession.type === 'support') {
+	        const responseText = await GeminiService.chatSupport(history, userText, userImage);
+	        const aiMsg: Message = { id: Date.now().toString(), sender: 'ai', text: responseText, timestamp: Date.now() };
+	        setMessages(prev => [...prev, aiMsg]);
 
       } else if (initialSession.type === 'business') {
         const result = await GeminiService.chatBob(history, userText, loc, initialSession.isDemoMode, userImage);
@@ -178,19 +309,20 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
         };
         setMessages(prev => [...prev, aiMsg]);
 
-      } else if (initialSession.type === 'real_estate') {
-        const result = await GeminiService.chatKeza(history, userText, loc, initialSession.isDemoMode, userImage);
-        const aiMsg: Message = {
-            id: Date.now().toString(),
-            sender: 'ai',
-            text: result.text,
-            groundingLinks: result.groundingLinks,
-            propertyPayload: result.propertyPayload,
-            timestamp: Date.now()
-        };
-        setMessages(prev => [...prev, aiMsg]);
-        
-      } else if (initialSession.type === 'legal') {
+	      } else if (initialSession.type === 'real_estate') {
+	        const result = await GeminiService.chatKeza(history, userText, loc, initialSession.isDemoMode, userImage);
+	        const aiMsg: Message = {
+	            id: Date.now().toString(),
+	            sender: 'ai',
+	            text: result.text,
+	            groundingLinks: result.groundingLinks,
+	            propertyPayload: result.propertyPayload,
+	            timestamp: Date.now()
+	        };
+	        setMessages(prev => [...prev, aiMsg]);
+	        await handleKezaFunctionCalls(result.functionCalls || [], [...history, aiMsg]);
+	        
+	      } else if (initialSession.type === 'legal') {
         const result = await GeminiService.chatGatera(history, userText, loc, initialSession.isDemoMode, userImage);
         const aiMsg: Message = {
           id: Date.now().toString(),
@@ -299,39 +431,20 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
   };
 
   return (
-    <div className="fixed inset-0 flex justify-center z-50">
-      <div className="w-full relative" style={{ maxWidth: '448px' }}>
-        <div className="flex flex-col h-full bg-[#0f172a] absolute inset-0">
-          <div className="h-16 glass-panel flex items-center px-4 justify-between shrink-0 border-b border-white/5 bg-[#0f172a]/90 backdrop-blur-xl z-20">
-            <button onClick={onClose} className="p-2 -ml-2 text-slate-400 hover:text-white transition-colors">
-               <ICONS.ChevronDown className="w-6 h-6 rotate-90" />
-            </button>
-            <div className="flex flex-col items-center">
-              <div className="font-semibold text-sm">{getTitle()}</div>
-              {(initialSession.type === 'business' || initialSession.type === 'real_estate' || initialSession.type === 'legal') && (
-                 <span className="text-[10px] text-emerald-400 font-medium">
-                   {initialSession.isDemoMode ? 'Demo Mode' : 'Grounded AI'}
-                 </span>
-              )}
-            </div>
-            <div className="w-8" />
-          </div>
     <>
-      {/* Backdrop */}
       <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      
-      {/* Chat Container - Constrained to frame */}
+
       <div className="frame-fixed top-0 bottom-0 flex flex-col bg-[#0f172a] z-50 overflow-hidden">
         <div className="h-16 glass-panel flex items-center px-4 justify-between shrink-0 border-b border-white/5 bg-[#0f172a]/90 backdrop-blur-xl z-20">
           <button onClick={onClose} className="p-2 -ml-2 text-slate-400 hover:text-white transition-colors">
-             <ICONS.ChevronDown className="w-6 h-6 rotate-90" />
+            <ICONS.ChevronDown className="w-6 h-6 rotate-90" />
           </button>
           <div className="flex flex-col items-center">
             <div className="font-semibold text-sm">{getTitle()}</div>
             {(initialSession.type === 'business' || initialSession.type === 'real_estate' || initialSession.type === 'legal') && (
-               <span className="text-[10px] text-emerald-400 font-medium">
-                 {initialSession.isDemoMode ? 'Demo Mode' : 'Grounded AI'}
-               </span>
+              <span className="text-[10px] text-emerald-400 font-medium">
+                {initialSession.isDemoMode ? 'Demo Mode' : 'Grounded AI'}
+              </span>
             )}
           </div>
           <div className="w-8" />
@@ -411,9 +524,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
           </button>
         </div>
       </div>
-        </div>
       </div>
-    </div>
     </>
   );
 };

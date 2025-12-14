@@ -21,7 +21,8 @@
     "html5-qrcode": "2.3.8",
     "qrcode": "1.5.3",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
