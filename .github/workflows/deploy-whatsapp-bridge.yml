@@ -59,7 +59,7 @@ jobs:
             --min-instances 0 \
             --max-instances 10 \
             --ingress all \
-            --set-secrets=TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest,TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest,TWILIO_WHATSAPP_FROM=TWILIO_WHATSAPP_FROM:latest,TWILIO_CONTENT_SID_EASYMO_BUSINESS=TWILIO_CONTENT_SID_EASYMO_BUSINESS:latest,ADMIN_API_KEY=ADMIN_API_KEY:latest,SUPABASE_SERVICE_ROLE_KEY=SUPABASE_SERVICE_ROLE_KEY:latest
+            --set-secrets=TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest,TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest,TWILIO_WHATSAPP_FROM=TWILIO_WHATSAPP_FROM:latest,TWILIO_CONTENT_SID_EASYMO_BUSINESS=TWILIO_CONTENT_SID_EASYMO_BUSINESS:latest,ADMIN_API_KEY=ADMIN_API_KEY:latest,SUPABASE_SERVICE_ROLE_KEY=SUPABASE_SERVICE_ROLE_KEY:latest,GEMINI_API_KEY=GEMINI_API_KEY:latest
 
           SERVICE_URL="$(gcloud run services describe easymo-whatsapp-bridge --region europe-west1 --project easymoai --format='value(status.url)')"
           gcloud run services update easymo-whatsapp-bridge \
