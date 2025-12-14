@@ -21,6 +21,8 @@ export async function callBackend(payload: any): Promise<ApiResponse> {
   if (payload.action === 'secure_gemini') functionName = 'chat-gemini';
   else if (payload.action === 'queue_broadcast' || payload.action === 'batch_broadcast') functionName = 'whatsapp-broadcast';
   else if (payload.action === 'check_broadcast_status') functionName = 'whatsapp-status';
+  else if (payload.action === 'schedule_trip') functionName = 'schedule-trip';
+  else if (payload.action === 'update_presence') functionName = 'update-presence';
   else if (payload.action === 'create_request') functionName = 'log-request';
   else {
     console.warn("Unknown action:", payload.action);

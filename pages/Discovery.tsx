@@ -8,6 +8,7 @@ import SmartLocationInput from '../components/Location/SmartLocationInput';
 import { PresenceUser, VehicleType, Role, Location } from '../types';
 import { PresenceService } from '../services/presence';
 import { LocationService } from '../services/location';
+import { callBackend } from '../services/api';
 import { CONFIG } from '../config';
 
 interface DiscoveryProps {
@@ -182,10 +183,25 @@ const Discovery: React.FC<DiscoveryProps> = ({ role, onStartChat, onBack }) => {
     };
   }, []);
 
-  const handleScheduleConfirm = (details: any) => {
-      // Mock Scheduling Logic
-      console.log("Trip Scheduled:", details);
-      alert(`Trip scheduled for ${details.date} at ${details.time} (${details.recurrence}).`);
+  const handleScheduleConfirm = async (details: any) => {
+      // Connect to backend to save the trip
+      try {
+        const response = await callBackend({
+          action: 'schedule_trip',
+          ...details,
+          role,
+          vehicleType: role === 'driver' ? selectedVehicle : undefined
+        });
+
+        if (response.status === 'success') {
+          alert(`✅ Trip scheduled successfully for ${details.date} at ${details.time}`);
+        } else {
+          throw new Error(response.error || response.message || 'Failed to schedule trip');
+        }
+      } catch (error: any) {
+        console.error('Schedule trip error:', error);
+        alert(`❌ Error scheduling trip: ${error.message}`);
+      }
   };
 
   return (

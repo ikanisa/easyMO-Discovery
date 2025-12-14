@@ -68,9 +68,10 @@ export const PresenceService = {
 
     // Call the SQL Function we defined
     const { data, error } = await supabase.rpc('get_nearby_drivers', {
-      lat: location.lat,
-      lng: location.lng,
-      radius_meters: 5000 // 5km radius
+      search_lat: location.lat,
+      search_lng: location.lng,
+      radius_meters: 5000, // 5km radius
+      role_filter: role === 'passenger' ? 'driver' : 'passenger'
     });
 
     if (error) {
@@ -83,12 +84,12 @@ export const PresenceService = {
     // Transform DB result to App Type
     const results = (data as any[]).map(d => ({
       sessionId: d.user_id,
-      role: 'driver' as Role,
+      role: d.role as Role,
       vehicleType: d.vehicle_type || 'moto',
-      location: { lat: d.lat, lng: d.lng },
+      location: { lat: d.location_lat, lng: d.location_lng },
       lastSeen: new Date(d.last_seen).getTime(),
       isOnline: true,
-      displayName: `Driver ${d.user_id.slice(0, 4)}`,
+      displayName: d.display_name || `User ${d.user_id.slice(0, 4)}`,
       distance: formatDistance(d.dist_meters / 1000),
       _distKm: d.dist_meters / 1000
     }));
