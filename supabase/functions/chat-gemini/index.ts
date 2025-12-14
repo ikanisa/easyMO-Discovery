@@ -53,8 +53,21 @@ serve(async (req) => {
     const data = await response.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
+    // Extract grounding links from Gemini response
+    const groundingLinks: { title: string; uri: string }[] = [];
+    if (data.candidates?.[0]?.groundingMetadata?.groundingChunks) {
+      data.candidates[0].groundingMetadata.groundingChunks.forEach((chunk: any) => {
+        if (chunk.web?.uri) {
+          groundingLinks.push({
+            title: chunk.web.title || chunk.web.uri,
+            uri: chunk.web.uri
+          });
+        }
+      });
+    }
+
     return new Response(
-      JSON.stringify({ status: 'success', text }),
+      JSON.stringify({ status: 'success', text, groundingLinks }),
       {
         headers: {
           'Content-Type': 'application/json',

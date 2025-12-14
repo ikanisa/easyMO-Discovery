@@ -196,6 +196,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
           id: Date.now().toString(),
           sender: 'ai',
           text: result.text,
+          groundingLinks: result.groundingLinks,
           legalPayload: result.legalPayload,
           timestamp: Date.now()
         };

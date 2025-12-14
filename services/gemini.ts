@@ -14,11 +14,165 @@ const clientAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
  * Proxies the prompt to the Google Apps Script Backend.
  * Protocol: POST { "action": "secure_gemini", "prompt": "...", "tools": [...], "location": {...} }
  */
+type GroundingLink = { title: string; uri: string };
+
+type GeminiResult = {
+  text: string;
+  groundingLinks: GroundingLink[];
+  raw?: any;
+};
+
+const KEZA_WORLD_CLASS_PROMPT = `You are "Keza", easyMO's Real Estate Concierge for Rwanda.
+
+MISSION
+Help users find apartments, houses, and land for rent or sale in Rwanda, using Google Maps + Google Search grounding.
+
+NON-NEGOTIABLE RULES
+- Do NOT invent listings, prices, agencies, phone numbers, URLs, or addresses.
+- If you cannot find enough listings, return fewer matches and say so in the summary.
+- Prefer VERIFIED, contactable sources (agencies + listings) with phone numbers.
+- Use Rwanda context (RWF currency; Kigali neighborhoods; UPI/land title checks).
+- Output MUST be valid JSON only (no markdown fences).
+
+SEARCH STRATEGY (Use tools)
+1) Google Maps (primary):
+   - "Real estate agency near [area]"
+   - "[property type] for rent in [area]"
+   - "[property type] for sale in [area]"
+   Extract: name, rating, address, phone, website, and any listing links/photos.
+2) Google Search (secondary):
+   - "[property type] [area] Rwanda site:jiji.co.rw"
+   - "[property type] [area] Rwanda site:facebook.com"
+   - "[property type] [area] Rwanda site:instagram.com"
+
+PRICING INTELLIGENCE (Rwanda, Kigali benchmarks — use as sanity checks)
+- 2BR (Kicukiro): 250,000–500,000 RWF/month
+- 3BR (Kimihurura): 500,000–1,200,000 RWF/month
+- Furnished premium: +30–50%
+If a listing deviates >40%, set price_assessment to "below_market" or "above_market" and explain briefly.
+
+LEGAL GUIDANCE (always mention briefly)
+- For purchases: verify UPI, check encumbrances, transfer tax ~2%
+- For rentals: typical deposit 1–3 months; lease registration recommended >3 years
+
+OUTPUT JSON SCHEMA
+{
+  "query_summary": "string",
+  "matches": [
+    {
+      "title": "string",
+      "property_type": "Apartment|House|Land|Commercial|Other",
+      "listing_type": "rent|sale|unknown",
+      "price": 0,
+      "currency": "RWF",
+      "price_assessment": "below_market|fair|above_market",
+      "bedroom_count": 0,
+      "bathroom_count": 0,
+      "area_label": "string",
+      "neighborhood_score": 0,
+      "nearby": ["string"],
+      "amenities": ["string"],
+      "contact_phone": "+2507XXXXXXXX",
+      "agency_name": "string",
+      "verified": true,
+      "source_platform": "Google Maps|Google Search|Other",
+      "source_url": "https://...",
+      "photos": ["https://..."],
+      "confidence": "high|medium|low",
+      "why_recommended": "string"
+    }
+  ]
+}`;
+
+const parseInlineImage = (userImage: string): { mimeType: string; data: string } | null => {
+  if (!userImage) return null;
+  const trimmed = userImage.trim();
+  const match = trimmed.match(/^data:([^;]+);base64,(.*)$/);
+  if (match) return { mimeType: match[1], data: match[2] };
+
+  // Fallback: already-base64 input (assume jpeg)
+  if (/^[A-Za-z0-9+/=]+$/.test(trimmed) && trimmed.length > 100) {
+    return { mimeType: 'image/jpeg', data: trimmed };
+  }
+  return null;
+};
+
+const analyzePropertyImageForKeza = async (userImage: string): Promise<string | null> => {
+  const parsed = parseInlineImage(userImage);
+  if (!parsed) return null;
+
+  const imagePrompt = `Analyze this Rwanda property image and extract:
+1) Property type (apartment/house/land)
+2) Estimated condition (new/good/needs_renovation)
+3) Visible amenities (parking, garden, pool, security, etc.)
+4) Approximate size/scale estimate (rough)
+5) Potential red flags (structural issues, dampness, poor finishes, etc.)
+6) Rough market value estimate range in RWF (if possible)
+
+Output JSON only:
+{
+  "property_type": "string",
+  "condition": "string",
+  "amenities": ["string"],
+  "red_flags": ["string"],
+  "estimated_value_rwf": 0
+}`;
+
+  const contents = [
+    {
+      role: 'user',
+      parts: [
+        { text: imagePrompt },
+        { inlineData: { mimeType: parsed.mimeType, data: parsed.data } },
+      ],
+    },
+  ];
+
+  try {
+    const result = await askGemini(imagePrompt, undefined, undefined, {
+      contents,
+      generationConfig: { temperature: 0.2, maxOutputTokens: 512 },
+    });
+    return result.text || null;
+  } catch (e) {
+    console.warn('Keza image analysis failed:', e);
+    return null;
+  }
+};
+
+const extractGroundingLinks = (response: any, responseText: string): GroundingLink[] => {
+  const links: GroundingLink[] = [];
+
+  const chunks = response?.candidates?.[0]?.groundingMetadata?.groundingChunks;
+  if (Array.isArray(chunks)) {
+    chunks.forEach((chunk: any) => {
+      const uri = chunk?.web?.uri || chunk?.maps?.uri || chunk?.retrievedContext?.uri;
+      if (typeof uri === 'string' && uri.length > 0) {
+        const title =
+          chunk?.web?.title ||
+          chunk?.maps?.title ||
+          chunk?.retrievedContext?.title ||
+          'Source';
+        if (!links.find((l) => l.uri === uri)) links.push({ title, uri });
+      }
+    });
+  }
+
+  const urlRegex = /https?:\/\/[^\s\)]+/g;
+  const textUrls = responseText?.match(urlRegex) || [];
+  textUrls.forEach((uri: string) => {
+    if (!links.find((l) => l.uri === uri)) links.push({ title: 'Referenced Source', uri });
+  });
+
+  return links;
+};
+
 const askGemini = async (
   prompt: string, 
   tools?: any[], 
-  userLocation?: { lat: number, lng: number }
-): Promise<string> => {
+  userLocation?: { lat: number, lng: number },
+  options?: { contents?: any[]; generationConfig?: any }
+): Promise<GeminiResult> => {
   
   // Construct Tool Config for Maps Grounding if Maps tool is present
   let toolConfig: any = undefined;
@@ -39,11 +193,18 @@ const askGemini = async (
       action: "secure_gemini",
       prompt: prompt,
       tools: tools,
-      toolConfig: toolConfig // Pass config to backend
+      toolConfig: toolConfig, // Pass config to backend
+      ...(options?.contents ? { contents: options.contents } : {}),
+      ...(options?.generationConfig ? { generationConfig: options.generationConfig } : {}),
     });
     
     if (response.status === 'success' && response.text) {
-        return response.text;
+        const text = response.text as string;
+        const groundingLinks = Array.isArray((response as any).groundingLinks)
+          ? ((response as any).groundingLinks as GroundingLink[])
+          : extractGroundingLinks(response, text);
+
+        return { text, groundingLinks, raw: response };
     }
     
     console.warn("Backend Gemini Failed, falling back to client-side:", response.message || response.error);
@@ -62,13 +223,15 @@ const askGemini = async (
 
       const result = await clientAI.models.generateContent({
           model: model,
-          contents: prompt,
+          contents: options?.contents || prompt,
           config: config
       });
-      return result.text || "No response generated.";
+      const text = result.text || "No response generated.";
+      const groundingLinks = extractGroundingLinks(result as any, text);
+      return { text, groundingLinks, raw: result };
   } catch (clientError: any) {
       console.error("Direct Gemini Client Error:", clientError);
-      return "I am having trouble connecting to the brain (Both Secure & Direct channels failed).";
+      return { text: "I am having trouble connecting to the brain (Both Secure & Direct channels failed).", groundingLinks: [] };
   }
 };
 
@@ -111,7 +274,7 @@ const runBackgroundMemoryExtraction = async (userMessage: string, aiResponse: st
 
     // We use a cheaper/faster call or the same model
     const result = await askGemini(extractionPrompt);
-    const data = extractJson(result);
+    const data = extractJson(result.text);
 
     if (data && data.fact) {
       console.log("🧠 Memory Extracted:", data.fact);
@@ -173,12 +336,12 @@ export const GeminiService = {
     Answer briefly and helpfully. If they need to talk to a human admin, tell them to use the WhatsApp button on the Support page.`;
 
     const prompt = formatPromptFromHistory(history, systemPrompt, userMessage, "Unknown");
-    const response = await askGemini(prompt);
+    const result = await askGemini(prompt, [{googleSearch: {}}]); // Enable search for documentation lookup
     
     // Trigger Memory Loop
-    runBackgroundMemoryExtraction(userMessage, response);
+    runBackgroundMemoryExtraction(userMessage, result.text);
     
-    return response;
+    return result.text;
   },
 
   resolveLocation: async (query: string, userLat?: number, userLng?: number): Promise<{ address: string, lat?: number, lng?: number, name?: string }> => {
@@ -196,7 +359,7 @@ export const GeminiService = {
     `;
 
     const raw = await askGemini(prompt, [{googleSearch: {}}, {googleMaps: {}}], userLat && userLng ? { lat: userLat, lng: userLng } : undefined);
-    const data = extractJson(raw);
+    const data = extractJson(raw.text);
     
     if (data && data.address) return data;
     return { address: query }; 
@@ -208,7 +371,7 @@ export const GeminiService = {
       In 10 words or less, describe this area. Be concise and accurate.
     `;
     const text = await askGemini(prompt, [{googleMaps: {}}], { lat, lng });
-    return text.replace(/"/g, '').trim();
+    return text.text.replace(/"/g, '').trim();
   },
 
   chatBob: async (
@@ -256,13 +419,13 @@ export const GeminiService = {
     const prompt = formatPromptFromHistory(history, systemPrompt, userMessage, locStr);
     
     const tools = [{googleSearch: {}}, {googleMaps: {}}];
-    const rawText = await askGemini(prompt, tools, userLocation); 
+    const result = await askGemini(prompt, tools, userLocation); 
     
     // Trigger Memory Loop
-    runBackgroundMemoryExtraction(userMessage, rawText);
+    runBackgroundMemoryExtraction(userMessage, result.text);
 
-    const parsedJson = extractJson(rawText);
-    const cleanText = rawText.replace(/```json[\s\S]*?```/g, '').replace(/```[\s\S]*?```/g, '').replace(/\{[\s\S]*\}/g, '').trim();
+    const parsedJson = extractJson(result.text);
+    const cleanText = result.text.replace(/```json[\s\S]*?```/g, '').replace(/```[\s\S]*?```/g, '').replace(/\{[\s\S]*\}/g, '').trim();
 
     let payload: BusinessResultsPayload | undefined;
     if (parsedJson && Array.isArray(parsedJson.matches)) {
@@ -285,7 +448,7 @@ export const GeminiService = {
         };
     }
 
-    return { text: cleanText || "Here is what I found:", businessPayload: payload };
+    return { text: cleanText || "Here is what I found:", businessPayload: payload, groundingLinks: result.groundingLinks };
   },
 
   chatKeza: async (
@@ -297,56 +460,123 @@ export const GeminiService = {
   ): Promise<{ text: string, propertyPayload?: PropertyResultsPayload, groundingLinks?: { title: string; uri: string }[] }> => {
     
     const locStr = `${userLocation.lat}, ${userLocation.lng}`;
-    const systemPrompt = `You are "Keza", easyMO's Real Estate Concierge.
-    
-    YOUR JOB:
-    Find apartments, houses, and land for Rent or Sale in Rwanda.
-    Use Google Maps to find Real Estate Agencies and specific property listings if available.
-    
-    JSON SCHEMA:
-    {
-       "query_summary": "Found 3 apartments in Gisozi...",
-       "matches": [
-          { "title": "2 Bedroom Apartment", "price": 300000, "currency": "RWF", "listing_type": "rent", "contact_phone": "+250...", "area_label": "Gisozi" }
-       ]
-    }`;
+    let imageAnalysisContext = '';
+    if (userImage) {
+      const imageAnalysis = await analyzePropertyImageForKeza(userImage);
+      if (imageAnalysis) {
+        imageAnalysisContext = `\n\nUSER PROVIDED PROPERTY IMAGE (analysis):\n${imageAnalysis}\n\nUse this analysis to tailor recommendations and questions.`;
+      }
+    }
+
+    const systemPrompt = `${KEZA_WORLD_CLASS_PROMPT}${imageAnalysisContext}`;
 
     const prompt = formatPromptFromHistory(history, systemPrompt, userMessage, locStr);
     const tools = [{googleSearch: {}}, {googleMaps: {}}];
-    const rawText = await askGemini(prompt, tools, userLocation);
+    const result = await askGemini(prompt, tools, userLocation);
     
-    runBackgroundMemoryExtraction(userMessage, rawText);
+    runBackgroundMemoryExtraction(userMessage, result.text);
 
-    const parsedJson = extractJson(rawText);
-    const cleanText = rawText.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*\}/g, '').trim();
+    const parsedJson = extractJson(result.text);
+    const cleanText = result.text.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*\}/g, '').trim();
 
     let payload: PropertyResultsPayload | undefined;
     if (parsedJson && Array.isArray(parsedJson.matches)) {
+        const toNumberOrNull = (v: any): number | null => {
+          if (typeof v === 'number' && Number.isFinite(v)) return v;
+          if (typeof v === 'string') {
+            const normalized = v.replace(/,/g, '').trim();
+            const n = Number(normalized);
+            return Number.isFinite(n) ? n : null;
+          }
+          return null;
+        };
+
+        const toNumberOrZero = (v: any): number => toNumberOrNull(v) ?? 0;
+
+        const normalizeListingType = (v: any): 'rent' | 'sale' | 'unknown' => {
+          const s = String(v || '').toLowerCase();
+          if (s === 'rent' || s === 'rental' || s === 'to rent' || s === 'lease') return 'rent';
+          if (s === 'sale' || s === 'sell' || s === 'for sale') return 'sale';
+          return 'unknown';
+        };
+
+        const normalizeConfidence = (v: any): 'high' | 'medium' | 'low' => {
+          const s = String(v || '').toLowerCase();
+          if (s === 'high') return 'high';
+          if (s === 'medium' || s === 'med') return 'medium';
+          if (s === 'low') return 'low';
+          return 'medium';
+        };
+
+        const normalizePriceAssessment = (v: any): 'below_market' | 'fair' | 'above_market' | undefined => {
+          const s = String(v || '').toLowerCase();
+          if (s === 'below_market' || s === 'below') return 'below_market';
+          if (s === 'above_market' || s === 'above') return 'above_market';
+          if (s === 'fair' || s === 'market' || s === 'market_rate') return 'fair';
+          return undefined;
+        };
+
+        const normalizeStringArray = (v: any): string[] | undefined => {
+          if (!Array.isArray(v)) return undefined;
+          const out = v.map((x) => String(x || '').trim()).filter(Boolean);
+          return out.length > 0 ? out : undefined;
+        };
+
+        const filters = parsedJson.filters_detected || parsedJson.filters_applied || {};
+
         payload = {
             query_summary: parsedJson.query_summary || "Properties found.",
-            filters_applied: { listing_type: 'unknown', property_type: 'unknown', budget_min: 0, budget_max: 0, area: '', radius_km: 0, sort: 'default' },
-            disclaimer: "Confirm availability with agent.",
-            pagination: { page: 1, page_size: 10, has_more: false },
+            filters_applied: {
+              listing_type: filters.listing_type || 'unknown',
+              property_type: filters.property_type || 'unknown',
+              budget_min: toNumberOrZero(filters.budget_min),
+              budget_max: toNumberOrZero(filters.budget_max),
+              area: filters.area || '',
+              radius_km: toNumberOrZero(filters.radius_km),
+              sort: filters.sort || 'default',
+            },
+            disclaimer:
+              parsedJson.disclaimer ||
+              "Confirm availability and verify details with the agent/agency (UPI/title checks for purchases).",
+            pagination: parsedJson.pagination || { page: 1, page_size: 10, has_more: false },
             matches: parsedJson.matches.map((m: any, idx: number) => ({
                 id: `prop-${idx}`,
                 title: m.title || "Property",
-                property_type: "Apartment",
-                listing_type: m.listing_type || "rent",
-                price: m.price || 0,
+                property_type: m.property_type || "Property",
+                listing_type: normalizeListingType(m.listing_type),
+                price: toNumberOrNull(m.price),
                 currency: m.currency || "RWF",
-                bedroom_count: m.bedroom_count || 2,
-                bathroom_count: m.bathroom_count || 1,
-                area_label: m.area_label || "Kigali",
-                approx_distance_km: 1.2,
-                contact_phone: normalizePhoneNumber(m.contact_phone),
-                confidence: 'high',
-                why_recommended: "Matches your criteria",
-                whatsapp_draft: `Hello, I am interested in ${m.title} available for ${m.listing_type}.`
+                price_assessment: normalizePriceAssessment(m.price_assessment),
+                bedroom_count: toNumberOrNull(m.bedroom_count),
+                bathroom_count: toNumberOrNull(m.bathroom_count),
+                area_sqm: toNumberOrNull(m.area_sqm),
+                area_label: m.area_label || m.area || "Kigali",
+                approx_distance_km: toNumberOrNull(m.approx_distance_km),
+                neighborhood_score: toNumberOrNull(m.neighborhood_score),
+                nearby: normalizeStringArray(m.nearby),
+                amenities: normalizeStringArray(m.amenities),
+                contact_phone: normalizePhoneNumber(m.contact_phone || m.phone || m.contact),
+                agency_name: m.agency_name,
+                verified: typeof m.verified === 'boolean' ? m.verified : undefined,
+                source_platform: m.source_platform || m.source,
+                source_url: m.source_url,
+                photos: normalizeStringArray(m.photos),
+                confidence: normalizeConfidence(m.confidence),
+                why_recommended: m.why_recommended || "Matches your criteria",
+                whatsapp_draft:
+                  m.whatsapp_draft ||
+                  `Hello, I am interested in ${m.title || 'this property'} (${normalizeListingType(m.listing_type)}).`,
             }))
         };
     }
 
-    return { text: cleanText || "Here are some listings.", propertyPayload: payload };
+    const fallbackText =
+      cleanText ||
+      parsedJson?.market_insight ||
+      parsedJson?.query_summary ||
+      "Here are some listings.";
+
+    return { text: fallbackText, propertyPayload: payload, groundingLinks: result.groundingLinks };
   },
 
   chatGatera: async (
@@ -398,13 +628,13 @@ export const GeminiService = {
     
     const prompt = formatPromptFromHistory(history, systemPrompt, userMessage, `${userLocation.lat},${userLocation.lng}`);
     const tools = [{googleSearch: {}}];
-    const rawText = await askGemini(prompt, tools, userLocation); 
+    const result = await askGemini(prompt, tools, userLocation); 
     
-    runBackgroundMemoryExtraction(userMessage, rawText);
+    runBackgroundMemoryExtraction(userMessage, result.text);
 
     // Gatera no longer returns JSON payloads (no lawyer finder mode)
     // Return the rich text response directly
-    return { text: rawText };
+    return { text: result.text, groundingLinks: result.groundingLinks };
   },
   
   // Aliases

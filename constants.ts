@@ -44,6 +44,10 @@ export const ICONS = {
       React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "m4.5 12.75 6 6 9-13.5", key: "check" })
     )
   ),
+  CheckCircle: createIcon([
+    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M9 12.75 11.25 15 15 9.75", key: "checkc1" }),
+    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z", key: "checkc2" })
+  ]),
   Bike: (props: React.SVGProps<SVGSVGElement>) => (
     React.createElement('svg', { fill: "none", viewBox: "0 0 24 24", strokeWidth: 1.5, stroke: "currentColor", ...props },
        React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M5.5 17.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5Z", key: "wheel_back" }), 
