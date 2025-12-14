@@ -359,7 +359,13 @@ export const GeminiService = {
     
     const systemPrompt = `You are "Gatera", Rwanda's Premier AI Legal Expert.
     
-    You have TWO distinct operating modes. You must auto-detect which mode to use based on the user's request.
+    You have exactly TWO distinct operating modes. You must auto-detect which mode to use based on the user's request.
+
+    **CRITICAL RULES:**
+    - You are NOT a directory. Do NOT search for lawyers, notaries, or bailiffs.
+    - You do NOT use Google Maps.
+    - You ONLY use Google Search for legal research.
+    - If user asks to find a lawyer/notary, reply: "I am a Legal Advisor and Contract Drafter. To find a lawyer or notary near you, please use Bob in the Market tab."
 
     === MODE 1: LEGAL ADVISOR (Research & Advice) ===
     Trigger: User asks a legal question, asks for advice, clarification on laws, or rights (e.g., "Can I fire my maid?", "What is the penalty for drunk driving?", "How to register a company?").
@@ -376,12 +382,7 @@ export const GeminiService = {
     *Formatting:* Use Bold for Articles. Use bullet points for steps.
     *Disclaimer:* ALWAYS end with: "Disclaimer: I am an AI. This is information, not legal counsel. Consult a Bar Association lawyer for court representation."
 
-    === MODE 2: NOTARY/LAWYER FINDER ===
-    Trigger: User asks to find a Notary, Lawyer, or Bailiff near them.
-    
-    **Action:** Use Google Maps tool to find professionals near the user's location.
-    
-    === MODE 3: CONTRACT DRAFTER ===
+    === MODE 2: CONTRACT DRAFTER ===
     Trigger: User asks to "write", "draft", "make" a contract, agreement, letter, or affidavit.
     
     **Protocol:**
@@ -392,44 +393,18 @@ export const GeminiService = {
 
     ===================================================
     **Output Instructions:**
-    If finding professionals, return JSON.
-    If providing ADVICE or DRAFT, provide rich text.
-    
-    JSON SCHEMA (Only if recommending human professionals):
-    {
-       "matches": [
-          { "name": "Me. John Doe", "category": "Advocate", "phone": "+250...", "distance": "Kimihurura", "snippet": "Specializes in Labor Law" }
-       ]
-    }
+    Provide rich text for ADVICE or DRAFT responses. Do NOT return JSON for lawyer listings.
     `;
     
     const prompt = formatPromptFromHistory(history, systemPrompt, userMessage, `${userLocation.lat},${userLocation.lng}`);
-    const tools = [{googleSearch: {}}, {googleMaps: {}}];
+    const tools = [{googleSearch: {}}];
     const rawText = await askGemini(prompt, tools, userLocation); 
     
     runBackgroundMemoryExtraction(userMessage, rawText);
 
-    const parsedJson = extractJson(rawText);
-    const cleanText = rawText.replace(/```json[\s\S]*?```/g, '').replace(/```[\s\S]*?```/g, '').replace(/\{[\s\S]*\}/g, '').trim();
-
-    let legalPayload: LegalResultsPayload | undefined;
-    if (parsedJson && Array.isArray(parsedJson.matches)) {
-        legalPayload = {
-            query_summary: "Here are recommended legal professionals:",
-            matches: parsedJson.matches.map((m: any, idx: number) => ({
-                id: `legal-${idx}`,
-                name: m.name,
-                category: m.category || 'Lawyer',
-                distance: m.distance || 'Kigali',
-                phoneNumber: normalizePhoneNumber(m.phone) || m.phone,
-                confidence: 'High',
-                snippet: m.snippet,
-                whatsappDraft: "Hello Counsel, I found you on easyMO and require legal assistance."
-            }))
-        };
-    }
-
-    return { text: cleanText || rawText, legalPayload };
+    // Gatera no longer returns JSON payloads (no lawyer finder mode)
+    // Return the rich text response directly
+    return { text: rawText };
   },
   
   // Aliases
