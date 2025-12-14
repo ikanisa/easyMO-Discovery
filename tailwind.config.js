@@ -15,7 +15,17 @@ export default {
       },
       backdropBlur: {
         xs: '2px',
-      }
+      },
+      maxWidth: {
+        'app': '28rem', // 448px - phone canvas width
+      },
+      borderRadius: {
+        'card': '1.5rem',
+        'widget': '2rem',
+      },
+      spacing: {
+        'safe-bottom': 'env(safe-area-inset-bottom)',
+      },
     },
   },
   plugins: [],
