@@ -40,14 +40,14 @@ const HomeWidget = ({
 }) => (
   <button
     onClick={onClick}
-    className={`group relative flex flex-col items-start justify-between p-5 w-full h-40 rounded-[2rem] border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-2xl overflow-hidden transition-all duration-300 active:scale-95 hover:bg-slate-50 dark:hover:bg-white/10 shadow-xl shadow-slate-200 dark:shadow-black/20 animate-in zoom-in fill-mode-backwards ${className}`}
+    className={`group relative flex flex-col items-start justify-between p-5 w-full h-40 rounded-widget soft-border glass-panel card-shadow overflow-hidden transition-all duration-300 active:scale-95 hover:bg-slate-50 dark:hover:bg-white/10 animate-in zoom-in fill-mode-backwards ${className}`}
     style={{ animationDelay: `${delay}ms` }}
   >
     {/* Hover Gradient Overlay */}
     <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 bg-gradient-to-br ${gradient}`} />
     
     {/* Icon Container */}
-    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center bg-gradient-to-br ${gradient} shadow-lg text-white group-hover:scale-110 transition-transform duration-300 z-10`}>
+    <div className={`w-12 h-12 rounded-button flex items-center justify-center bg-gradient-to-br ${gradient} shadow-lg text-white group-hover:scale-110 transition-transform duration-300 z-10`}>
       <Icon className="w-6 h-6" />
     </div>
 
@@ -189,10 +189,10 @@ const App: React.FC = () => {
 
           {/* Header Section */}
           <div className="pt-12 px-6 pb-6 text-center animate-in fade-in slide-in-from-top-4 duration-700">
-            <h1 className="text-5xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-br from-blue-600 via-emerald-500 to-purple-600 dark:from-blue-400 dark:via-emerald-400 dark:to-purple-400 drop-shadow-sm mb-3">
+            <h1 className="app-title text-5xl mb-3 bg-clip-text text-transparent bg-gradient-to-br from-blue-600 via-emerald-500 to-purple-600 dark:from-blue-400 dark:via-emerald-400 dark:to-purple-400 drop-shadow-sm">
               easyMO
             </h1>
-            <p className="text-slate-500 dark:text-slate-400 font-medium text-sm tracking-wide max-w-xs mx-auto leading-relaxed">
+            <p className="app-subtitle max-w-xs mx-auto leading-relaxed">
               Your Everyday Companion<br/>
               <span className="text-xs opacity-75 font-bold mt-1 block">Move • Shop • Legal • Business</span>
             </p>
@@ -200,18 +200,18 @@ const App: React.FC = () => {
 
           {/* Home Search Bar */}
           <div className="px-6 pb-8 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-100">
-             <div className="relative group w-full max-w-md mx-auto">
+             <div className="relative group w-full">
                 <input 
                    type="text" 
                    value={homeSearchQuery}
                    onChange={(e) => setHomeSearchQuery(e.target.value)}
                    onKeyDown={(e) => e.key === 'Enter' && handleHomeSearch()}
                    placeholder="Search for products, services, or places..."
-                   className="w-full bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl pl-5 pr-12 py-4 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white dark:focus:bg-slate-900/80 transition-all shadow-lg shadow-slate-200/50 dark:shadow-black/5"
+                   className="w-full glass-panel rounded-card pl-5 pr-12 py-4 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white dark:focus:bg-slate-900/80 transition-all"
                 />
                 <button 
                    onClick={handleHomeSearch}
-                   className="absolute right-2 top-2 p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-colors shadow-md active:scale-95"
+                   className="absolute right-2 top-2 p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-button transition-colors shadow-md active:scale-95"
                 >
                    <ICONS.Search className="w-4 h-4" />
                 </button>
@@ -219,14 +219,14 @@ const App: React.FC = () => {
           </div>
           
           {/* Main Grid Section */}
-          <div className="px-6 pb-6 space-y-6">
+          <div className="px-6 space-y-6">
             
             {/* Section: Mobility */}
-            <div>
-              <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 px-1 flex items-center gap-2">
-                <span className="w-8 h-px bg-slate-300 dark:bg-slate-800"></span>
+            <section>
+              <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 px-1 flex items-center gap-2">
+                <span className="w-8 h-px bg-slate-300 dark:bg-slate-700"></span>
                 Mobility
-                <span className="flex-1 h-px bg-slate-300 dark:bg-slate-800"></span>
+                <span className="flex-1 h-px bg-slate-300 dark:bg-slate-700"></span>
               </h2>
               <div className="grid grid-cols-2 gap-4">
                 <HomeWidget 
@@ -253,14 +253,14 @@ const App: React.FC = () => {
                    delay={100}
                 />
               </div>
-            </div>
+            </section>
 
             {/* Section: Discovery & Tools */}
-            <div>
-              <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 px-1 flex items-center gap-2">
-                <span className="w-8 h-px bg-slate-300 dark:bg-slate-800"></span>
+            <section>
+              <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 px-1 flex items-center gap-2">
+                <span className="w-8 h-px bg-slate-300 dark:bg-slate-700"></span>
                 Lifestyle & Tools
-                <span className="flex-1 h-px bg-slate-300 dark:bg-slate-800"></span>
+                <span className="flex-1 h-px bg-slate-300 dark:bg-slate-700"></span>
               </h2>
               <div className="grid grid-cols-2 gap-4">
                 {/* Tool 1: MoMo Generator */}
@@ -282,33 +282,33 @@ const App: React.FC = () => {
                    delay={300}
                 />
               </div>
-            </div>
+            </section>
           </div>
 
-          {/* Quick Actions / Services */}
-          <div className="pl-6 pb-8">
-            <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 pr-6 flex items-center gap-2">
+          {/* Quick Actions / Services - Horizontal Scroll */}
+          <section className="pl-6 pb-8">
+            <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 pr-6">
                Services
             </h2>
             <div className="flex gap-4 overflow-x-auto no-scrollbar pr-6 pb-4">
-               {/* Quick Action 1: Notary - Updated Label */}
+               {/* Quick Action 1: Legal Advisor */}
                <button 
                   onClick={() => startChat('legal')}
-                  className="min-w-[140px] h-32 rounded-3xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 p-4 flex flex-col justify-between hover:bg-slate-50 dark:hover:bg-white/10 transition-colors animate-in slide-in-from-right-4 duration-700 shadow-sm"
+                  className="min-w-[140px] h-32 rounded-card glass-panel soft-border p-4 flex flex-col justify-between hover:bg-slate-50 dark:hover:bg-white/10 transition-colors animate-in slide-in-from-right-4 duration-700"
                >
                   <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
                      <ICONS.Scale className="w-4 h-4" />
                   </div>
                   <div className="text-left">
                      <div className="text-sm font-bold text-slate-900 dark:text-slate-200">Legal Advisor</div>
-                     <div className="text-[10px] text-slate-500 font-medium">Research & Draft</div>
+                     <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Research & Draft</div>
                   </div>
                </button>
 
                {/* Quick Action 2: Insurance */}
                <button 
                   onClick={() => window.open('https://wa.me/250795588248?text=Hello,%20I%20would%20like%20to%20inquire%20about%20insurance%20services.', '_blank')}
-                  className="min-w-[140px] h-32 rounded-3xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 p-4 flex flex-col justify-between hover:bg-slate-50 dark:hover:bg-white/10 transition-colors animate-in slide-in-from-right-4 duration-700 shadow-sm"
+                  className="min-w-[140px] h-32 rounded-card glass-panel soft-border p-4 flex flex-col justify-between hover:bg-slate-50 dark:hover:bg-white/10 transition-colors animate-in slide-in-from-right-4 duration-700"
                   style={{ animationDelay: '100ms' }}
                >
                   <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
@@ -316,7 +316,7 @@ const App: React.FC = () => {
                   </div>
                   <div className="text-left">
                      <div className="text-sm font-bold text-slate-900 dark:text-slate-200">Insurance</div>
-                     <div className="text-[10px] text-slate-500 font-medium">Get Covered</div>
+                     <div className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Get Covered</div>
                   </div>
                </button>
 

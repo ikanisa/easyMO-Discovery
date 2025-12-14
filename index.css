@@ -24,28 +24,66 @@
   scrollbar-width: none;
 }
 
-/* Base Body - Default Light Mode */
+/* ============================================================================
+   DESIGN SYSTEM - Mobile-First Layout
+   ============================================================================ */
+
+/* Base Body - Desktop backdrop, not the app itself */
 body {
-  background-color: #f8fafc;
+  background-color: #e5e7eb; /* Gray backdrop for desktop */
   color: #0f172a;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Dark Mode Override */
 html.dark body {
-  background-color: #0f172a;
+  background-color: #0a0a0a; /* Dark backdrop for desktop */
   color: #f8fafc;
 }
 
-/* Liquid Background Gradient */
+/* App Frame - The actual "phone canvas" */
+#root {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  background: transparent;
+}
+
+/* Main App Container - Constrained to phone width */
+.app-frame {
+  width: 100%;
+  max-width: 420px;
+  min-height: 100vh;
+  background-color: #f8fafc;
+  margin: 0 auto;
+  position: relative;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.1); /* Subtle frame shadow on desktop */
+}
+
+html.dark .app-frame {
+  background-color: #0f172a;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.3);
+}
+
+/* On mobile, remove shadow and extend full width */
+@media (max-width: 420px) {
+  .app-frame {
+    box-shadow: none;
+  }
+}
+
+/* Liquid Background Gradient - Inside app frame */
 .liquid-bg {
   background: radial-gradient(circle at 50% 10%, #e2e8f0 0%, #f8fafc 100%);
 }
 html.dark .liquid-bg {
   background: radial-gradient(circle at 50% 10%, #1e293b 0%, #0f172a 100%);
 }
+
+/* ============================================================================
+   DESIGN TOKENS - Component Styles
+   ============================================================================ */
 
 /* Glass Panel - Adaptive */
 .glass-panel {
@@ -54,10 +92,47 @@ html.dark .liquid-bg {
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(0, 0, 0, 0.05);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  border-radius: 1.5rem; /* Token: card radius */
 }
 
 html.dark .glass-panel {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: none;
+}
+
+/* Typography Tokens */
+.app-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.app-subtitle {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+html.dark .app-subtitle {
+  color: #94a3b8;
+}
+
+.app-body {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+/* Card Shadow Token */
+.card-shadow {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+/* Soft Border Token */
+.soft-border {
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+html.dark .soft-border {
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
