@@ -26,7 +26,8 @@ dist-ssr
 # Node
 node_modules
 .env
-.env.*
+.env.local
+.env.*.local
 npm-debug.log*
 .DS_Store
 
