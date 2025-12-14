@@ -8,6 +8,8 @@ import { ICONS } from './constants';
 import { useTheme } from './context/ThemeContext';
 import { sendCategoryRequest } from './services/requestLogger';
 import InstallPrompt from './components/InstallPrompt';
+import UpdatePrompt from './components/UpdatePrompt';
+import OfflineIndicator from './components/OfflineIndicator';
 import { supabase } from './services/supabase';
 
 // Lazy Load Pages for Performance Code Splitting
@@ -399,7 +401,9 @@ const App: React.FC = () => {
         {renderContent()}
       </Layout>
       
-      {/* Install PWA Prompt */}
+      {/* PWA Components */}
+      <OfflineIndicator />
+      <UpdatePrompt />
       <InstallPrompt />
 
       {/* Full Screen Chat Overlay - Also Lazy Loaded */}

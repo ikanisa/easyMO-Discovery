@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { ThemeProvider } from './context/ThemeContext';
+import { registerSW } from 'virtual:pwa-register';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -19,16 +20,36 @@ root.render(
   </React.StrictMode>
 );
 
-// Register Service Worker
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(
-      (registration) => {
-        console.log('ServiceWorker registration successful with scope: ', registration.scope);
-      },
-      (err) => {
-        console.log('ServiceWorker registration failed: ', err);
-      }
-    );
-  });
-}
+// Register Service Worker with vite-plugin-pwa
+// This handles update prompts automatically via the 'prompt' registerType in vite.config.ts
+const updateSW = registerSW({
+  onNeedRefresh() {
+    // Dispatch a custom event that the UpdatePrompt component can listen to
+    window.dispatchEvent(new CustomEvent('swNeedRefresh', { detail: { updateSW } }));
+  },
+  onOfflineReady() {
+    console.log('App is ready to work offline');
+    window.dispatchEvent(new CustomEvent('swOfflineReady'));
+  },
+  onRegisteredSW(swUrl, r) {
+    console.log('Service Worker registered:', swUrl);
+    // Check for updates periodically (every hour) only when tab is visible
+    if (r) {
+      const checkUpdate = () => {
+        if (document.visibilityState === 'visible') {
+          r.update();
+        }
+      };
+      setInterval(checkUpdate, 60 * 60 * 1000);
+      // Also check for updates when tab becomes visible
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          r.update();
+        }
+      });
+    }
+  },
+  onRegisterError(error) {
+    console.error('Service Worker registration error:', error);
+  }
+});
