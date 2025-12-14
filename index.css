@@ -136,3 +136,45 @@ html.dark .app-subtitle {
 html.dark .soft-border {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
+
+/* ============================================================================
+   FRAME-FIRST UI SYSTEM - Desktop Layout Containment
+   ============================================================================ */
+
+:root {
+  --frame-max: 420px;
+}
+
+/* Frame Outer Wrapper - Centers content with backdrop */
+.app-frame-outer {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  background: transparent;
+}
+
+/* Frame Inner Container - Phone canvas */
+.app-frame-inner {
+  width: 100%;
+  max-width: var(--frame-max);
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Fixed Element Helper - Constrain to frame */
+.frame-fixed {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: var(--frame-max);
+}
+
+/* Safe Area Helpers */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
