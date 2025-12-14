@@ -4,6 +4,8 @@ import { normalizePhoneNumber } from '../utils/phone';
 import { callBackend } from './api';
 import { GoogleGenAI } from "@google/genai";
 import { MemoryService } from './memory';
+import { bobAiSchema, kezaAiSchema, locationAiSchema, memoryAiSchema, parseJsonWithSchema } from './aiJson';
+import type { z } from 'zod';
 
 // Fallback Client-Side Instance
 const clientAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -196,6 +198,55 @@ Output JSON schema:
   }
 };
 
+const analyzeLegalDocImageForGatera = async (userImage: string): Promise<string | null> => {
+  const parsed = parseInlineImage(userImage);
+  if (!parsed) return null;
+
+  const imagePrompt = `Analyze this legal document, contract, ID, or certificate image from Rwanda.
+
+Extract:
+1) Document type (contract, ID, certificate, letter, court document, etc.)
+2) Key parties/names mentioned
+3) Key dates (if visible)
+4) Main subject matter or purpose
+5) Any visible legal terms or clauses
+6) Language (English, Kinyarwanda, French)
+7) Potential issues or missing elements
+
+Output JSON only:
+{
+  "document_type": "string",
+  "parties": ["string"],
+  "dates": ["string"],
+  "subject_matter": "string",
+  "key_clauses": ["string"],
+  "language": "string",
+  "issues": ["string"],
+  "notes": "string"
+}`;
+
+  const contents = [
+    {
+      role: 'user',
+      parts: [
+        { text: imagePrompt },
+        { inlineData: { mimeType: parsed.mimeType, data: parsed.data } },
+      ],
+    },
+  ];
+
+  try {
+    const result = await askGemini(imagePrompt, undefined, undefined, {
+      contents,
+      generationConfig: { temperature: 0.2, maxOutputTokens: 1024 },
+    });
+    return result.text || null;
+  } catch (e) {
+    console.warn('Gatera image analysis failed:', e);
+    return null;
+  }
+};
+
 const extractGroundingLinks = (response: any, responseText: string): GroundingLink[] => {
   const links: GroundingLink[] = [];
 
@@ -293,18 +344,39 @@ const askGemini = async (
 
 // --- ROBUST HELPERS ---
 
-const extractJson = (text: string): any | null => {
-  try {
-    const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/```\n([\s\S]*?)\n```/);
-    if (jsonMatch && jsonMatch[1]) return JSON.parse(jsonMatch[1]);
-    
-    const start = text.indexOf('{');
-    const end = text.lastIndexOf('}');
-    if (start !== -1 && end !== -1) return JSON.parse(text.substring(start, end + 1));
-  } catch (e) {
-    console.warn("JSON extraction failed", e);
-  }
-  return null;
+const repairJsonText = async (rawText: string, schemaHint: string): Promise<string> => {
+  const prompt = `You are a strict JSON repair tool.
+
+Task:
+- Convert the input into VALID JSON ONLY (no markdown, no commentary).
+- Do NOT add new information. Only preserve what is already present.
+- If a field is missing, omit it or use null/empty values.
+
+Target shape (informal):
+${schemaHint}
+
+Input:
+${rawText}
+`;
+
+  const repaired = await askGemini(prompt, undefined, undefined, {
+    generationConfig: { temperature: 0, maxOutputTokens: 2048 },
+  });
+  return repaired.text;
+};
+
+const parseOrRepairWithSchema = async <T>(
+  rawText: string,
+  schemaHint: string,
+  schema: z.ZodType<T>,
+): Promise<T | null> => {
+  const initial = parseJsonWithSchema<T>(rawText, schema);
+  if (initial) return initial.data;
+  if (!rawText.includes('{') && !rawText.includes('[')) return null;
+
+  const repairedText = await repairJsonText(rawText, schemaHint);
+  const repaired = parseJsonWithSchema<T>(repairedText, schema);
+  return repaired ? repaired.data : null;
 };
 
 // Background Fact Extraction
@@ -329,10 +401,13 @@ const runBackgroundMemoryExtraction = async (userMessage: string, aiResponse: st
     `;
 
     // We use a cheaper/faster call or the same model
-    const result = await askGemini(extractionPrompt);
-    const data = extractJson(result.text);
+    const result = await askGemini(extractionPrompt, undefined, undefined, {
+      generationConfig: { temperature: 0, maxOutputTokens: 256 },
+    });
 
-    if (data && data.fact) {
+    const parsed = parseJsonWithSchema(result.text, memoryAiSchema);
+    const data = parsed?.data;
+    if (data?.fact) {
       console.log("🧠 Memory Extracted:", data.fact);
       await MemoryService.addMemory(data.fact, data.category || 'fact');
     }
@@ -414,10 +489,15 @@ export const GeminiService = {
     ${userLat ? `User Coords: ${userLat}, ${userLng}` : ''}
     `;
 
-    const raw = await askGemini(prompt, [{googleSearch: {}}, {googleMaps: {}}], userLat && userLng ? { lat: userLat, lng: userLng } : undefined);
-    const data = extractJson(raw.text);
-    
-    if (data && data.address) return data;
+    const raw = await askGemini(
+      prompt,
+      [{ googleSearch: {} }, { googleMaps: {} }],
+      userLat && userLng ? { lat: userLat, lng: userLng } : undefined,
+      { generationConfig: { temperature: 0, maxOutputTokens: 512 } },
+    );
+
+    const parsed = parseJsonWithSchema(raw.text, locationAiSchema);
+    if (parsed) return parsed.data;
     return { address: query }; 
   },
 
@@ -489,7 +569,19 @@ export const GeminiService = {
     // Trigger Memory Loop
     runBackgroundMemoryExtraction(userMessage, result.text);
 
-    const parsedJson = extractJson(result.text);
+    const parsedJson = await parseOrRepairWithSchema(
+      result.text,
+      `{
+  "query_summary": "string",
+  "need_description": "string",
+  "user_location_label": "string",
+  "category": "string",
+  "matches": [
+    { "name": "string", "phone": "string", "category": "string", "distance": "string", "snippet": "string", "address": "string" }
+  ]
+}`,
+      bobAiSchema,
+    );
     const cleanText = result.text.replace(/```json[\s\S]*?```/g, '').replace(/```[\s\S]*?```/g, '').replace(/\{[\s\S]*\}/g, '').trim();
 
     let payload: BusinessResultsPayload | undefined;
@@ -541,11 +633,24 @@ export const GeminiService = {
     
     runBackgroundMemoryExtraction(userMessage, result.text);
 
-    const parsedJson = extractJson(result.text);
+    const parsedJson = await parseOrRepairWithSchema(
+      result.text,
+      `{
+  "query_summary": "string",
+  "market_insight": "string",
+  "filters_detected": { "listing_type": "rent|sale|unknown", "property_type": "string", "bedrooms": 0, "budget_min": 0, "budget_max": 0, "area": "string", "radius_km": 0, "sort": "string" },
+  "matches": [
+    { "title": "string", "listing_type": "rent|sale|unknown", "price": 0, "currency": "RWF", "contact_phone": "+2507XXXXXXXX", "area_label": "string", "source_platform": "string", "source_url": "https://..." }
+  ],
+  "disclaimer": "string",
+  "next_steps": ["string"]
+}`,
+      kezaAiSchema,
+    );
     const cleanText = result.text.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*\}/g, '').trim();
 
-	    let payload: PropertyResultsPayload | undefined;
-	    if (parsedJson && Array.isArray(parsedJson.matches)) {
+		    let payload: PropertyResultsPayload | undefined;
+		    if (parsedJson && Array.isArray(parsedJson.matches)) {
         const toNumberOrNull = (v: any): number | null => {
           if (typeof v === 'number' && Number.isFinite(v)) return v;
           if (typeof v === 'string') {
