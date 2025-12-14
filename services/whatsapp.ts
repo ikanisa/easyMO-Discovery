@@ -1,5 +1,5 @@
 
-import { normalizePhoneNumber } from '../utils/phone';
+import { normalizePhoneNumber, isValidRwandanPhoneNumber } from '../utils/phone';
 import { BusinessListing } from '../types';
 import { callBackend } from './api';
 import { CONFIG } from '../config';
@@ -23,6 +23,7 @@ export interface BroadcastResponse {
   success: boolean;
   message?: string;
   count?: number;
+  invalidCount?: number;
 }
 
 const EXCLUDED_PREFIXES = [/^\+256/, /^\+254/, /^\+234/, /^\+27/];
@@ -62,6 +63,7 @@ export const getBroadcastHistory = (): any[] => {
 
 /**
  * Triggers a single stock check via Edge Function.
+ * Validates phone number format before sending to prevent AI-hallucinated numbers.
  */
 export const triggerWhatsAppBroadcast = async (
   businessName: string, 
@@ -72,6 +74,12 @@ export const triggerWhatsAppBroadcast = async (
   
   const cleanPhone = normalizePhoneNumber(businessPhone);
   if (!cleanPhone) return false;
+
+  // Validate phone number appears legitimate before broadcasting
+  if (!isValidRwandanPhoneNumber(cleanPhone)) {
+    console.warn(`Blocked broadcast to potentially invalid/AI-generated number: ${cleanPhone}`);
+    return false;
+  }
 
   const payload = {
     requestId: "REQ-" + Date.now(),
@@ -97,14 +105,29 @@ export const triggerWhatsAppBroadcast = async (
 
 /**
  * Batch broadcast (for 'Ask All').
+ * Filters out invalid/AI-hallucinated phone numbers before sending.
  */
 export const sendWhatsAppBroadcastRequest = async (payload: BroadcastPayload): Promise<BroadcastResponse> => {
-  const validBusinesses = payload.businesses
+  const normalizedBusinesses = payload.businesses
     .map(b => ({ name: b.name, phone: normalizePhoneNumber(b.phone) }))
-    .filter(b => b.phone && !isExcluded(b.phone));
+    .filter((b): b is { name: string; phone: string } => b.phone !== null && !isExcluded(b.phone));
+
+  // Additional validation: filter out AI-hallucinated numbers
+  const validBusinesses = normalizedBusinesses.filter(b => isValidRwandanPhoneNumber(b.phone));
+  const invalidCount = normalizedBusinesses.length - validBusinesses.length;
+
+  if (invalidCount > 0) {
+    console.warn(`Filtered out ${invalidCount} potentially AI-generated phone numbers`);
+  }
 
   if (validBusinesses.length === 0) {
-    return { success: false, message: "No valid numbers found." };
+    return { 
+      success: false, 
+      message: invalidCount > 0 
+        ? "No verified phone numbers found. The AI may have generated invalid numbers." 
+        : "No valid numbers found.",
+      invalidCount
+    };
   }
 
   // Save to history
@@ -126,19 +149,22 @@ export const sendWhatsAppBroadcastRequest = async (payload: BroadcastPayload): P
        return { 
          success: true, 
          count: validBusinesses.length,
-         message: `Request sent to ${validBusinesses.length} businesses.`
+         invalidCount,
+         message: invalidCount > 0 
+           ? `Request sent to ${validBusinesses.length} businesses. (${invalidCount} invalid numbers filtered)`
+           : `Request sent to ${validBusinesses.length} businesses.`
        };
     } else {
        // Check if it's just demo mode falling back
        if (CONFIG.ENABLE_DEMO_MODE) {
-          return { success: true, count: validBusinesses.length, message: "Demo: Request queued." };
+          return { success: true, count: validBusinesses.length, invalidCount, message: "Demo: Request queued." };
        }
-       return { success: false, message: response.message || "Request failed." };
+       return { success: false, message: response.message || "Request failed.", invalidCount };
     }
 
   } catch (error: any) {
     console.error("Batch Broadcast Error:", error);
-    return { success: false, message: "Connection failed." };
+    return { success: false, message: "Connection failed.", invalidCount };
   }
 };
 
