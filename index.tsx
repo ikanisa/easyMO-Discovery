@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './index.css';
 import { ThemeProvider } from './context/ThemeContext';
+import { PWAProvider } from './hooks/usePWA';
 import { registerSW } from 'virtual:pwa-register';
 
 const rootElement = document.getElementById('root');
@@ -15,7 +16,9 @@ const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <ThemeProvider>
-      <App />
+      <PWAProvider>
+        <App />
+      </PWAProvider>
     </ThemeProvider>
   </React.StrictMode>
 );

@@ -7,9 +7,7 @@ import { AppMode, ChatSession as ChatSessionType, Role, PresenceUser } from './t
 import { ICONS } from './constants';
 import { useTheme } from './context/ThemeContext';
 import { sendCategoryRequest } from './services/requestLogger';
-import InstallPrompt from './components/InstallPrompt';
-import UpdatePrompt from './components/UpdatePrompt';
-import OfflineIndicator from './components/OfflineIndicator';
+import { InstallPrompt, UpdatePrompt, OfflineIndicator } from './components/pwa';
 import { supabase } from './services/supabase';
 
 // Lazy Load Pages for Performance Code Splitting
