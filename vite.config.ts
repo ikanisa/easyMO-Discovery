@@ -157,21 +157,11 @@ export default defineConfig(({ mode }) => {
             globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
             runtimeCaching: [
               {
-                urlPattern: /^https:\/\/api\..*\/v1\/.*/i,
+                // Cache only public Supabase storage and edge functions, exclude auth endpoints
+                urlPattern: /^https:\/\/.*\.supabase\.co\/(storage|functions)\/.*/i,
                 handler: 'NetworkFirst',
                 options: {
-                  cacheName: 'api-cache',
-                  expiration: {
-                    maxEntries: 100,
-                    maxAgeSeconds: 60 * 60 * 24 // 24 hours
-                  }
-                }
-              },
-              {
-                urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-                handler: 'NetworkFirst',
-                options: {
-                  cacheName: 'supabase-cache',
+                  cacheName: 'supabase-public-cache',
                   expiration: {
                     maxEntries: 50,
                     maxAgeSeconds: 60 * 5 // 5 minutes

@@ -33,11 +33,20 @@ const updateSW = registerSW({
   },
   onRegisteredSW(swUrl, r) {
     console.log('Service Worker registered:', swUrl);
-    // Check for updates periodically (every hour)
+    // Check for updates periodically (every hour) only when tab is visible
     if (r) {
-      setInterval(() => {
-        r.update();
-      }, 60 * 60 * 1000);
+      const checkUpdate = () => {
+        if (document.visibilityState === 'visible') {
+          r.update();
+        }
+      };
+      setInterval(checkUpdate, 60 * 60 * 1000);
+      // Also check for updates when tab becomes visible
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          r.update();
+        }
+      });
     }
   },
   onRegisterError(error) {
