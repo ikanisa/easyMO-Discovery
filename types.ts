@@ -170,6 +170,11 @@ export interface AgentMemory {
 }
 // ---------------------------
 
+export interface AIFunctionCall {
+  name: string;
+  args: Record<string, unknown>;
+}
+
 export interface Message {
   id: string;
   sender: 'user' | 'system' | 'ai' | 'peer';

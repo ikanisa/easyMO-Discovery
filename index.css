@@ -28,10 +28,14 @@
   
   /* Glass Effect */
   --glass-bg-light: rgba(255, 255, 255, 0.7);
-  --glass-bg-dark: rgba(255, 255, 255, 0.05);
-  --glass-border-light: rgba(0, 0, 0, 0.05);
-  --glass-border-dark: rgba(255, 255, 255, 0.1);
-  --glass-blur: 12px;
+  --glass-bg-dark: rgba(30, 41, 59, 0.7);
+  --glass-border-light: rgba(0, 0, 0, 0.06);
+  --glass-border-dark: rgba(255, 255, 255, 0.08);
+  --glass-blur: 16px;
+}
+
+html.dark {
+  --glass-blur: 20px;
 }
 
 /* ============================================
@@ -105,21 +109,54 @@ html.dark body {
 }
 
 /* ============================================
-   GLASS PANEL - Reusable Glass Effect
+   COMPONENT TOKENS (Tailwind Components Layer)
    ============================================ */
 
-.glass-panel {
-  background: var(--glass-bg-light);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid var(--glass-border-light);
-  box-shadow: var(--shadow-card);
-}
+@layer components {
+  .glass-panel {
+    background-color: var(--glass-bg-light);
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+    border: 1px solid var(--glass-border-light);
+  }
 
-html.dark .glass-panel {
-  background: var(--glass-bg-dark);
-  border: 1px solid var(--glass-border-dark);
-  box-shadow: none;
+  html.dark .glass-panel {
+    background-color: var(--glass-bg-dark);
+    border: 1px solid var(--glass-border-dark);
+  }
+
+  .card-shadow {
+    box-shadow: var(--shadow-card);
+  }
+
+  .soft-border {
+    border: 1px solid rgba(0, 0, 0, 0.06);
+  }
+
+  html.dark .soft-border {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .app-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .app-subtitle {
+    font-size: 1rem;
+    font-weight: 500;
+    color: #64748b;
+  }
+
+  html.dark .app-subtitle {
+    color: #94a3b8;
+  }
+
+  .app-body {
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
 }
 
 /* ============================================
@@ -148,81 +185,7 @@ html.dark .glass-panel {
 }
 
 html.dark .liquid-bg {
-  background: radial-gradient(circle at 50% 10%, #1e293b 0%, #0f172a 100%);
-}
-
-/* ============================================
-   CARD STYLES
-   ============================================ */
-
-.card-shadow {
-  box-shadow: var(--shadow-card);
-/* ============================================================================
-   DESIGN TOKENS - Component Styles
-   ============================================================================ */
-
-/* Glass Panel - Adaptive */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-  border-radius: 1.5rem; /* Token: card radius */
-}
-
-.card-elevated {
-  box-shadow: var(--shadow-elevated);
-}
-
-.soft-border {
-  border: 1px solid #e2e8f0;
-}
-
-html.dark .soft-border {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-/* Safe Area Insets for iOS and notched devices */
-@supports (padding-bottom: env(safe-area-inset-bottom)) {
-  .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-}
-/* Typography Tokens */
-.app-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-.app-subtitle {
-  font-size: 1rem;
-  font-weight: 500;
-  color: #64748b;
-}
-
-html.dark .app-subtitle {
-  color: #94a3b8;
-}
-
-.app-body {
-  font-size: 0.875rem;
-  line-height: 1.5;
-}
-
-/* Card Shadow Token */
-.card-shadow {
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
-}
-
-/* Soft Border Token */
-.soft-border {
-  border: 1px solid rgba(0, 0, 0, 0.06);
-}
-
-html.dark .soft-border {
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
 }
 
 /* ============================================================================

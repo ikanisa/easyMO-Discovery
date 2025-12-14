@@ -4,6 +4,7 @@ const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
 
 type GroundingLink = { title: string; uri: string };
+type FunctionCall = { name: string; args: Record<string, unknown> };
 
 const clampNumber = (value: unknown, min: number, max: number, fallback: number) => {
   const n = typeof value === 'number' ? value : Number(value);
@@ -64,6 +65,33 @@ const extractGroundingLinks = (data: any): GroundingLink[] => {
   return links;
 };
 
+const extractFunctionCalls = (data: any): FunctionCall[] => {
+  const calls: FunctionCall[] = [];
+  const parts = data?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return calls;
+
+  for (const part of parts) {
+    const call = part?.functionCall;
+    if (!call || typeof call?.name !== 'string' || call.name.length === 0) continue;
+
+    let args: unknown = call.args ?? {};
+    if (typeof args === 'string') {
+      try {
+        args = JSON.parse(args);
+      } catch {
+        args = {};
+      }
+    }
+
+    calls.push({
+      name: call.name,
+      args: args && typeof args === 'object' ? (args as Record<string, unknown>) : {},
+    });
+  }
+
+  return calls;
+};
+
 serve(async (req) => {
   // CORS
   if (req.method === 'OPTIONS') {
@@ -110,9 +138,10 @@ serve(async (req) => {
     const data = await response.json();
     const text = extractText(data);
     const groundingLinks = extractGroundingLinks(data);
+    const functionCalls = extractFunctionCalls(data);
 
     return new Response(
-      JSON.stringify({ status: 'success', text, groundingLinks }),
+      JSON.stringify({ status: 'success', text, groundingLinks, functionCalls }),
       {
         headers: {
           'Content-Type': 'application/json',

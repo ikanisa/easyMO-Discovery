@@ -1,5 +1,5 @@
 
-import { Message, BusinessResultsPayload, PropertyResultsPayload, LegalResultsPayload } from '../types';
+import { Message, BusinessResultsPayload, PropertyResultsPayload, LegalResultsPayload, AIFunctionCall } from '../types';
 import { normalizePhoneNumber } from '../utils/phone';
 import { callBackend } from './api';
 import { GoogleGenAI } from "@google/genai";
@@ -21,6 +21,7 @@ type GroundingLink = { title: string; uri: string };
 type GeminiResult = {
   text: string;
   groundingLinks: GroundingLink[];
+  functionCalls?: AIFunctionCall[];
   raw?: any;
 };
 
@@ -34,7 +35,20 @@ NON-NEGOTIABLE RULES
 - If you cannot find enough listings, return fewer matches and say so in the summary.
 - Prefer VERIFIED, contactable sources (agencies + listings) with phone numbers.
 - Use Rwanda context (RWF currency; Kigali neighborhoods; UPI/land title checks).
-- Output MUST be valid JSON only (no markdown fences, no extra text).
+
+APP ACTIONS (Function Calling)
+You can call these functions when the user explicitly asks:
+- save_favorite(property_id, notes?)
+- schedule_viewing(property_id, preferred_date?, preferred_time?, user_phone?, notes?)
+- compare_neighborhoods(neighborhoods[], criteria[]?)
+
+Rules:
+- Only call a function when you have enough details; otherwise ask a brief follow-up question.
+- When calling save/schedule, use the property_id from the latest PROPERTY RESULTS context (e.g., "prop-0").
+
+OUTPUT FORMAT
+- For property search results: return a short summary, then ONE valid JSON object matching the schema below (no markdown fences).
+- For pure actions (save/schedule/compare): use function calling and respond briefly in text; only include the listings JSON if the user asked for listings.
 
 SEARCH STRATEGY (Use tools)
 1) Google Maps (primary):
@@ -98,6 +112,52 @@ OUTPUT JSON SCHEMA
   "disclaimer": "string",
   "next_steps": ["string"]
 }`;
+
+const KEZA_ACTION_TOOLS = [
+  {
+    functionDeclarations: [
+      {
+        name: 'save_favorite',
+        description: "Save a property to the user's favorites list.",
+        parameters: {
+          type: 'object',
+          properties: {
+            property_id: { type: 'string' },
+            notes: { type: 'string' },
+          },
+          required: ['property_id'],
+        },
+      },
+      {
+        name: 'schedule_viewing',
+        description: 'Create a viewing request for a property (the app will persist it).',
+        parameters: {
+          type: 'object',
+          properties: {
+            property_id: { type: 'string' },
+            preferred_date: { type: 'string', description: 'YYYY-MM-DD' },
+            preferred_time: { type: 'string', description: 'HH:mm or morning/afternoon/evening' },
+            user_phone: { type: 'string' },
+            notes: { type: 'string' },
+          },
+          required: ['property_id'],
+        },
+      },
+      {
+        name: 'compare_neighborhoods',
+        description: 'Compare neighborhoods for a renter/buyer based on criteria.',
+        parameters: {
+          type: 'object',
+          properties: {
+            neighborhoods: { type: 'array', items: { type: 'string' } },
+            criteria: { type: 'array', items: { type: 'string' } },
+          },
+          required: ['neighborhoods'],
+        },
+      },
+    ],
+  },
+];
 
 const parseInlineImage = (userImage: string): { mimeType: string; data: string } | null => {
   if (!userImage) return null;
@@ -265,13 +325,37 @@ const extractGroundingLinks = (response: any, responseText: string): GroundingLi
     });
   }
 
-  const urlRegex = /https?:\/\/[^\s\)]+/g;
+  const urlRegex = /https?:\/\/[^\s)]+/g;
   const textUrls = responseText?.match(urlRegex) || [];
   textUrls.forEach((uri: string) => {
     if (!links.find((l) => l.uri === uri)) links.push({ title: 'Referenced Source', uri });
   });
 
   return links;
+};
+
+const extractFunctionCalls = (response: any): AIFunctionCall[] => {
+  const calls: AIFunctionCall[] = [];
+  const parts = response?.candidates?.[0]?.content?.parts;
+  if (!Array.isArray(parts)) return calls;
+
+  for (const part of parts) {
+    const call = part?.functionCall;
+    if (!call || typeof call?.name !== 'string' || call.name.length === 0) continue;
+
+    let args: unknown = call.args ?? {};
+    if (typeof args === 'string') {
+      try {
+        args = JSON.parse(args);
+      } catch {
+        args = {};
+      }
+    }
+
+    calls.push({ name: call.name, args: args && typeof args === 'object' ? (args as Record<string, unknown>) : {} });
+  }
+
+  return calls;
 };
 
 const askGemini = async (
@@ -305,13 +389,16 @@ const askGemini = async (
       ...(options?.generationConfig ? { generationConfig: options.generationConfig } : {}),
     });
     
-    if (response.status === 'success' && response.text) {
-        const text = response.text as string;
-        const groundingLinks = Array.isArray((response as any).groundingLinks)
-          ? ((response as any).groundingLinks as GroundingLink[])
-          : extractGroundingLinks(response, text);
+    if (response.status === 'success' && typeof (response as any).text === 'string') {
+      const text = (response as any).text as string;
+      const groundingLinks = Array.isArray((response as any).groundingLinks)
+        ? ((response as any).groundingLinks as GroundingLink[])
+        : extractGroundingLinks(response, text);
+      const functionCalls = Array.isArray((response as any).functionCalls)
+        ? ((response as any).functionCalls as AIFunctionCall[])
+        : extractFunctionCalls(response);
 
-        return { text, groundingLinks, raw: response };
+      return { text, groundingLinks, functionCalls, raw: response };
     }
     
     console.warn("Backend Gemini Failed, falling back to client-side:", response.message || response.error);
@@ -335,7 +422,8 @@ const askGemini = async (
       });
       const text = result.text || "No response generated.";
       const groundingLinks = extractGroundingLinks(result as any, text);
-      return { text, groundingLinks, raw: result };
+      const functionCalls = extractFunctionCalls(result as any);
+      return { text, groundingLinks, functionCalls, raw: result };
   } catch (clientError: any) {
       console.error("Direct Gemini Client Error:", clientError);
       return { text: "I am having trouble connecting to the brain (Both Secure & Direct channels failed).", groundingLinks: [] };
@@ -422,12 +510,52 @@ const formatPromptFromHistory = (history: Message[], systemInstruction: string, 
   // 1. Get Long Term Memory Context
   const memoryBlock = MemoryService.getContextBlock();
 
+  const summarizeBusinessPayload = (payload: BusinessResultsPayload): string => {
+    const rows = payload.matches
+      .slice(0, 8)
+      .map((m) => {
+        const phone = m.phoneNumber ? ` | phone ${m.phoneNumber}` : '';
+        return `- ${m.id}: ${m.name} | ${m.category} | ${m.distance}${phone}`;
+      })
+      .join('\n');
+    return rows ? `BUSINESS_RESULTS:\n${rows}` : '';
+  };
+
+  const summarizePropertyPayload = (payload: PropertyResultsPayload): string => {
+    const rows = payload.matches
+      .slice(0, 8)
+      .map((m) => {
+        const price = m.price === null ? 'price unknown' : `${m.price} ${m.currency}`;
+        const phone = m.contact_phone ? ` | phone ${m.contact_phone}` : '';
+        const url = m.source_url ? ` | url ${m.source_url}` : '';
+        return `- ${m.id}: ${m.title} | ${m.listing_type} | ${price} | ${m.area_label}${phone}${url}`;
+      })
+      .join('\n');
+    return rows ? `PROPERTY_RESULTS:\n${rows}` : '';
+  };
+
+  const summarizeVerifiedPayload = (payload: any): string => {
+    if (!payload || !Array.isArray(payload.matches)) return '';
+    const rows = payload.matches
+      .slice(0, 6)
+      .map((m: any) => `- ${m.id || ''}: ${m.name || 'Business'} | ${m.phoneNumber || m.phone || ''}`)
+      .join('\n');
+    return rows ? `VERIFIED_MATCHES:\n${rows}` : '';
+  };
+
   // 2. Compress History (STM)
   // We take the last 10 messages to keep the prompt lean, assuming memoryBlock handles long-term context
   const recentHistory = history
     .filter(m => m.sender !== 'system')
     .slice(-10) 
-    .map(m => `${m.sender === 'user' ? 'User' : 'AI'}: ${m.text}`)
+    .map(m => {
+      const role = m.sender === 'user' ? 'User' : 'AI';
+      const lines: string[] = [`${role}: ${m.text}`];
+      if (m.sender === 'ai' && m.businessPayload) lines.push(summarizeBusinessPayload(m.businessPayload));
+      if (m.sender === 'ai' && m.propertyPayload) lines.push(summarizePropertyPayload(m.propertyPayload));
+      if (m.sender === 'ai' && m.verifiedPayload) lines.push(summarizeVerifiedPayload(m.verifiedPayload));
+      return lines.filter(Boolean).join('\n');
+    })
     .join('\n');
 
   return `
@@ -510,13 +638,43 @@ export const GeminiService = {
     return text.text.replace(/"/g, '').trim();
   },
 
+  compareNeighborhoods: async (
+    neighborhoods: string[],
+    criteria: string[] | undefined,
+    userLocation: { lat: number; lng: number },
+  ): Promise<{ text: string; groundingLinks?: { title: string; uri: string }[] }> => {
+    const neighborhoodsList = neighborhoods.map((n) => n.trim()).filter(Boolean).join(', ');
+    const criteriaList =
+      Array.isArray(criteria) && criteria.length > 0
+        ? criteria.map((c) => c.trim()).filter(Boolean).join(', ')
+        : 'accessibility, safety reputation, amenities, typical rents, expat friendliness';
+
+    const prompt = `You are Keza, Rwanda's Real Estate Concierge.
+
+Compare these neighborhoods in Rwanda (focus Kigali when applicable): ${neighborhoodsList}
+
+Compare on criteria: ${criteriaList}
+
+Rules:
+- Use Google Search + Google Maps grounding.
+- Do NOT invent facts; if uncertain, say "unknown".
+- Output a concise comparison with a clear recommendation for (a) renter and (b) buyer/investor.
+`;
+
+    const result = await askGemini(prompt, [{ googleSearch: {} }, { googleMaps: {} }], userLocation, {
+      generationConfig: { temperature: 0.3, maxOutputTokens: 900 },
+    });
+
+    return { text: result.text, groundingLinks: result.groundingLinks };
+  },
+
   chatBob: async (
     history: Message[], 
     userMessage: string, 
     userLocation: { lat: number, lng: number },
     isDemoMode: boolean = false,
     userImage?: string
-  ): Promise<{ text: string, businessPayload?: BusinessResultsPayload, groundingLinks?: { title: string; uri: string }[] }> => {
+      ): Promise<{ text: string, businessPayload?: BusinessResultsPayload, groundingLinks?: { title: string; uri: string }[], functionCalls?: AIFunctionCall[] }> => {
     
     const locStr = `${userLocation.lat}, ${userLocation.lng}`;
     let imageAnalysisContext = '';
@@ -563,8 +721,8 @@ export const GeminiService = {
 
     const prompt = formatPromptFromHistory(history, systemPromptWithImage, userMessage, locStr);
     
-    const tools = [{googleSearch: {}}, {googleMaps: {}}];
-    const result = await askGemini(prompt, tools, userLocation); 
+	    const tools = [{ googleSearch: {} }, { googleMaps: {} }, ...KEZA_ACTION_TOOLS];
+	    const result = await askGemini(prompt, tools, userLocation);
     
     // Trigger Memory Loop
     runBackgroundMemoryExtraction(userMessage, result.text);
@@ -605,8 +763,13 @@ export const GeminiService = {
         };
     }
 
-    return { text: cleanText || "Here is what I found:", businessPayload: payload, groundingLinks: result.groundingLinks };
-  },
+	    return {
+	      text: cleanText || 'Here is what I found:',
+	      businessPayload: payload,
+	      groundingLinks: result.groundingLinks,
+	      functionCalls: result.functionCalls,
+	    };
+	  },
 
   chatKeza: async (
     history: Message[], 
@@ -614,7 +777,7 @@ export const GeminiService = {
     userLocation: { lat: number, lng: number }, 
     isDemoMode: boolean = false,
     userImage?: string
-  ): Promise<{ text: string, propertyPayload?: PropertyResultsPayload, groundingLinks?: { title: string; uri: string }[] }> => {
+	  ): Promise<{ text: string, propertyPayload?: PropertyResultsPayload, groundingLinks?: { title: string; uri: string }[], functionCalls?: AIFunctionCall[] }> => {
     
     const locStr = `${userLocation.lat}, ${userLocation.lng}`;
     let imageAnalysisContext = '';
@@ -758,8 +921,13 @@ export const GeminiService = {
       parsedJson?.query_summary ||
       "Here are some listings.";
 
-    return { text: fallbackText, propertyPayload: payload, groundingLinks: result.groundingLinks };
-  },
+	    return {
+	      text: fallbackText,
+	      propertyPayload: payload,
+	      groundingLinks: result.groundingLinks,
+	      functionCalls: result.functionCalls,
+	    };
+	  },
 
   chatGatera: async (
     history: Message[], 
@@ -767,7 +935,15 @@ export const GeminiService = {
     userLocation: { lat: number, lng: number }, 
     isDemoMode: boolean = false,
     userImage?: string
-  ): Promise<{ text: string, legalPayload?: LegalResultsPayload, groundingLinks?: { title: string; uri: string }[] }> => {
+	  ): Promise<{ text: string, legalPayload?: LegalResultsPayload, groundingLinks?: { title: string; uri: string }[], functionCalls?: AIFunctionCall[] }> => {
+    
+    let imageAnalysisContext = '';
+    if (userImage) {
+      const imageAnalysis = await analyzeLegalDocImageForGatera(userImage);
+      if (imageAnalysis) {
+        imageAnalysisContext = `\n\nUSER PROVIDED DOCUMENT IMAGE (analysis):\n${imageAnalysis}\n\nUse this analysis to provide relevant legal advice or drafting assistance.`;
+      }
+    }
     
     const systemPrompt = `You are "Gatera", Rwanda's Premier AI Legal Expert.
     
@@ -805,7 +981,7 @@ export const GeminiService = {
 
     ===================================================
     **Output Instructions:**
-    Provide rich text for ADVICE or DRAFT responses. Do NOT return JSON for lawyer listings.
+    Provide rich text for ADVICE or DRAFT responses. Do NOT return JSON for lawyer listings.${imageAnalysisContext}
     `;
     
     const prompt = formatPromptFromHistory(history, systemPrompt, userMessage, `${userLocation.lat},${userLocation.lng}`);
@@ -816,8 +992,8 @@ export const GeminiService = {
 
     // Gatera no longer returns JSON payloads (no lawyer finder mode)
     // Return the rich text response directly
-    return { text: result.text, groundingLinks: result.groundingLinks };
-  },
+	    return { text: result.text, groundingLinks: result.groundingLinks, functionCalls: result.functionCalls };
+	  },
   
   // Aliases
   chatBuySellAgent: (h: any, m: any, l: any, d: any, i: any) => GeminiService.chatBob(h, m, l, d, i),

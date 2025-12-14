@@ -42,15 +42,15 @@ const HomeWidget = ({
 }) => (
   <button
     onClick={onClick}
-    className={`group relative flex flex-col items-start justify-between p-5 w-full h-40 rounded-widget soft-border glass-panel card-shadow overflow-hidden transition-all duration-300 active:scale-95 hover:bg-slate-50 dark:hover:bg-white/10 animate-in zoom-in fill-mode-backwards ${className}`}
+    className={`group relative flex flex-col items-start justify-between p-5 w-full h-40 rounded-widget glass-panel soft-border card-shadow overflow-hidden transition-all duration-300 active:scale-95 bg-white/70 hover:bg-white/80 dark:bg-slate-900/60 dark:hover:bg-slate-900/70 dark:border-slate-700/50 animate-in zoom-in fill-mode-backwards ${className}`}
     style={{ animationDelay: `${delay}ms` }}
   >
     {/* Hover Gradient Overlay */}
     <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 bg-gradient-to-br ${gradient}`} />
     
     {/* Icon Container */}
-    <div className={`w-12 h-12 rounded-button flex items-center justify-center bg-gradient-to-br ${gradient} shadow-lg text-white group-hover:scale-110 transition-transform duration-300 z-10`}>
-      <Icon className="w-6 h-6" />
+    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center bg-gradient-to-br ${gradient} shadow-lg text-white group-hover:scale-110 transition-transform duration-300 z-10`}>
+      <Icon className="w-7 h-7" />
     </div>
 
     {/* Text Content */}
@@ -184,20 +184,18 @@ const App: React.FC = () => {
           {/* Theme Toggle Button */}
           <button 
             onClick={toggleTheme}
-            className="absolute top-6 right-6 p-2 rounded-full bg-white/50 dark:bg-black/20 backdrop-blur-md border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 z-50 hover:scale-105 active:scale-95 transition-all shadow-sm"
+            className="absolute top-4 right-4 p-2 rounded-button glass-panel soft-border text-slate-700 dark:text-slate-200 z-50 hover:scale-105 active:scale-95 transition-all shadow-sm"
           >
             {theme === 'dark' ? <ICONS.Sun className="w-5 h-5" /> : <ICONS.Moon className="w-5 h-5" />}
           </button>
 
           {/* Header Section */}
           <div className="pt-12 px-6 pb-6 text-center animate-in fade-in slide-in-from-top-4 duration-700">
-            <h1 className="app-title text-5xl mb-3 bg-clip-text text-transparent bg-gradient-to-br from-blue-600 via-emerald-500 to-purple-600 dark:from-blue-400 dark:via-emerald-400 dark:to-purple-400 drop-shadow-sm">
+            <h1 className="text-5xl font-black italic tracking-tighter mb-2 bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-emerald-400 drop-shadow-sm">
               easyMO
             </h1>
-            <p className="app-subtitle max-w-xs mx-auto leading-relaxed">
-              Your Everyday Companion<br/>
-              <span className="text-xs opacity-75 font-bold mt-1 block">Move • Shop • Legal • Business</span>
-            </p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium tracking-wide">Your Everyday Companion</p>
+            <p className="text-xs text-slate-500 dark:text-slate-500 tracking-wider mt-1">Move • Shop • Legal • Business</p>
           </div>
 
           {/* Home Search Bar */}
@@ -209,7 +207,7 @@ const App: React.FC = () => {
                    onChange={(e) => setHomeSearchQuery(e.target.value)}
                    onKeyDown={(e) => e.key === 'Enter' && handleHomeSearch()}
                    placeholder="Search for products, services, or places..."
-                   className="w-full glass-panel rounded-card pl-5 pr-12 py-4 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white dark:focus:bg-slate-900/80 transition-all"
+                   className="w-full glass-panel soft-border card-shadow rounded-card pl-5 pr-12 py-4 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 bg-white/70 dark:bg-slate-900/60 dark:border-slate-700/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white/80 dark:focus:bg-slate-900/70 transition-all"
                 />
                 <button 
                    onClick={handleHomeSearch}
@@ -225,8 +223,8 @@ const App: React.FC = () => {
             
             {/* Section: Mobility */}
             <section>
-              <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 px-1 flex items-center gap-2">
-                <span className="w-8 h-px bg-slate-300 dark:bg-slate-700"></span>
+              <h2 className="flex items-center gap-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 px-1">
+                <span className="flex-1 h-px bg-slate-300 dark:bg-slate-700"></span>
                 Mobility
                 <span className="flex-1 h-px bg-slate-300 dark:bg-slate-700"></span>
               </h2>
@@ -259,8 +257,8 @@ const App: React.FC = () => {
 
             {/* Section: Discovery & Tools */}
             <section>
-              <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 px-1 flex items-center gap-2">
-                <span className="w-8 h-px bg-slate-300 dark:bg-slate-700"></span>
+              <h2 className="flex items-center gap-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 px-1">
+                <span className="flex-1 h-px bg-slate-300 dark:bg-slate-700"></span>
                 Lifestyle & Tools
                 <span className="flex-1 h-px bg-slate-300 dark:bg-slate-700"></span>
               </h2>

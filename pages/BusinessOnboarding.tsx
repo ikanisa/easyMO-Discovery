@@ -108,7 +108,11 @@ const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComplete, onC
 
     try {
       let loc = { lat: -1.9441, lng: 30.0619 };
-      try { loc = await getCurrentPosition(); } catch (e) {}
+      try {
+        loc = await getCurrentPosition();
+      } catch (e) {
+        /* ignore geolocation errors */
+      }
 
       // Call dedicated Onboarding Agent
       const response = await GeminiService.onboardBusiness(chatMessages, userMsg.text, loc);
