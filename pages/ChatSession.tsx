@@ -303,7 +303,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
       <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       
       {/* Chat Container - Constrained to frame */}
-      <div className="frame-fixed inset-0 flex flex-col h-screen bg-[#0f172a] z-50">
+      <div className="frame-fixed top-0 bottom-0 flex flex-col bg-[#0f172a] z-50">
         <div className="h-16 glass-panel flex items-center px-4 justify-between shrink-0 border-b border-white/5 bg-[#0f172a]/90 backdrop-blur-xl z-20">
           <button onClick={onClose} className="p-2 -ml-2 text-slate-400 hover:text-white transition-colors">
              <ICONS.ChevronDown className="w-6 h-6 rotate-90" />
