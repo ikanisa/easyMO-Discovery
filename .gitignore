@@ -22,3 +22,13 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Node
+node_modules
+.env
+.env.*
+npm-debug.log*
+.DS_Store
+
+# Service-specific
+services/whatsapp-bridge/node_modules
