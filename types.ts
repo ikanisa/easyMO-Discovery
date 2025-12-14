@@ -7,6 +7,28 @@ export interface Location {
   lng: number;
 }
 
+export type AddressLabel = 'Home' | 'Work' | 'School' | 'Other';
+
+export interface SavedAddress {
+  id: string;
+  label: AddressLabel;
+  customName?: string;
+  address: string;
+  location?: Location;
+}
+
+export type RecurrenceType = 'none' | 'daily' | 'weekdays' | 'weekly';
+
+export interface ScheduledTrip {
+  id: string;
+  date: string; // ISO Date
+  time: string; // HH:mm
+  recurrence: RecurrenceType;
+  origin: string;
+  destination: string;
+  role: Role; // Who scheduled it
+}
+
 export interface PresenceUser {
   sessionId: string;
   role: Role;

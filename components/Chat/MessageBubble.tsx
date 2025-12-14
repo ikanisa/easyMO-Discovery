@@ -22,7 +22,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply, onBroad
   if (isSystem) {
     return (
       <div className="flex justify-center my-4 animate-in fade-in zoom-in">
-        <span className="text-xs text-slate-500 bg-slate-800/50 px-3 py-1 rounded-full border border-white/5 shadow-sm backdrop-blur-sm">
+        <span className="text-xs text-slate-500 bg-slate-200 dark:bg-slate-800/50 px-3 py-1 rounded-full border border-slate-300 dark:border-white/5 shadow-sm backdrop-blur-sm">
           {message.text}
         </span>
       </div>
@@ -42,12 +42,12 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply, onBroad
       {!isMe && (
         <div className={`
           w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-lg mt-1
-          ${isAI ? 'bg-gradient-to-br from-blue-500 to-purple-600 border border-white/10' : 'bg-slate-700 border border-white/5'}
+          ${isAI ? 'bg-gradient-to-br from-blue-500 to-purple-600 border border-white/10 text-white' : 'bg-slate-200 dark:bg-slate-700 border border-slate-300 dark:border-white/5'}
         `}>
           {isAI ? (
-            <ICONS.Sparkles className="w-4 h-4 text-white" />
+            <ICONS.Sparkles className="w-4 h-4" />
           ) : (
-             <span className="text-xs font-bold text-slate-300">P</span>
+             <span className="text-xs font-bold text-slate-600 dark:text-slate-300">P</span>
           )}
         </div>
       )}
@@ -65,7 +65,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply, onBroad
               loading="lazy"
             />
             {message.image.caption && (
-              <div className={`px-3 py-2 text-xs ${isMe ? 'bg-primary text-white' : 'bg-slate-800 text-slate-300'}`}>
+              <div className={`px-3 py-2 text-xs ${isMe ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300'}`}>
                 {message.image.caption}
               </div>
             )}
@@ -78,8 +78,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply, onBroad
             className={`
               rounded-2xl px-4 py-3 text-sm leading-relaxed shadow-sm relative w-full
               ${isMe 
-                ? 'bg-primary text-white rounded-tr-sm shadow-blue-500/10' 
-                : 'bg-slate-800 text-slate-200 border border-slate-700 rounded-tl-sm'
+                ? 'bg-blue-600 text-white rounded-tr-sm shadow-blue-500/30' 
+                : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-tl-sm'
               }
             `}
           >
@@ -87,7 +87,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply, onBroad
             
             {/* Grounding Sources */}
             {message.groundingLinks && message.groundingLinks.length > 0 && (
-              <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
+              <div className="mt-3 pt-3 border-t border-slate-200 dark:border-white/10 space-y-2">
                 <p className="text-[10px] uppercase tracking-wider opacity-60 font-bold flex items-center gap-1">
                   <ICONS.Map className="w-3 h-3" /> Sources
                 </p>
@@ -97,7 +97,7 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply, onBroad
                     href={link.uri} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="block text-xs text-blue-300 underline truncate hover:text-blue-200"
+                    className="block text-xs text-blue-500 dark:text-blue-300 underline truncate hover:text-blue-600 dark:hover:text-blue-200"
                   >
                     {link.title}
                   </a>
@@ -109,19 +109,19 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply, onBroad
         
         {/* 3. Location Bubble */}
         {message.location && (
-          <div className={`mt-2 p-3 rounded-xl border border-white/10 ${isMe ? 'bg-white/10' : 'bg-slate-900/50'} flex flex-col gap-2 w-full shadow-sm`}>
-             <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wide opacity-80">
-               <ICONS.MapPin className="w-4 h-4 text-red-400" />
+          <div className={`mt-2 p-3 rounded-xl border border-slate-200 dark:border-white/10 ${isMe ? 'bg-white/20 dark:bg-white/10' : 'bg-white dark:bg-slate-900/50'} flex flex-col gap-2 w-full shadow-sm`}>
+             <div className="flex items-center gap-2 font-bold text-xs uppercase tracking-wide opacity-80 text-slate-700 dark:text-slate-300">
+               <ICONS.MapPin className="w-4 h-4 text-red-500" />
                <span>Pinned Location</span>
              </div>
-             <div className="text-xs text-slate-300 font-mono bg-black/20 p-2 rounded">
+             <div className="text-xs text-slate-600 dark:text-slate-300 font-mono bg-slate-100 dark:bg-black/20 p-2 rounded">
                {message.location.lat.toFixed(5)}, {message.location.lng.toFixed(5)}
              </div>
              <a
                href={`https://www.google.com/maps/search/?api=1&query=${message.location.lat},${message.location.lng}`}
                target="_blank"
                rel="noopener noreferrer"
-               className="text-xs text-blue-400 hover:text-blue-300 hover:underline flex items-center gap-1 mt-1 font-semibold"
+               className="text-xs text-blue-500 dark:text-blue-400 hover:text-blue-600 dark:hover:text-blue-300 hover:underline flex items-center gap-1 mt-1 font-semibold"
              >
                Open in Maps <ICONS.ChevronDown className="w-3 h-3 -rotate-90" />
              </a>
@@ -170,8 +170,8 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply, onBroad
 
       {/* User Avatar */}
       {isMe && (
-        <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center shrink-0 border border-white/10 shadow-lg mt-1">
-           <ICONS.User className="w-4 h-4 text-slate-400" />
+        <div className="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center shrink-0 border border-slate-300 dark:border-white/10 shadow-lg mt-1">
+           <ICONS.User className="w-4 h-4 text-slate-500 dark:text-slate-400" />
         </div>
       )}
 

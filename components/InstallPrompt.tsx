@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ICONS } from '../constants';
 import Button from './Button';
@@ -28,17 +29,25 @@ const InstallPrompt: React.FC = () => {
     const ios = /iphone|ipad|ipod/.test(userAgent);
     setIsIOS(ios);
 
-    const handler = (e: Event) => {
+    const handleBeforeInstallPrompt = (e: Event) => {
       // Prevent Chrome 67+ from automatically showing the prompt
       e.preventDefault();
       // Stash the event so it can be triggered later
       setDeferredPrompt(e as BeforeInstallPromptEvent);
     };
 
-    window.addEventListener('beforeinstallprompt', handler);
+    const handleAppInstalled = () => {
+      console.log('PWA was installed');
+      setIsVisible(false);
+      localStorage.setItem('easyMO_install_dismissed', 'true');
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handler);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
@@ -52,10 +61,11 @@ const InstallPrompt: React.FC = () => {
     if (isDismissed) return;
 
     // Trigger if we have a prompt (Android) OR we are on iOS (Manual Instruction)
+    // We add a delay to not annoy the user immediately upon load
     if (deferredPrompt || isIOS) {
       const timer = setTimeout(() => {
         setIsVisible(true);
-      }, 3000); // 3 seconds delay for better UX
+      }, 3000); 
       return () => clearTimeout(timer);
     }
   }, [deferredPrompt, isIOS, isStandalone]);

@@ -48,12 +48,14 @@ const BusinessResultsMessage: React.FC<BusinessResultsMessageProps> = ({ payload
       businesses: businessesForApi
     };
 
+    // This may take time in simulation mode
     const result = await sendWhatsAppBroadcastRequest(reqPayload);
     
     setBroadcasting(false);
     setBroadcastResult(result);
 
     if (result.success && onBroadcastInitiated) {
+        // Trigger parent polling
         onBroadcastInitiated(requestId, businessesForApi, reqPayload.needDescription);
     }
   };
@@ -63,7 +65,7 @@ const BusinessResultsMessage: React.FC<BusinessResultsMessageProps> = ({ payload
   return (
     <div className="w-full mt-2 space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
       
-      {/* Category Header (Optional UX improvement) */}
+      {/* Category Header */}
       {category && (
         <div className="flex items-center gap-2 px-1">
           <div className="h-px bg-white/10 flex-1"></div>
@@ -113,7 +115,7 @@ const BusinessResultsMessage: React.FC<BusinessResultsMessageProps> = ({ payload
                  className="mt-2 bg-emerald-600 hover:bg-emerald-500 shadow-emerald-500/20 h-10 text-xs"
                  icon={broadcasting ? <span className="animate-spin text-xl">⟳</span> : <ICONS.WhatsApp className="w-4 h-4" />}
                >
-                 {broadcasting ? 'Sending Request...' : `Ask All ${broadcastCandidates.length}`}
+                 {broadcasting ? 'Processing Request...' : `Ask All ${broadcastCandidates.length}`}
                </Button>
             </div>
          </div>
@@ -121,7 +123,7 @@ const BusinessResultsMessage: React.FC<BusinessResultsMessageProps> = ({ payload
 
       {/* Broadcast Result Feedback */}
       {broadcastResult && (
-         <div className={`p-4 rounded-xl border mb-2 text-sm ${broadcastResult.success ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200' : 'bg-red-500/10 border-red-500/20 text-red-200'}`}>
+         <div className={`p-4 rounded-xl border mb-2 text-sm ${broadcastResult.success ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200' : 'bg-red-500/10 border-red-500/20 text-red-200'} animate-in zoom-in`}>
             <div className="font-bold flex items-center gap-2 mb-1">
                {broadcastResult.success ? <ICONS.Check className="w-5 h-5" /> : <ICONS.XMark className="w-5 h-5" />}
                {broadcastResult.success ? 'Broadcast Sent!' : 'Broadcast Failed'}

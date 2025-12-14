@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
@@ -28,7 +29,7 @@ const Button: React.FC<ButtonProps> = ({
       className={`${baseStyle} ${variants[variant]} ${fullWidth ? 'w-full' : ''} ${className}`}
       {...props}
     >
-      {icon && <span className="w-5 h-5">{icon}</span>}
+      {icon && <span className="w-5 h-5 flex items-center justify-center">{icon}</span>}
       {children}
     </button>
   );

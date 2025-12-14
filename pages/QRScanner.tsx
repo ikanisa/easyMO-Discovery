@@ -26,6 +26,16 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
 
     // Initialize scanner
     const startScanner = async () => {
+      // 1. Check for Secure Context (Required for getUserMedia)
+      if (window.isSecureContext === false && window.location.hostname !== 'localhost') {
+         setError({
+            title: "Secure Connection Required",
+            instruction: "Camera access requires a secure HTTPS connection. Please check your URL."
+         });
+         setIsScanning(false);
+         return;
+      }
+
       try {
         // Cleanup existing if any (failsafe)
         if (scannerRef.current) {
@@ -35,6 +45,15 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
             } catch (e) { 
                 // Ignore stop errors if it wasn't running
             }
+        }
+
+        // 2. Pre-check permissions by listing cameras
+        // This throws a specific error before we even try to start the scanner instance
+        try {
+            await Html5Qrcode.getCameras();
+        } catch (permErr: any) {
+            // Re-throw to be caught by the outer block
+            throw permErr;
         }
 
         const html5QrCode = new Html5Qrcode(readerId);
@@ -51,28 +70,28 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
             if (isMounted.current) handleScanSuccess(decodedText);
           },
           (errorMessage) => {
-            // Ignore frame errors
+            // Ignore frame parse errors
           }
         );
       } catch (err: any) {
-        console.error("Camera start error:", err);
+        console.warn("Camera init error:", err);
         if (isMounted.current) {
             let title = "Camera Error";
             let instruction = "Could not access the camera. Please check permissions.";
             
+            const msg = err?.message || err?.toString() || "";
+            const name = err?.name || "";
+
             // Handle specific error types
-            if (err?.name === "NotAllowedError" || err?.name === "PermissionDeniedError" || err?.message?.includes("Permission denied")) {
+            if (name === "NotAllowedError" || name === "PermissionDeniedError" || msg.includes("Permission denied") || msg.includes("permission")) {
                 title = "Permission Denied";
                 instruction = "Please tap the lock icon 🔒 in your browser address bar, allow Camera access, and then reload the page.";
-            } else if (err?.name === "NotFoundError") {
+            } else if (name === "NotFoundError" || msg.includes("No device")) {
                 title = "No Camera Found";
                 instruction = "We could not detect a camera on this device. Please ensure your device has a working camera.";
-            } else if (err?.name === "NotReadableError") {
+            } else if (name === "NotReadableError" || msg.includes("in use")) {
                 title = "Camera Busy";
                 instruction = "The camera is currently in use by another application. Please close other apps and try again.";
-            } else if (typeof window !== 'undefined' && window.location.protocol !== 'https:' && window.location.hostname !== 'localhost') {
-                title = "Secure Connection Required";
-                instruction = "Camera access requires a secure HTTPS connection. Please check your URL.";
             }
 
             setError({ title, instruction });
@@ -86,7 +105,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
         if (!scannedResult && !error) {
             startScanner();
         }
-    }, 500); // Increased delay slightly to avoid race conditions on quick mount/unmount
+    }, 500);
 
     return () => {
       isMounted.current = false;
@@ -94,7 +113,9 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
       if (scannerRef.current) {
          // Best effort cleanup
          try {
-             scannerRef.current.stop().catch(e => console.warn("Scanner stop error", e));
+             if (scannerRef.current.isScanning) {
+                 scannerRef.current.stop().catch(e => console.warn("Scanner stop error", e));
+             }
              scannerRef.current.clear().catch(e => console.warn("Scanner clear error", e));
          } catch (e) {
              console.warn("Cleanup error", e);
@@ -170,9 +191,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
     setIsScanning(true);
     setError(null);
     setCopySuccess(false);
-    // Instead of full reload, try to remount the scanner or just reset state
-    // For reliability with camera streams, a reload is often safest, but let's try a soft reset first
-    // Actually, full reload ensures fresh permission request if user changed settings
+    // Reloading helps clear browser permission state bugs
     window.location.reload(); 
   };
 

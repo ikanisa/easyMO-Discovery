@@ -5,7 +5,6 @@ import { callBackend } from './api';
 export const sendCategoryRequest = async (categoryName: string) => {
   // 1. Show Toast immediately for instant feedback
   const toast = document.createElement('div');
-  // Styling to match the glassmorphism/tailwind theme
   toast.className = "fixed bottom-24 left-1/2 -translate-x-1/2 bg-slate-900/90 text-white px-5 py-3 rounded-full text-xs font-bold shadow-2xl backdrop-blur-md border border-white/10 z-[100] flex items-center gap-2 animate-in fade-in zoom-in slide-in-from-bottom-4 duration-300";
   toast.innerHTML = `<span class="animate-pulse">🔍</span> <span>Searching for ${categoryName} near you...</span>`;
   document.body.appendChild(toast);
@@ -30,10 +29,11 @@ export const sendCategoryRequest = async (categoryName: string) => {
     const pos = await getCurrentPosition();
     location = `${pos.lat},${pos.lng}`;
   } catch (e) {
-    console.debug("Location unavailable for background log", e);
+    // Location fetching might fail, that's okay for logs
+    // console.debug("Location unavailable for log", e);
   }
 
-  // 3. Send Request to Google Sheet using safe API helper
+  // 3. Send Request to Supabase Edge Function
   try {
     await callBackend({
       action: "create_request",
@@ -42,6 +42,7 @@ export const sendCategoryRequest = async (categoryName: string) => {
       location: location
     });
   } catch (e) {
-    console.error("Failed to send category request log", e);
+    // Silently fail for logging errors to avoid polluting console for users
+    // console.warn("Failed to send category request log", e);
   }
 };

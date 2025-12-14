@@ -3,53 +3,64 @@
  * Normalizes phone numbers to strict E.164 International format.
  * Format: +<CountryCode><SubscriberNumber>
  * Example: +250788123456
- * 
- * Handles:
- * - Removing non-numeric chars ((), -, spaces)
- * - Replacing leading '0' with defaultCountryCode
- * - Prepending '+' if missing
- * - Validating length (E.164 is max 15 digits)
+ *
+ * Logic:
+ * 1. Cleans input (removes spaces, parens, dashes).
+ * 2. Detects International format (+... or 00...).
+ * 3. Detects Local format (0...) -> strips 0, adds default code.
+ * 4. Detects Raw Local (78...) -> adds default code.
+ * 5. Handles "Double Prefix" edge case (e.g. +250078...) by stripping the extra 0.
+ * 6. Validates length (7-15 digits per E.164).
  */
 export const normalizePhoneNumber = (phone: string, defaultCountryCode: string = '250'): string | null => {
   if (!phone) return null;
 
-  // 1. Remove all characters except digits and the leading '+'
-  // Note: We intentionally strip '+' if it's not at the start to fix messy inputs like "++" or "+ 250"
-  let cleaned = phone.trim();
-  
-  const hasLeadingPlus = cleaned.startsWith('+');
-  cleaned = cleaned.replace(/\D/g, ''); // Remove non-digits
+  // 1. Initial cleanup: Remove common separators
+  let raw = phone.toString().trim();
 
-  // 2. Logic to construct the full number
-  if (hasLeadingPlus) {
-    // Already had a plus, so we treat the digits as full international
-    cleaned = '+' + cleaned;
-  } else if (cleaned.startsWith('0')) {
-    // Local format (e.g., 078...) -> Remove 0, prepend country code
-    cleaned = '+' + defaultCountryCode + cleaned.substring(1);
-  } else if (cleaned.startsWith(defaultCountryCode)) {
-    // Starts with country code but missing plus (e.g. 25078...)
-    cleaned = '+' + cleaned;
-  } else {
-    // Heuristic: If length matches the default country's expected local length without 0 (e.g., 9 for RW)
-    // prepend country code. Otherwise, assume it might be international without plus.
-    if (cleaned.length === 9 && defaultCountryCode === '250') {
-       cleaned = '+' + defaultCountryCode + cleaned;
-    } else {
-       // Fallback: Assume it's a full number missing the plus
-       cleaned = '+' + cleaned;
-    }
+  // Check for international prefix '+' before stripping non-digits
+  const hasLeadingPlus = raw.startsWith('+');
+
+  // Strip all non-numeric characters
+  let digits = raw.replace(/\D/g, '');
+
+  // Handle empty after strip
+  if (!digits) return null;
+
+  // 2. Handle International Prefix "00" (Standard E.164 replacement)
+  if (digits.startsWith('00')) {
+    digits = digits.substring(2);
   }
 
-  // 3. E.164 Validation
-  // Must start with +, followed by 7 to 15 digits
-  const e164Regex = /^\+\d{7,15}$/;
+  // 3. Logic Tree for Country Code application
+
+  // If the number starts with the default country code (e.g., 250...)
+  if (digits.startsWith(defaultCountryCode)) {
+     // Edge Case Correction: User typed "250" then "078..." resulting in "250078..."
+     const remainder = digits.substring(defaultCountryCode.length);
+     if (remainder.startsWith('0')) {
+        // Strip the '0' after the country code
+        digits = defaultCountryCode + remainder.substring(1);
+     }
+  } 
+  // If it starts with '0' (Local format e.g. 078...)
+  else if (digits.startsWith('0')) {
+    // Remove '0' and prepend country code
+    digits = defaultCountryCode + digits.substring(1);
+  }
+  // If it doesn't start with country code AND wasn't explicitly marked international with '+'
+  // We assume it's a raw local number (e.g. 788...)
+  else if (!hasLeadingPlus) {
+    digits = defaultCountryCode + digits;
+  }
   
-  if (!e164Regex.test(cleaned)) {
-    return null; 
+  // 4. E.164 Validation
+  // Format: +[1-15 digits]
+  if (digits.length < 7 || digits.length > 15) {
+    return null;
   }
 
-  return cleaned;
+  return '+' + digits;
 };
 
 /**

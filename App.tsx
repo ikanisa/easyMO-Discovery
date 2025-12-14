@@ -17,6 +17,7 @@ const Business = React.lazy(() => import('./pages/Business'));
 const ChatSession = React.lazy(() => import('./pages/ChatSession'));
 const MomoGenerator = React.lazy(() => import('./pages/MomoGenerator'));
 const QRScanner = React.lazy(() => import('./pages/QRScanner'));
+const Settings = React.lazy(() => import('./pages/Settings'));
 
 // Helper Widget Component for Home Screen
 const HomeWidget = ({ 
@@ -72,6 +73,9 @@ const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>(AppMode.HOME);
   const [userRole, setUserRole] = useState<Role | null>(null);
   const [activeChat, setActiveChat] = useState<ChatSessionType | null>(null);
+  
+  // Home Search State
+  const [homeSearchQuery, setHomeSearchQuery] = useState('');
 
   // Initialize Auth (Anonymous)
   useEffect(() => {
@@ -133,7 +137,9 @@ const App: React.FC = () => {
     if (type === 'support') initialText = 'Hello! How can I help you today?';
     if (type === 'business') initialText = 'Hi! I am "Bob", your Procurement Agent. I can find Hardware, Electronics, Groceries, or any local service. I search Maps & Social Media. What do you need?';
     if (type === 'real_estate') initialText = 'Hello! I am "Keza", your Real Estate Concierge. I search across Agencies, Facebook, and Instagram to find properties. Are you looking for rent or sale?';
-    if (type === 'legal') initialText = 'Muraho! Ndi "Gatera". I can help you find the nearest Notary, Lawyer, or Bailiff. (Hello! I am your Legal Assistant. What professional do you need?)';
+    
+    // UPDATED GATERA GREETING
+    if (type === 'legal') initialText = 'Muraho! Ndi "Gatera", your AI Notary. I draft contracts, sales agreements, and official letters instantly. What document do you need me to write?';
 
     setActiveChat({
       id: Date.now().toString(),
@@ -159,6 +165,13 @@ const App: React.FC = () => {
     }
   };
 
+  const handleHomeSearch = () => {
+    if (!homeSearchQuery.trim()) return;
+    sendCategoryRequest(homeSearchQuery);
+    startChat('business', undefined, false, homeSearchQuery);
+    setHomeSearchQuery('');
+  };
+
   const renderContent = () => {
     // 1. Home / Role Selection
     if (mode === AppMode.HOME && !userRole) {
@@ -174,13 +187,33 @@ const App: React.FC = () => {
           </button>
 
           {/* Header Section */}
-          <div className="pt-12 px-6 pb-8 text-center animate-in fade-in slide-in-from-top-4 duration-700">
+          <div className="pt-12 px-6 pb-6 text-center animate-in fade-in slide-in-from-top-4 duration-700">
             <h1 className="text-5xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-br from-blue-600 via-emerald-500 to-purple-600 dark:from-blue-400 dark:via-emerald-400 dark:to-purple-400 drop-shadow-sm mb-3">
               easyMO
             </h1>
             <p className="text-slate-500 dark:text-slate-400 font-medium text-sm tracking-wide max-w-xs mx-auto">
               Your AI-Powered City Guide & Tools
             </p>
+          </div>
+
+          {/* Home Search Bar */}
+          <div className="px-6 pb-8 animate-in fade-in slide-in-from-bottom-2 duration-700 delay-100">
+             <div className="relative group w-full max-w-md mx-auto">
+                <input 
+                   type="text" 
+                   value={homeSearchQuery}
+                   onChange={(e) => setHomeSearchQuery(e.target.value)}
+                   onKeyDown={(e) => e.key === 'Enter' && handleHomeSearch()}
+                   placeholder="Search for products, services, or places..."
+                   className="w-full bg-white/70 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl pl-5 pr-12 py-4 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white dark:focus:bg-slate-900/80 transition-all shadow-lg shadow-black/5"
+                />
+                <button 
+                   onClick={handleHomeSearch}
+                   className="absolute right-2 top-2 p-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-colors shadow-md active:scale-95"
+                >
+                   <ICONS.Search className="w-4 h-4" />
+                </button>
+             </div>
           </div>
           
           {/* Main Grid Section */}
@@ -257,7 +290,7 @@ const App: React.FC = () => {
                Services
             </h2>
             <div className="flex gap-4 overflow-x-auto no-scrollbar pr-6 pb-4">
-               {/* Quick Action 1: Notary */}
+               {/* Quick Action 1: Notary - Updated Label */}
                <button 
                   onClick={() => startChat('legal')}
                   className="min-w-[140px] h-32 rounded-3xl bg-white dark:bg-slate-800/50 border border-black/5 dark:border-white/5 p-4 flex flex-col justify-between hover:bg-slate-50 dark:hover:bg-white/10 transition-colors animate-in slide-in-from-right-4 duration-700 shadow-sm"
@@ -266,8 +299,8 @@ const App: React.FC = () => {
                      <ICONS.Scale className="w-4 h-4" />
                   </div>
                   <div className="text-left">
-                     <div className="text-sm font-bold text-slate-800 dark:text-slate-200">Notary Services</div>
-                     <div className="text-[10px] text-slate-500">Notary & Law</div>
+                     <div className="text-sm font-bold text-slate-800 dark:text-slate-200">Notary AI</div>
+                     <div className="text-[10px] text-slate-500">Draft Contracts</div>
                   </div>
                </button>
 
@@ -335,6 +368,8 @@ const App: React.FC = () => {
               return <MomoGenerator onBack={() => handleNavigation(AppMode.HOME)} />;
             case AppMode.SCANNER:
               return <QRScanner onBack={() => handleNavigation(AppMode.HOME)} />;
+            case AppMode.SETTINGS:
+              return <Settings onBack={() => handleNavigation(AppMode.SERVICES)} />;
             default:
               return null;
           }

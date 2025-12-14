@@ -14,7 +14,7 @@ const VehicleSelector: React.FC<VehicleSelectorProps> = ({ selected, onSelect })
     { id: 'cab', label: 'Cab', icon: ICONS.Taxi },
     { id: 'liffan', label: 'Liffan', icon: ICONS.Sedan },
     { id: 'truck', label: 'Truck', icon: ICONS.Pickup },
-    { id: 'other', label: 'Bus', icon: ICONS.Bus }, // Renaming label 'Other' to 'Bus' visually, id stays 'other' for logic compatibility, or we keep label 'Other' but use Bus Icon. Let's keep label 'Other' for now or maybe 'Bus/Van'.
+    { id: 'other', label: 'Other', icon: ICONS.More },
   ];
 
   return (
@@ -30,7 +30,7 @@ const VehicleSelector: React.FC<VehicleSelectorProps> = ({ selected, onSelect })
               relative flex flex-col items-center justify-center min-w-[80px] h-[80px] rounded-2xl border transition-all duration-300 group shrink-0 backdrop-blur-md overflow-hidden
               ${isSelected 
                 ? 'border-blue-500/50 shadow-[0_8px_30px_-10px_rgba(59,130,246,0.5)] translate-y-[-4px]' 
-                : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10'
+                : 'bg-white dark:bg-white/5 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10 hover:border-slate-300 dark:hover:border-white/20'
               }
             `}
           >
@@ -41,8 +41,8 @@ const VehicleSelector: React.FC<VehicleSelectorProps> = ({ selected, onSelect })
             
             {/* Content */}
             <div className="relative z-10 flex flex-col items-center gap-2">
-               <Icon className={`w-8 h-8 transition-all duration-300 ${isSelected ? 'text-white scale-110' : 'text-slate-400 group-hover:text-slate-200'}`} />
-               <span className={`text-[10px] font-bold tracking-wider uppercase ${isSelected ? 'text-white' : 'text-slate-500'}`}>
+               <Icon className={`w-8 h-8 transition-all duration-300 ${isSelected ? 'text-white scale-110' : 'text-slate-400 dark:text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200'}`} />
+               <span className={`text-[10px] font-bold tracking-wider uppercase ${isSelected ? 'text-white' : 'text-slate-500 dark:text-slate-500'}`}>
                  {v.label}
                </span>
             </div>
@@ -57,4 +57,3 @@ const VehicleSelector: React.FC<VehicleSelectorProps> = ({ selected, onSelect })
 };
 
 export default VehicleSelector;
-    

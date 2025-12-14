@@ -124,7 +124,12 @@ export const LocationService = {
         // Re-acquire lock if visibility changes (tab switching)
         document.addEventListener('visibilitychange', handleVisibilityChange);
       } catch (err: any) {
-        console.error(`${err.name}, ${err.message}`);
+        // Handle specific error: Access to Screen Wake Lock features is disallowed by permissions policy
+        if (err.name === 'NotAllowedError') {
+            console.warn('Wake Lock request denied (Permissions Policy or Battery Saver). App may sleep in background.');
+        } else {
+            console.warn(`Wake Lock Error: ${err.name}, ${err.message}`);
+        }
       }
     }
   },
@@ -134,9 +139,13 @@ export const LocationService = {
    */
   releaseWakeLock: async () => {
     if (wakeLock !== null) {
-      await wakeLock.release();
-      wakeLock = null;
-      console.log('Screen Wake Lock released');
+      try {
+        await wakeLock.release();
+        wakeLock = null;
+        console.log('Screen Wake Lock released');
+      } catch (e) {
+        console.warn('Error releasing wake lock', e);
+      }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     }
   },
