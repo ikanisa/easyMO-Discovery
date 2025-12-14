@@ -5,6 +5,11 @@ const bodyParser = require('body-parser');
 const twilio = require('twilio');
 const { createClient } = require('@supabase/supabase-js');
 
+// Import agent and broadcast modules
+const { callGeminiAgent } = require('./gemini-integration');
+const { findNearestVendors } = require('./vendor-matching');
+const { broadcastToVendors } = require('./broadcast');
+
 const app = express();
 
 // Supabase client (service role for server-side access)
@@ -244,11 +249,93 @@ app.post('/twilio/inbound', async (req, res) => {
     return res.type('text/xml').status(200).send('<Response/>');
   }
 
-  // Buyer/user normal conversation (simple placeholder for now)
-  const twiml = new twilio.twiml.MessagingResponse();
-  twiml.message(
-    `Kwizera here ✅\n\nTell me:\n1) What item/service?\n2) Where are you? (type area or share location)\n3) Quantity / budget (optional)`
-  );
+  // 🤖 AI Agent: Process buyer message with Gemini
+  try {
+    // Get or create thread context
+    const { data: thread } = await supabase
+      .from('whatsapp_threads')
+      .select('context')
+      .eq('phone_number', from)
+      .single();
+
+    const context = thread?.context || {};
+
+    // Call Gemini AI agent
+    const aiResponse = await callGeminiAgent(body, context);
+    
+    // Send AI response to buyer
+    const twiml = new twilio.twiml.MessagingResponse();
+    twiml.message(aiResponse.text);
+
+    // If AI extracted complete lead data, trigger broadcast
+    if (aiResponse.extracted && aiResponse.extracted.ready_for_broadcast) {
+      const extracted = aiResponse.extracted;
+
+      // Create lead in database
+      const { data: lead, error: leadError } = await supabase
+        .from('leads')
+        .insert({
+          phone_number: from,
+          item_requested: extracted.item,
+          location_text: extracted.location,
+          budget: extracted.budget,
+          quantity: extracted.quantity,
+          status: 'new'
+        })
+        .select()
+        .single();
+
+      if (lead && !leadError) {
+        logEvent('lead_created', { lead_id: lead.id, from, item: extracted.item });
+
+        // Find vendors (async - don't block response)
+        findNearestVendors(supabase, extracted.item, extracted.location, 30)
+          .then(vendors => {
+            if (vendors.length > 0) {
+              logEvent('vendors_found', { lead_id: lead.id, count: vendors.length });
+              
+              // Broadcast to vendors
+              const twilioClient = getTwilioClient();
+              return broadcastToVendors(twilioClient, supabase, lead.id, vendors);
+            }
+          })
+          .then(result => {
+            if (result) {
+              logEvent('broadcast_complete', { 
+                lead_id: lead.id, 
+                sent: result.sent, 
+                total: result.total 
+              });
+            }
+          })
+          .catch(error => {
+            console.error('Broadcast error:', error);
+            logEvent('broadcast_error', { lead_id: lead.id, error: error.message });
+          });
+      }
+    }
+
+    // Update thread context with latest extracted data
+    if (aiResponse.extracted) {
+      await supabase
+        .from('whatsapp_threads')
+        .update({
+          context: { ...context, ...aiResponse.extracted },
+          updated_at: new Date().toISOString()
+        })
+        .eq('phone_number', from);
+    }
+
+    return res.type('text/xml').status(200).send(twiml.toString());
+
+  } catch (error) {
+    console.error('AI Agent error:', error);
+    
+    // Fallback to simple response if AI fails
+    const twiml = new twilio.twiml.MessagingResponse();
+    twiml.message(
+      `Kwizera here ✅\n\nTell me:\n1) What item/service?\n2) Where are you? (type area or share location)\n3) Quantity / budget (optional)`
+    );
   return res.type('text/xml').status(200).send(twiml.toString());
 });
 
