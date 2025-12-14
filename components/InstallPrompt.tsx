@@ -90,6 +90,13 @@ const InstallPrompt: React.FC = () => {
   if (!isVisible) return null;
 
   return (
+    <div className="fixed inset-0 flex justify-center pointer-events-none z-[60]">
+      <div className="w-full relative" style={{ maxWidth: '448px' }}>
+        <div className="absolute bottom-24 left-4 right-4 animate-in slide-in-from-bottom-6 duration-700 pointer-events-auto">
+          <div className="glass-panel p-5 rounded-3xl border border-white/10 shadow-2xl bg-[#0f172a]/95 backdrop-blur-xl flex flex-col gap-4 relative overflow-hidden">
+            
+            {/* Ambient Glow */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
     <div className="frame-fixed bottom-24 px-4 z-[60] animate-in slide-in-from-bottom-6 duration-700">
       <div className="glass-panel p-5 rounded-3xl border border-white/10 shadow-2xl bg-[#0f172a]/95 backdrop-blur-xl flex flex-col gap-4 relative overflow-hidden">
         
@@ -148,6 +155,8 @@ const InstallPrompt: React.FC = () => {
                 </Button>
             </div>
         )}
+          </div>
+        </div>
       </div>
     </div>
   );

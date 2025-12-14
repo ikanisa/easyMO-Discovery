@@ -91,6 +91,12 @@ html.dark .glass-panel {
   box-shadow: none;
 }
 
+/* Safe Area Insets for iOS and notched devices */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
 /* Typography Tokens */
 .app-title {
   font-size: 1.5rem;

@@ -299,6 +299,23 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
   };
 
   return (
+    <div className="fixed inset-0 flex justify-center z-50">
+      <div className="w-full relative" style={{ maxWidth: '448px' }}>
+        <div className="flex flex-col h-full bg-[#0f172a] absolute inset-0">
+          <div className="h-16 glass-panel flex items-center px-4 justify-between shrink-0 border-b border-white/5 bg-[#0f172a]/90 backdrop-blur-xl z-20">
+            <button onClick={onClose} className="p-2 -ml-2 text-slate-400 hover:text-white transition-colors">
+               <ICONS.ChevronDown className="w-6 h-6 rotate-90" />
+            </button>
+            <div className="flex flex-col items-center">
+              <div className="font-semibold text-sm">{getTitle()}</div>
+              {(initialSession.type === 'business' || initialSession.type === 'real_estate' || initialSession.type === 'legal') && (
+                 <span className="text-[10px] text-emerald-400 font-medium">
+                   {initialSession.isDemoMode ? 'Demo Mode' : 'Grounded AI'}
+                 </span>
+              )}
+            </div>
+            <div className="w-8" />
+          </div>
     <>
       {/* Backdrop */}
       <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose} />
@@ -392,6 +409,8 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
           <button onClick={() => handleSend()} disabled={(!inputValue.trim() && !selectedFile && !selectedGenericFile) || isTyping} className="bg-primary text-white p-3.5 rounded-2xl">
             <ICONS.Send className="w-5 h-5" />
           </button>
+        </div>
+      </div>
         </div>
       </div>
     </div>
