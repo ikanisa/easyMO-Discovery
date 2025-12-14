@@ -15,12 +15,12 @@ const Button: React.FC<ButtonProps> = ({
   icon,
   ...props 
 }) => {
-  const baseStyle = "relative overflow-hidden font-medium rounded-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 py-3.5 px-6 shadow-lg";
+  const baseStyle = "relative overflow-hidden font-medium rounded-button transition-all active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 py-3.5 px-6 card-shadow";
   
   const variants = {
     primary: "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/30",
     secondary: "bg-slate-700 hover:bg-slate-600 text-white",
-    glass: "bg-white/10 hover:bg-white/20 text-white border border-white/10 backdrop-blur-md",
+    glass: "glass-panel hover:bg-white/20 text-white soft-border backdrop-blur-md",
     danger: "bg-red-500/80 hover:bg-red-500 text-white"
   };
 
