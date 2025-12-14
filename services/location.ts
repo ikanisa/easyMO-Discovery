@@ -55,32 +55,6 @@ export const formatDistance = (km: number): string => {
   return `${km.toFixed(1)}km`;
 };
 
-/**
- * Calculates Estimated Time of Arrival based on distance.
- * Uses a heuristic average speed for urban environments (approx 25 km/h).
- * Adds a small buffer for start/stop.
- */
-export const calculateETA = (distanceKm: number): string => {
-  // Average urban speed: ~25 km/h
-  // Time = Distance / Speed
-  // Convert hours to minutes: * 60
-  
-  const averageSpeedKmH = 25; 
-  const timeHours = distanceKm / averageSpeedKmH;
-  const timeMinutes = Math.round(timeHours * 60);
-
-  // Minimum 1 min
-  if (timeMinutes < 1) return '1 min';
-  
-  if (timeMinutes > 60) {
-      const h = Math.floor(timeMinutes / 60);
-      const m = timeMinutes % 60;
-      return `${h}h ${m}m`;
-  }
-
-  return `${timeMinutes} min`;
-};
-
 // State for watcher and wake lock
 let watchId: number | null = null;
 let wakeLock: WakeLockSentinel | null = null;
@@ -177,6 +151,5 @@ export const LocationService = {
   },
 
   calculateDistance,
-  formatDistance,
-  calculateETA
+  formatDistance
 };

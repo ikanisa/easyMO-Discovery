@@ -15,14 +15,14 @@ const clientAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
  * Protocol: POST { "action": "secure_gemini", "prompt": "...", "tools": [...], "location": {...} }
  */
 const askGemini = async (
-  prompt: string | any[], 
+  prompt: string, 
   tools?: any[], 
   userLocation?: { lat: number, lng: number }
 ): Promise<string> => {
   
   // Construct Tool Config for Maps Grounding if Maps tool is present
   let toolConfig: any = undefined;
-  if (userLocation && tools?.some((t: any) => t.googleMaps)) {
+  if (userLocation && tools?.some(t => t.googleMaps)) {
       toolConfig = {
           retrievalConfig: {
               latLng: {
@@ -34,25 +34,21 @@ const askGemini = async (
   }
 
   // 1. Try Backend (Secure)
-  // Note: Backend currently only supports string prompts. If using attachments, we might need client-side fallback 
-  // or update backend to handle multipart. For now, if complex prompt, skip backend or serialize.
-  if (typeof prompt === 'string') {
-    try {
-      const response = await callBackend({
-        action: "secure_gemini",
-        prompt: prompt,
-        tools: tools,
-        toolConfig: toolConfig // Pass config to backend
-      });
-      
-      if (response.status === 'success' && response.text) {
-          return response.text;
-      }
-      
-      console.warn("Backend Gemini Failed, falling back to client-side:", response.message || response.error);
-    } catch (e) {
-      console.error("Secure Gemini Net Error, falling back:", e);
+  try {
+    const response = await callBackend({
+      action: "secure_gemini",
+      prompt: prompt,
+      tools: tools,
+      toolConfig: toolConfig // Pass config to backend
+    });
+    
+    if (response.status === 'success' && response.text) {
+        return response.text;
     }
+    
+    console.warn("Backend Gemini Failed, falling back to client-side:", response.message || response.error);
+  } catch (e) {
+    console.error("Secure Gemini Net Error, falling back:", e);
   }
 
   // 2. Fallback to Direct Client Call (Prototype Mode)
@@ -64,18 +60,9 @@ const askGemini = async (
       if (tools) config.tools = tools;
       if (toolConfig) config.toolConfig = toolConfig;
 
-      // Format contents for SDK
-      let contents: any;
-      if (Array.isArray(prompt)) {
-          // It's a list of parts (Text + InlineData)
-          contents = { role: 'user', parts: prompt };
-      } else {
-          contents = prompt;
-      }
-
       const result = await clientAI.models.generateContent({
           model: model,
-          contents: contents,
+          contents: prompt,
           config: config
       });
       return result.text || "No response generated.";
@@ -167,15 +154,6 @@ AI Response:
 `;
 };
 
-// Helper to construct prompt with attachment
-const constructPromptWithAttachment = (textPrompt: string, attachment?: { mimeType: string, data: string }) => {
-    if (!attachment) return textPrompt;
-    return [
-        { text: textPrompt },
-        { inlineData: { mimeType: attachment.mimeType, data: attachment.data } }
-    ];
-};
-
 // --- AGENTS IMPLEMENTATION ---
 
 export const GeminiService = {
@@ -183,7 +161,7 @@ export const GeminiService = {
   chatSupport: async (
     history: Message[],
     userMessage: string,
-    attachment?: { mimeType: string, data: string }
+    userImage?: string
   ): Promise<string> => {
     const systemPrompt = `You are the Support Agent for "easyMO", the discovery app for Rwanda.
     Knowledge:
@@ -192,11 +170,9 @@ export const GeminiService = {
     - Market: Finds goods/services (use Bob).
     - Legal Drafter: Gatera (in Services tab).
     
-    Answer briefly and helpfully. If they need to talk to a human admin, tell them to use the WhatsApp deep link button.`;
+    Answer briefly and helpfully. If they need to talk to a human admin, tell them to use the WhatsApp button on the Support page.`;
 
-    const promptText = formatPromptFromHistory(history, systemPrompt, userMessage, "Unknown");
-    const prompt = constructPromptWithAttachment(promptText, attachment);
-    
+    const prompt = formatPromptFromHistory(history, systemPrompt, userMessage, "Unknown");
     const response = await askGemini(prompt);
     
     // Trigger Memory Loop
@@ -235,102 +211,54 @@ export const GeminiService = {
     return text.replace(/"/g, '').trim();
   },
 
-  // --- NEW: ONBOARDING AGENT ---
-  onboardBusiness: async (
-    history: Message[],
-    userMessage: string,
-    userLocation: { lat: number, lng: number }
-  ): Promise<{ text: string, extractedData?: { name?: string, description?: string, address?: string, location?: {lat: number, lng: number} } }> => {
-    
-    const locStr = `${userLocation.lat}, ${userLocation.lng}`;
-    const systemPrompt = `You are "OnboardBot", an assistant helping a business owner register their shop on the easyMO app.
-    
-    YOUR GOAL: Gather 3 key pieces of info: Business Name, Business Description, and Location.
-    
-    CAPABILITIES:
-    1. **Google Maps Search:** If the user gives a business name, search Google Maps immediately. 
-       - If found, extract the official address and description. Tell the user you found it.
-       - If NOT found, ask the user to describe what they do and where they are located.
-    2. **Description Refinement:** If the user types a description (e.g. "sell food"), rewrite it to be professional (e.g. "Authentic local restaurant serving fresh daily specials").
-    
-    PROTOCOL:
-    - Be conversational but concise.
-    - If user provides a name, SEARCH for it.
-    - If user provides a raw description, IMPROVE it.
-    
-    OUTPUT JSON SCHEMA (Always include at end of response):
-    {
-      "extracted": {
-         "name": "Business Name (if known)",
-         "description": "Professional description (if known)",
-         "address": "Address string (if known)",
-         "location": { "lat": 0.0, "lng": 0.0 } (if known from Maps)
-      }
-    }
-    `;
-
-    const promptText = formatPromptFromHistory(history, systemPrompt, userMessage, locStr);
-    const tools = [{googleSearch: {}}, {googleMaps: {}}];
-    
-    const rawText = await askGemini(promptText, tools, userLocation);
-    const parsedJson = extractJson(rawText);
-    const cleanText = rawText.replace(/```json[\s\S]*?```/g, '').replace(/```[\s\S]*?```/g, '').replace(/\{[\s\S]*\}/g, '').trim();
-
-    return { 
-        text: cleanText || "I've processed your details.",
-        extractedData: parsedJson?.extracted
-    };
-  },
-
   chatBob: async (
     history: Message[], 
     userMessage: string, 
     userLocation: { lat: number, lng: number },
     isDemoMode: boolean = false,
-    attachment?: { mimeType: string, data: string }
+    userImage?: string
   ): Promise<{ text: string, businessPayload?: BusinessResultsPayload, groundingLinks?: { title: string; uri: string }[] }> => {
     
     const locStr = `${userLocation.lat}, ${userLocation.lng}`;
     const systemPrompt = `You are "Bob", easyMO's Hyper-Aggressive Procurement Agent.
     
-    YOUR MISSION: Find **up to 30** businesses nearby that match the user's need. Quantity and Proximity are key.
+    YOUR GOAL: Conduct an exhaustive search to find up to 30 nearby businesses that might have the requested item/service.
     
     SEARCH STRATEGY:
-    1. **Google Maps (Primary):** Search efficiently within 10km. Find *every* relevant business, not just the top 5.
-    2. **Google Search (Secondary):** If Maps data is sparse, search for "Item name Kigali Instagram", "Item name Rwanda Facebook", "Item name Jiji" to find informal sellers.
-    3. **Contact Harvesting:** You MUST find a phone number. If a Maps result has no phone, use Search to find it.
+    1. **Google Maps (Proximity):** Search strictly within 10km first. Look for established businesses.
+    2. **Google Search (Social/Informal):** Search for "Item name Kigali Instagram", "Item name Rwanda Facebook", "Item name Jiji Rwanda" to find informal sellers or boutiques without maps listings.
+    3. **Aggressive Listing:** Do not stop at 5. List as many viable candidates as possible (target 20-30).
     
-    FILTERING RULES:
-    - **Phone Number Mandatory:** Prioritize businesses with a phone number. We need to WhatsApp them.
-    - **Proximity:** Sort by distance (closest first).
-    - **Volume:** Return as many valid candidates as possible (Target: 30).
+    DATA EXTRACTION:
+    - **Phone:** Crucial. If a Maps result has no phone, try to find it via Search.
+    - **Name:** Use the business name or the social handle.
+    - **Distance:** Estimate distance from user location (${locStr}).
+    - **Prioritize:** Order by PROXIMITY (closest first).
     
     JSON SCHEMA (Strict):
     {
-      "query_summary": "I found 28 potential sellers nearby. 20 have phone numbers ready for contact.",
+      "query_summary": "I found 28 potential sellers nearby, including 5 from Instagram...",
       "need_description": "2 bags of cement", 
       "user_location_label": "Kicukiro",
-      "category": "Hardware",
       "matches": [ 
         { 
-          "name": "Business Name", 
+          "name": "Business/Person Name", 
           "phone": "+250...", 
           "category": "Hardware", 
           "distance": "0.5km",
-          "address": "Kicukiro Centre",
-          "snippet": "Found on Maps. highly rated." 
+          "snippet": "Found on Instagram: @hardware_rw" 
         } 
       ]
     }
     
-    Output the JSON block at the end.`;
+    End your response with this JSON block.`;
 
-    const promptText = formatPromptFromHistory(history, systemPrompt, userMessage, locStr);
-    const prompt = constructPromptWithAttachment(promptText, attachment);
+    const prompt = formatPromptFromHistory(history, systemPrompt, userMessage, locStr);
     
     const tools = [{googleSearch: {}}, {googleMaps: {}}];
     const rawText = await askGemini(prompt, tools, userLocation); 
     
+    // Trigger Memory Loop
     runBackgroundMemoryExtraction(userMessage, rawText);
 
     const parsedJson = extractJson(rawText);
@@ -338,31 +266,26 @@ export const GeminiService = {
 
     let payload: BusinessResultsPayload | undefined;
     if (parsedJson && Array.isArray(parsedJson.matches)) {
-        // Post-processing: Normalize phones and filter invalid ones
-        const validMatches = parsedJson.matches
-            .map((m: any, idx: number) => ({
-                id: `gen-${idx}`,
-                name: m.name || "Unknown",
-                category: m.category || parsedJson.category || 'Business',
-                distance: m.distance || 'Nearby',
-                phoneNumber: normalizePhoneNumber(m.phone) || null, // Robust normalization
-                confidence: 'High',
-                address: m.address,
-                snippet: m.snippet,
-                whatsappDraft: `Hello ${m.name}, I found you on easyMO. Do you have availability for: ${parsedJson.need_description}?`
-            }))
-            .filter((m: any) => m.phoneNumber !== null); // Filter out results we can't contact
-
         payload = {
             query_summary: parsedJson.query_summary,
             need_description: parsedJson.need_description,
             user_location_label: parsedJson.user_location_label,
             category: parsedJson.category,
-            matches: validMatches
+            matches: parsedJson.matches.map((m: any, idx: number) => ({
+                id: `gen-${idx}`,
+                name: m.name || "Unknown",
+                category: m.category || 'Business',
+                distance: m.distance || 'Nearby',
+                phoneNumber: normalizePhoneNumber(m.phone) || m.phone,
+                confidence: 'High',
+                address: m.address,
+                snippet: m.snippet,
+                whatsappDraft: `Hello, I found you on easyMO. Do you have availability for: ${parsedJson.need_description}?`
+            }))
         };
     }
 
-    return { text: cleanText || "I've searched the area. Here are the businesses I found with contact details:", businessPayload: payload };
+    return { text: cleanText || "Here is what I found:", businessPayload: payload };
   },
 
   chatKeza: async (
@@ -370,37 +293,25 @@ export const GeminiService = {
     userMessage: string, 
     userLocation: { lat: number, lng: number }, 
     isDemoMode: boolean = false,
-    attachment?: { mimeType: string, data: string }
+    userImage?: string
   ): Promise<{ text: string, propertyPayload?: PropertyResultsPayload, groundingLinks?: { title: string; uri: string }[] }> => {
     
     const locStr = `${userLocation.lat}, ${userLocation.lng}`;
     const systemPrompt = `You are "Keza", easyMO's Real Estate Concierge.
     
-    YOUR MISSION: Find available properties (Rent/Sale) by exhaustively searching Agencies, Google Maps, and Social Media listings (Instagram/Facebook/Jiji).
-    
-    PRIORITY:
-    1. **Contact Info:** Listings WITHOUT phone numbers are useless. Find the agent/landlord's number.
-    2. **Location Accuracy:** Be specific about the neighborhood (e.g., Gisozi, Kibagabaga).
-    3. **Volume:** Provide a robust list of options (Target: 10-15).
+    YOUR JOB:
+    Find apartments, houses, and land for Rent or Sale in Rwanda.
+    Use Google Maps to find Real Estate Agencies and specific property listings if available.
     
     JSON SCHEMA:
     {
-       "query_summary": "Found 12 apartments in Gisozi...",
+       "query_summary": "Found 3 apartments in Gisozi...",
        "matches": [
-          { 
-            "title": "2 Bedroom Apartment", 
-            "price": 300000, 
-            "currency": "RWF", 
-            "listing_type": "rent", 
-            "contact_phone": "+250...", 
-            "area_label": "Gisozi",
-            "why_recommended": "Good price for location"
-          }
+          { "title": "2 Bedroom Apartment", "price": 300000, "currency": "RWF", "listing_type": "rent", "contact_phone": "+250...", "area_label": "Gisozi" }
        ]
     }`;
 
-    const promptText = formatPromptFromHistory(history, systemPrompt, userMessage, locStr);
-    const prompt = constructPromptWithAttachment(promptText, attachment);
+    const prompt = formatPromptFromHistory(history, systemPrompt, userMessage, locStr);
     const tools = [{googleSearch: {}}, {googleMaps: {}}];
     const rawText = await askGemini(prompt, tools, userLocation);
     
@@ -411,35 +322,31 @@ export const GeminiService = {
 
     let payload: PropertyResultsPayload | undefined;
     if (parsedJson && Array.isArray(parsedJson.matches)) {
-        const validMatches = parsedJson.matches
-            .map((m: any, idx: number) => ({
-                id: `prop-${idx}`,
-                title: m.title || "Property",
-                property_type: m.property_type || "Apartment",
-                listing_type: m.listing_type || "rent",
-                price: m.price || 0,
-                currency: m.currency || "RWF",
-                bedroom_count: m.bedroom_count || null,
-                bathroom_count: m.bathroom_count || null,
-                area_label: m.area_label || "Kigali",
-                approx_distance_km: 1.5,
-                contact_phone: normalizePhoneNumber(m.contact_phone),
-                confidence: 'high',
-                why_recommended: m.why_recommended || "Matches criteria",
-                whatsapp_draft: `Hello, I am interested in ${m.title} available for ${m.listing_type}.`
-            }))
-            .filter((m: any) => m.contact_phone !== null);
-
         payload = {
             query_summary: parsedJson.query_summary || "Properties found.",
             filters_applied: { listing_type: 'unknown', property_type: 'unknown', budget_min: 0, budget_max: 0, area: '', radius_km: 0, sort: 'default' },
             disclaimer: "Confirm availability with agent.",
             pagination: { page: 1, page_size: 10, has_more: false },
-            matches: validMatches
+            matches: parsedJson.matches.map((m: any, idx: number) => ({
+                id: `prop-${idx}`,
+                title: m.title || "Property",
+                property_type: "Apartment",
+                listing_type: m.listing_type || "rent",
+                price: m.price || 0,
+                currency: m.currency || "RWF",
+                bedroom_count: m.bedroom_count || 2,
+                bathroom_count: m.bathroom_count || 1,
+                area_label: m.area_label || "Kigali",
+                approx_distance_km: 1.2,
+                contact_phone: normalizePhoneNumber(m.contact_phone),
+                confidence: 'high',
+                why_recommended: "Matches your criteria",
+                whatsapp_draft: `Hello, I am interested in ${m.title} available for ${m.listing_type}.`
+            }))
         };
     }
 
-    return { text: cleanText || "Here are some listings with contacts.", propertyPayload: payload };
+    return { text: cleanText || "Here are some listings.", propertyPayload: payload };
   },
 
   chatGatera: async (
@@ -447,59 +354,57 @@ export const GeminiService = {
     userMessage: string, 
     userLocation: { lat: number, lng: number }, 
     isDemoMode: boolean = false,
-    attachment?: { mimeType: string, data: string }
+    userImage?: string
   ): Promise<{ text: string, legalPayload?: LegalResultsPayload, groundingLinks?: { title: string; uri: string }[] }> => {
     
     const systemPrompt = `You are "Gatera", Rwanda's Premier AI Legal Expert.
     
-    CONSTRAINT: You DO NOT use Google Maps. You rely solely on Google Search for legal texts and directories.
+    You have exactly TWO distinct operating modes. You must auto-detect which mode to use based on the user's request.
+
+    **CRITICAL RULES:**
+    - You are NOT a directory. Do NOT search for lawyers, notaries, or bailiffs.
+    - You do NOT use Google Maps.
+    - You ONLY use Google Search for legal research.
+    - If user asks to find a lawyer/notary, reply: "I am a Legal Advisor and Contract Drafter. To find a lawyer or notary near you, please use Bob in the Market tab."
+
+    === MODE 1: LEGAL ADVISOR (Research & Advice) ===
+    Trigger: User asks a legal question, asks for advice, clarification on laws, or rights (e.g., "Can I fire my maid?", "What is the penalty for drunk driving?", "How to register a company?").
     
-    MODES:
-    1. **Legal Advisor (IRAC):** Answer questions using specific Articles/Laws (Penal Code, Labor Law, etc.). Be precise.
-    2. **Contract Drafter:** Generate professional agreements/letters in English/French/Kinyarwanda.
-    3. **Professional Finder (Text-Based):** If user asks for a lawyer/notary, search for "List of Advocates in Rwanda" or "Notaries in Kigali" via Google Search and list their names/contacts found in text results. Do NOT try to plot them on a map.
+    **Knowledge Source:** 
+    - You have access to the Rwandan Legal Corpus via Google Search.
     
-    JSON SCHEMA (Only if recommending professionals):
-    {
-       "matches": [
-          { "name": "Me. John Doe", "category": "Advocate", "phone": "+250...", "distance": "Kigali", "snippet": "Found in Bar Association list" }
-       ]
-    }
+    **Advisory Protocol (IRAC Method):**
+    1. **Issue:** Clearly state the legal question.
+    2. **Rule:** CITE specific Articles and Laws using Google Search results (Constitution of 2003, Penal Code, Labor Law 2018, Land Law, Commercial Recovery, Family Law). Do NOT invent laws.
+    3. **Analysis:** Apply the law to the user's situation. Explain in simple, accessible terms (English/Kinyarwanda/French).
+    4. **Conclusion:** Give a concrete recommendation.
     
-    Disclaimer: Always remind user you are an AI, not a substitute for a human lawyer in court.
+    *Formatting:* Use Bold for Articles. Use bullet points for steps.
+    *Disclaimer:* ALWAYS end with: "Disclaimer: I am an AI. This is information, not legal counsel. Consult a Bar Association lawyer for court representation."
+
+    === MODE 2: CONTRACT DRAFTER ===
+    Trigger: User asks to "write", "draft", "make" a contract, agreement, letter, or affidavit.
+    
+    **Protocol:**
+    1. **Intake:** Ask for specific details (Names, IDs, Amounts, Dates) if missing.
+    2. **Drafting:** Generate a professional, execution-ready document.
+    3. **Legal Basis:** Even when drafting, briefly mention the relevant law (e.g., "Drafted in accordance with the Law governing Contracts").
+    4. **Localization:** Use the requested language (default English).
+
+    ===================================================
+    **Output Instructions:**
+    Provide rich text for ADVICE or DRAFT responses. Do NOT return JSON for lawyer listings.
     `;
     
-    const promptText = formatPromptFromHistory(history, systemPrompt, userMessage, "Rwanda");
-    const prompt = constructPromptWithAttachment(promptText, attachment);
-    
-    // REMOVED googleMaps from tools for Gatera
+    const prompt = formatPromptFromHistory(history, systemPrompt, userMessage, `${userLocation.lat},${userLocation.lng}`);
     const tools = [{googleSearch: {}}];
-    
     const rawText = await askGemini(prompt, tools, userLocation); 
     
     runBackgroundMemoryExtraction(userMessage, rawText);
 
-    const parsedJson = extractJson(rawText);
-    const cleanText = rawText.replace(/```json[\s\S]*?```/g, '').replace(/```[\s\S]*?```/g, '').replace(/\{[\s\S]*\}/g, '').trim();
-
-    let legalPayload: LegalResultsPayload | undefined;
-    if (parsedJson && Array.isArray(parsedJson.matches)) {
-        legalPayload = {
-            query_summary: "Here are recommended legal professionals found in directories:",
-            matches: parsedJson.matches.map((m: any, idx: number) => ({
-                id: `legal-${idx}`,
-                name: m.name,
-                category: m.category || 'Lawyer',
-                distance: m.distance || 'Kigali',
-                phoneNumber: normalizePhoneNumber(m.phone) || m.phone,
-                confidence: 'High',
-                snippet: m.snippet,
-                whatsappDraft: "Hello Counsel, I found you on easyMO and require legal assistance."
-            })).filter((m: any) => m.phoneNumber !== null)
-        };
-    }
-
-    return { text: cleanText || rawText, legalPayload };
+    // Gatera no longer returns JSON payloads (no lawyer finder mode)
+    // Return the rich text response directly
+    return { text: rawText };
   },
   
   // Aliases

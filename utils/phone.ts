@@ -16,7 +16,7 @@ export const normalizePhoneNumber = (phone: string, defaultCountryCode: string =
   if (!phone) return null;
 
   // 1. Initial cleanup: Remove common separators
-  let raw = phone.toString().trim();
+  const raw = phone.toString().trim();
 
   // Check for international prefix '+' before stripping non-digits
   const hasLeadingPlus = raw.startsWith('+');

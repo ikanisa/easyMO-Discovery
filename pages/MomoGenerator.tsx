@@ -29,7 +29,7 @@ const MomoGenerator: React.FC<MomoGeneratorProps> = ({ onBack }) => {
 
   const handleGenerate = async () => {
     // 1. Construct USSD Code
-    let template = txType === 'send' ? country.sendFormat : country.payFormat;
+    const template = txType === 'send' ? country.sendFormat : country.payFormat;
     
     let code = template;
     code = code.replace('{p}', phoneNumber || '');

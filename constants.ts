@@ -36,9 +36,6 @@ export const ICONS = {
   Send: createIcon([
     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M6 12 3.269 3.126A59.768 59.768 0 0 1 21.485 12 59.77 59.77 0 0 1 3.27 20.876L5.999 12Zm0 0h7.5", key: "send" })
   ]),
-  Microphone: createIcon([
-    React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z", key: "mic" })
-  ]),
   Search: createIcon([
     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z", key: "search" })
   ]),
@@ -181,7 +178,7 @@ export const ICONS = {
      React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M20.25 10.5V6a2.25 2.25 0 0 0-2.25-2.25H6a2.25 2.25 0 0 0-2.25 2.25v4.5m16.5 0a2.25 2.25 0 0 0-2.25-2.25h-12a2.25 2.25 0 0 0-2.25 2.25m16.5 0v3.75m-16.5-3.75v3.75m16.5 0v3.75C20.25 16.153 16.555 18 12 18s-8.25-1.847-8.25-4.5v-3.75m16.5 0c0 2.653-3.697 4.5-8.25 4.5s-8.25-1.847-8.25-4.5", key: "bed" })
   ]),
   Bath: createIcon([
-     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M8.25 19.5h7.5m-7.5-3h7.5m-7.5-3h7.5m-7.5-3h7.5m-7.5-3h7.5m-7.5-3h7.5m-7.5-3h7.5", key: "bath" })
+     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M8.25 19.5h7.5m-7.5-3h7.5m-7.5-3h7.5m-7.5-3h7.5m-7.5-3h7.5m-7.5-3h7.5", key: "bath" })
   ]),
   Grid: createIcon([
      React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z", key: "grid" })
@@ -230,7 +227,7 @@ export const ICONS = {
      React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99", key: "repeat" })
   ]),
   Building: createIcon([
-     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75v.75h-.75v-.75Zm0 3h.75v.75h-.75v-.75Zm0 3h.75v.75h-.75v-.75Zm0 3h.75v.75h-.75v-.75ZM11.25 2.25v1.5m0 3v1.5m0 3v1.5m0 3v1.5m0 3v1.5m0 3v1.5m0 3v1.5M15.75 2.25v1.5m0 3v1.5m0 3v1.5m0 3v1.5m0 3v1.5", key: "building" })
+     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75v.75h-.75v-.75Zm0 3h.75v.75h-.75v-.75Zm0 3h.75v.75h-.75v-.75Zm0 3h.75v.75h-.75v-.75Zm0 3h.75v.75h-.75v-.75ZM11.25 2.25v1.5m0 3v1.5m0 3v1.5m0 3v1.5m0 3v1.5m0 3v1.5m0 3v1.5m0 3v1.5M15.75 2.25v1.5m0 3v1.5m0 3v1.5m0 3v1.5m0 3v1.5m0 3v1.5", key: "building" })
   ]),
   School: createIcon([
     React.createElement('path', { strokeLinecap: "round", strokeLinejoin: "round", d: "M4.26 10.147a60.436 60.436 0 0 0-.491 6.347A48.627 48.627 0 0 1 12 20.904a48.627 48.627 0 0 1 8.232-4.41 60.46 60.46 0 0 0-.491-6.347m-15.482 0a50.57 50.57 0 0 0-2.658-.813A59.905 59.905 0 0 1 12 3.493a59.902 59.902 0 0 1 10.499 5.84c-.867.294-1.761.562-2.658.813m-15.482 0A50.697 50.697 0 0 1 12 13.489a50.702 50.702 0 0 1 7.74-3.342M6.75 15a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm0 0v-3.675A55.378 55.378 0 0 1 12 8.443m-7.007 11.55A5.981 5.981 0 0 0 6.75 15.75v-1.5", key: "school" })

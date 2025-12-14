@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import Button from '../components/Button';
 import { ICONS } from '../constants';
 import { sendCategoryRequest } from '../services/requestLogger';
@@ -9,14 +9,6 @@ interface BusinessProps {
 }
 
 const Business: React.FC<BusinessProps> = ({ onStartChat }) => {
-  const [isRwanda, setIsRwanda] = useState(false);
-
-  useEffect(() => {
-    const phone = localStorage.getItem('easyMO_user_phone');
-    // Check if phone exists and starts with +250
-    setIsRwanda(!!phone && phone.startsWith('+250'));
-  }, []);
-
   const categories = [
     { id: 'restaurant', label: 'Restaurants', icon: <ICONS.Utensils className="w-6 h-6" />, query: 'Restaurants for lunch', color: 'bg-orange-100 dark:bg-orange-500/20 text-orange-600 dark:text-orange-400' },
     { id: 'pharmacy', label: 'Pharmacies', icon: <span className="text-2xl">💊</span>, query: 'Pharmacies nearby', color: 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400' },
@@ -40,11 +32,6 @@ const Business: React.FC<BusinessProps> = ({ onStartChat }) => {
     { id: 'tours', label: 'Tourism', icon: <ICONS.Globe className="w-6 h-6" />, query: 'Tour operators and travel agencies', color: 'bg-sky-100 dark:bg-sky-500/20 text-sky-600 dark:text-sky-400' },
   ];
 
-  const visibleCategories = categories.filter(cat => {
-    if (cat.id === 'legal_drafter') return isRwanda;
-    return true;
-  });
-
   return (
     <div className="px-4 pt-16 flex flex-col min-h-full pb-20">
       {/* Minimalist Header Section - Replaces old Hero */}
@@ -64,7 +51,7 @@ const Business: React.FC<BusinessProps> = ({ onStartChat }) => {
             <span className="flex-1 h-px bg-slate-300 dark:bg-slate-700"></span>
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {visibleCategories.map((cat, idx) => (
+            {categories.map((cat, idx) => (
               <button
                 key={cat.id}
                 onClick={() => {
