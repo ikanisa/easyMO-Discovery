@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ICONS } from '../constants';
 import Button from './Button';
+import { captureError } from '../services/sentry';
 
 interface Props {
   children?: ReactNode;
@@ -26,6 +27,11 @@ class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
+    
+    // Report to Sentry for production monitoring
+    captureError(error, {
+      componentStack: errorInfo.componentStack,
+    });
   }
 
   handleRecover = () => {
