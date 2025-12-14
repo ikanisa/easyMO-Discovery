@@ -1,7 +1,13 @@
-
 import { createClient } from '@supabase/supabase-js';
 
-const SUPABASE_URL = 'https://rghmxgutlbvzrfztxvaq.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJnaG14Z3V0bGJ2enJmenR4dmFxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU1NTU1MDcsImV4cCI6MjA4MTEzMTUwN30.ONdIMXYCppU53M869ENsePw3okULdbuaVv3qkKjiTiM';
+// Environment variables are injected at build time via Vite
+// For local development, create a .env.local file with these values
+// See .env.example for required environment variables
+const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || process.env.VITE_SUPABASE_URL || '';
+const SUPABASE_ANON_KEY = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || '';
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error('Missing Supabase environment variables. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env.local file.');
+}
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
