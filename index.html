@@ -53,7 +53,7 @@
       
       /* Base Body - Default Light Mode */
       body {
-        background-color: #f8fafc; /* Slate 50 */
+        background-color: #e5e7eb; /* Gray backdrop for desktop */
         color: #0f172a; /* Slate 900 */
         -webkit-tap-highlight-color: transparent;
         overscroll-behavior-y: none;
@@ -63,7 +63,7 @@
       
       /* Dark Mode Override */
       html.dark body {
-        background-color: #0f172a;
+        background-color: #0a0a0a;
         color: #f8fafc;
       }
 
@@ -93,7 +93,7 @@
       }
     </style>
   </head>
-  <body class="liquid-bg h-screen overflow-hidden text-slate-900 dark:text-slate-100 antialiased selection:bg-pink-500 selection:text-white">
+  <body class="min-h-[100dvh] overflow-hidden text-slate-900 dark:text-slate-100 antialiased selection:bg-pink-500 selection:text-white">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

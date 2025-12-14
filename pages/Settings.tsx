@@ -140,48 +140,52 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
     );
 
     return (
-        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-slate-900 border border-white/10 w-full max-w-[420px] max-h-[80vh] rounded-3xl flex flex-col shadow-2xl">
-                <div className="p-4 border-b border-white/5 flex gap-2 items-center">
-                    <ICONS.Search className="w-5 h-5 text-slate-500" />
-                    <input 
-                        className="bg-transparent w-full outline-none text-white placeholder-slate-500 font-bold"
-                        placeholder="Search country or code..."
-                        value={countrySearch}
-                        onChange={e => setCountrySearch(e.target.value)}
-                        autoFocus
-                    />
-                    <button onClick={() => setShowCountryModal(false)} className="p-2 bg-white/10 rounded-full">
-                        <ICONS.XMark className="w-4 h-4 text-white" />
-                    </button>
-                </div>
-                <div className="overflow-y-auto p-2 space-y-1">
-                    {filtered.map(c => (
-                        <button 
-                            key={c.code}
-                            onClick={() => {
-                                setSelectedCountry(c);
-                                setShowCountryModal(false);
-                                setCountrySearch('');
-                            }}
-                            className="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left"
-                        >
-                            <span className="text-2xl">{c.flag}</span>
-                            <div className="flex-1">
-                                <div className="text-sm font-bold text-white">{c.name}</div>
-                                <div className="text-xs text-slate-400">{c.dial_code}</div>
-                            </div>
-                            {selectedCountry.code === c.code && <ICONS.Check className="w-4 h-4 text-emerald-400" />}
-                        </button>
-                    ))}
-                </div>
+        <>
+          <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm animate-in fade-in duration-200" />
+
+          <div className="frame-fixed top-0 bottom-0 z-[61] flex items-center justify-center p-4 pointer-events-none">
+            <div className="bg-slate-900 border border-white/10 w-full max-w-[420px] max-h-[80vh] rounded-3xl flex flex-col shadow-2xl pointer-events-auto">
+              <div className="p-4 border-b border-white/5 flex gap-2 items-center">
+                <ICONS.Search className="w-5 h-5 text-slate-500" />
+                <input 
+                  className="bg-transparent w-full outline-none text-white placeholder-slate-500 font-bold"
+                  placeholder="Search country or code..."
+                  value={countrySearch}
+                  onChange={e => setCountrySearch(e.target.value)}
+                  autoFocus
+                />
+                <button onClick={() => setShowCountryModal(false)} className="p-2 bg-white/10 rounded-full">
+                  <ICONS.XMark className="w-4 h-4 text-white" />
+                </button>
+              </div>
+              <div className="overflow-y-auto p-2 space-y-1">
+                {filtered.map(c => (
+                  <button 
+                    key={c.code}
+                    onClick={() => {
+                      setSelectedCountry(c);
+                      setShowCountryModal(false);
+                      setCountrySearch('');
+                    }}
+                    className="w-full flex items-center gap-3 p-3 hover:bg-white/5 rounded-xl transition-colors text-left"
+                  >
+                    <span className="text-2xl">{c.flag}</span>
+                    <div className="flex-1">
+                      <div className="text-sm font-bold text-white">{c.name}</div>
+                      <div className="text-xs text-slate-400">{c.dial_code}</div>
+                    </div>
+                    {selectedCountry.code === c.code && <ICONS.Check className="w-4 h-4 text-emerald-400" />}
+                  </button>
+                ))}
+              </div>
             </div>
-        </div>
+          </div>
+        </>
     );
   };
 
   return (
-    <div className="flex flex-col min-h-screen w-full bg-slate-50 dark:bg-[#0f172a] overflow-y-auto no-scrollbar animate-in slide-in-from-right duration-300">
+    <div className="flex flex-col min-h-[100dvh] w-full bg-slate-50 dark:bg-[#0f172a] overflow-y-auto no-scrollbar animate-in slide-in-from-right duration-300">
       {renderCountryModal()}
       
       {/* Header */}
