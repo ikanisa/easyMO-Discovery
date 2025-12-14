@@ -1,0 +1,47 @@
+name: Deploy WhatsApp Bridge (Cloud Run)
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - "services/whatsapp-bridge/**"
+      - ".github/workflows/deploy-whatsapp-bridge.yml"
+  workflow_dispatch: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Auth to Google Cloud (OIDC)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: "projects/423260854848/locations/global/workloadIdentityPools/github-pool/providers/github-provider"
+          service_account: "easymo-github-deployer@easymoai.iam.gserviceaccount.com"
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: "easymoai"
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy easymo-whatsapp-bridge \
+            --source services/whatsapp-bridge \
+            --region europe-west1 \
+            --project easymoai \
+            --allow-unauthenticated \
+            --service-account easymo-whatsapp-bridge-sa@easymoai.iam.gserviceaccount.com \
+            --set-secrets=TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest,TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest,TWILIO_WHATSAPP_FROM=TWILIO_WHATSAPP_FROM:latest,TWILIO_CONTENT_SID_EASYMO_BUSINESS=TWILIO_CONTENT_SID_EASYMO_BUSINESS:latest,ADMIN_API_KEY=ADMIN_API_KEY:latest
+
+          SERVICE_URL="$(gcloud run services describe easymo-whatsapp-bridge --region europe-west1 --project easymoai --format='value(status.url)')"
+          gcloud run services update easymo-whatsapp-bridge \
+            --region europe-west1 \
+            --project easymoai \
+            --update-env-vars "PUBLIC_BASE_URL=${SERVICE_URL}"
