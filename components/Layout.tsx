@@ -21,13 +21,13 @@ const Layout: React.FC<LayoutProps> = ({ children, currentMode, onNavigate }) =>
   return (
     <AppFrame>
       {/* Content Area - Scrollable */}
-      <main className="min-h-screen overflow-auto pb-24 no-scrollbar scroll-smooth">
+      <main className="min-h-[100dvh] overflow-auto pb-24 no-scrollbar scroll-smooth liquid-bg">
         {children}
       </main>
 
       {/* Bottom Navigation - Positioned within the frame */}
-      <nav className="absolute bottom-0 left-0 right-0 z-50 px-4 pb-[calc(env(safe-area-inset-bottom,0px)+1.5rem)] pt-2 pointer-events-none">
-        <div className="glass-panel rounded-2xl flex justify-around items-center h-16 shadow-2xl shadow-black/10 dark:shadow-black/50 pointer-events-auto bg-white/80 dark:bg-white/5 border border-slate-200 dark:border-white/10">
+      <nav className="frame-fixed bottom-0 z-50 px-4 pb-6 pt-2 pointer-events-none">
+        <div className="glass-panel rounded-pill flex justify-around items-center h-16 shadow-glass pointer-events-auto">
           <NavButton
             active={currentMode === AppMode.HOME}
             onClick={() => onNavigate(AppMode.HOME)}
@@ -55,42 +55,6 @@ const Layout: React.FC<LayoutProps> = ({ children, currentMode, onNavigate }) =>
         </div>
       </nav>
     </AppFrame>
-    <div className="app-frame">
-      <div className="app-frame-inner">
-        <main className="min-h-[100dvh] overflow-auto pb-24 no-scrollbar scroll-smooth liquid-bg">
-          {children}
-        </main>
-
-        <nav className="frame-fixed bottom-0 z-50 px-4 pb-6 pt-2 pointer-events-none">
-          <div className="glass-panel rounded-pill flex justify-around items-center h-16 shadow-glass pointer-events-auto">
-            <NavButton
-              active={currentMode === AppMode.HOME}
-              onClick={() => onNavigate(AppMode.HOME)}
-              icon={ICONS.Home}
-              label="Home"
-            />
-            <NavButton
-              active={currentMode === AppMode.DISCOVERY}
-              onClick={() => onNavigate(AppMode.DISCOVERY)}
-              icon={ICONS.Bike}
-              label="Ride"
-            />
-            <NavButton
-              active={currentMode === AppMode.BUSINESS}
-              onClick={() => onNavigate(AppMode.BUSINESS)}
-              icon={ICONS.Store}
-              label="Market"
-            />
-            <NavButton
-              active={currentMode === AppMode.SERVICES}
-              onClick={() => onNavigate(AppMode.SERVICES)}
-              icon={ICONS.Grid}
-              label="Services"
-            />
-          </div>
-        </nav>
-      </div>
-    </div>
   );
 };
 

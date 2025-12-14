@@ -49,8 +49,8 @@ const HomeWidget = ({
     <div className={`absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-500 bg-gradient-to-br ${gradient}`} />
     
     {/* Icon Container */}
-    <div className={`w-12 h-12 rounded-button flex items-center justify-center bg-gradient-to-br ${gradient} shadow-lg text-white group-hover:scale-110 transition-transform duration-300 z-10`}>
-      <Icon className="w-6 h-6" />
+    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center bg-gradient-to-br ${gradient} shadow-lg text-white group-hover:scale-110 transition-transform duration-300 z-10`}>
+      <Icon className="w-7 h-7" />
     </div>
 
     {/* Text Content */}
@@ -191,12 +191,14 @@ const App: React.FC = () => {
 
           {/* Header Section */}
           <div className="pt-12 px-6 pb-6 text-center animate-in fade-in slide-in-from-top-4 duration-700">
-            <h1 className="app-title text-5xl mb-3 bg-clip-text text-transparent bg-gradient-to-br from-blue-600 via-emerald-500 to-purple-600 dark:from-blue-400 dark:via-emerald-400 dark:to-purple-400 drop-shadow-sm">
+            <h1 className="text-5xl font-black italic tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-emerald-400">
               easyMO
             </h1>
-            <p className="app-subtitle max-w-xs mx-auto leading-relaxed">
-              Your Everyday Companion<br/>
-              <span className="text-xs opacity-75 font-bold mt-1 block">Move • Shop • Legal • Business</span>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium tracking-wide">
+              Your Everyday Companion
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-500 tracking-wider">
+              Move • Shop • Legal • Business
             </p>
           </div>
 
@@ -226,7 +228,7 @@ const App: React.FC = () => {
             {/* Section: Mobility */}
             <section>
               <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 px-1 flex items-center gap-2">
-                <span className="w-8 h-px bg-slate-300 dark:bg-slate-700"></span>
+                <span className="flex-1 h-px bg-slate-300 dark:bg-slate-700"></span>
                 Mobility
                 <span className="flex-1 h-px bg-slate-300 dark:bg-slate-700"></span>
               </h2>
@@ -260,7 +262,7 @@ const App: React.FC = () => {
             {/* Section: Discovery & Tools */}
             <section>
               <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 px-1 flex items-center gap-2">
-                <span className="w-8 h-px bg-slate-300 dark:bg-slate-700"></span>
+                <span className="flex-1 h-px bg-slate-300 dark:bg-slate-700"></span>
                 Lifestyle & Tools
                 <span className="flex-1 h-px bg-slate-300 dark:bg-slate-700"></span>
               </h2>

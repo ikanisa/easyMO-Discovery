@@ -68,7 +68,7 @@ html.dark body {
   background: radial-gradient(circle at 50% 10%, #e2e8f0 0%, #f8fafc 100%);
 }
 html.dark .liquid-bg {
-  background: radial-gradient(circle at 50% 10%, #1e293b 0%, #0f172a 100%);
+  background: #0f1419;
 }
 
 /* ============================================================================
@@ -86,9 +86,17 @@ html.dark .liquid-bg {
 }
 
 html.dark .glass-panel {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: none;
+}
+
+/* Bottom nav enhancement */
+html.dark nav .glass-panel {
+  background: rgba(20, 27, 38, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 /* Safe Area Insets for iOS and notched devices */
