@@ -336,7 +336,8 @@ app.post('/twilio/inbound', async (req, res) => {
     twiml.message(
       `Kwizera here ✅\n\nTell me:\n1) What item/service?\n2) Where are you? (type area or share location)\n3) Quantity / budget (optional)`
     );
-  return res.type('text/xml').status(200).send(twiml.toString());
+    return res.type('text/xml').status(200).send(twiml.toString());
+  }
 });
 
 app.post('/twilio/status', async (req, res) => {
