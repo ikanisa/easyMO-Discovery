@@ -118,9 +118,12 @@ export interface PropertyListing {
 
 export interface PropertyResultsPayload {
   query_summary: string;
+  market_insight?: string;
+  next_steps?: string[];
   filters_applied: {
     listing_type: string;
     property_type: string;
+    bedrooms?: number;
     budget_min: number;
     budget_max: number;
     area: string;

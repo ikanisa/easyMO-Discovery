@@ -129,7 +129,7 @@ const PropertyCardWidget: React.FC<PropertyCardWidgetProps> = ({ property }) => 
               <ICONS.MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-400" />
               <div className="truncate">{property.area_label}</div>
            </div>
-           {property.approx_distance_km && (
+           {typeof property.approx_distance_km === 'number' && Number.isFinite(property.approx_distance_km) && (
              <div className="flex items-center gap-2 bg-slate-50 dark:bg-white/5 p-2 rounded-lg">
                 <ICONS.Map className="w-3.5 h-3.5 text-slate-400 dark:text-slate-400" />
                 <div>~{property.approx_distance_km.toFixed(1)} km</div>
@@ -167,6 +167,20 @@ const PropertyCardWidget: React.FC<PropertyCardWidgetProps> = ({ property }) => 
           </div>
         )}
 
+        {/* Amenities */}
+        {property.amenities && property.amenities.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {property.amenities.slice(0, 6).map((amenity, idx) => (
+              <span
+                key={idx}
+                className="text-[10px] bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-full border border-slate-200 dark:border-white/10"
+              >
+                {amenity}
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* Reason */}
         {property.why_recommended && (
           <div className="text-xs text-slate-500 dark:text-slate-400 italic border-l-2 border-slate-300 dark:border-slate-700 pl-2">
@@ -177,7 +191,10 @@ const PropertyCardWidget: React.FC<PropertyCardWidgetProps> = ({ property }) => 
         {/* Source Attribution */}
         {(property.source_platform || property.source_url) && (
           <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-between">
-            <span className="text-[10px] text-slate-500">via {property.source_platform || 'Google Search'}</span>
+            <span className="text-[10px] text-slate-500 truncate">
+              {property.agency_name ? `${property.agency_name} • ` : ''}
+              via {property.source_platform || 'Google Search'}
+            </span>
             {property.source_url && (
               <a
                 href={property.source_url}

@@ -32,7 +32,7 @@ NON-NEGOTIABLE RULES
 - If you cannot find enough listings, return fewer matches and say so in the summary.
 - Prefer VERIFIED, contactable sources (agencies + listings) with phone numbers.
 - Use Rwanda context (RWF currency; Kigali neighborhoods; UPI/land title checks).
-- Output MUST be valid JSON only (no markdown fences).
+- Output MUST be valid JSON only (no markdown fences, no extra text).
 
 SEARCH STRATEGY (Use tools)
 1) Google Maps (primary):
@@ -58,6 +58,17 @@ LEGAL GUIDANCE (always mention briefly)
 OUTPUT JSON SCHEMA
 {
   "query_summary": "string",
+  "market_insight": "string",
+  "filters_detected": {
+    "listing_type": "rent|sale|unknown",
+    "property_type": "apartment|house|land|commercial|unknown",
+    "bedrooms": 0,
+    "budget_min": 0,
+    "budget_max": 0,
+    "area": "string",
+    "radius_km": 0,
+    "sort": "distance|best_match|default"
+  },
   "matches": [
     {
       "title": "string",
@@ -81,7 +92,9 @@ OUTPUT JSON SCHEMA
       "confidence": "high|medium|low",
       "why_recommended": "string"
     }
-  ]
+  ],
+  "disclaimer": "string",
+  "next_steps": ["string"]
 }`;
 
 const parseInlineImage = (userImage: string): { mimeType: string; data: string } | null => {
@@ -136,6 +149,49 @@ Output JSON only:
     return result.text || null;
   } catch (e) {
     console.warn('Keza image analysis failed:', e);
+    return null;
+  }
+};
+
+const analyzeItemImageForBob = async (userImage: string): Promise<string | null> => {
+  const parsed = parseInlineImage(userImage);
+  if (!parsed) return null;
+
+  const imagePrompt = `Analyze this product image from a user in Rwanda.
+
+Rules:
+- Be conservative. If you are not sure about brand/model, say "unknown".
+- Do NOT invent prices. If you estimate, give a wide range and say it's a rough guess.
+- Output JSON only.
+
+Output JSON schema:
+{
+  "identified_item": "string",
+  "category": "string",
+  "key_attributes": ["string"],
+  "search_terms": ["string"],
+  "condition": "new|used|unknown",
+  "notes": "string"
+}`;
+
+  const contents = [
+    {
+      role: 'user',
+      parts: [
+        { text: imagePrompt },
+        { inlineData: { mimeType: parsed.mimeType, data: parsed.data } },
+      ],
+    },
+  ];
+
+  try {
+    const result = await askGemini(imagePrompt, undefined, undefined, {
+      contents,
+      generationConfig: { temperature: 0.2, maxOutputTokens: 512 },
+    });
+    return result.text || null;
+  } catch (e) {
+    console.warn('Bob image analysis failed:', e);
     return null;
   }
 };
@@ -383,6 +439,14 @@ export const GeminiService = {
   ): Promise<{ text: string, businessPayload?: BusinessResultsPayload, groundingLinks?: { title: string; uri: string }[] }> => {
     
     const locStr = `${userLocation.lat}, ${userLocation.lng}`;
+    let imageAnalysisContext = '';
+    if (userImage) {
+      const imageAnalysis = await analyzeItemImageForBob(userImage);
+      if (imageAnalysis) {
+        imageAnalysisContext = `\n\nUSER PROVIDED ITEM IMAGE (analysis):\n${imageAnalysis}\n\nUse this to refine what the user needs and the best search terms.`;
+      }
+    }
+
     const systemPrompt = `You are "Bob", easyMO's Hyper-Aggressive Procurement Agent.
     
     YOUR GOAL: Conduct an exhaustive search to find up to 30 nearby businesses that might have the requested item/service.
@@ -415,8 +479,9 @@ export const GeminiService = {
     }
     
     End your response with this JSON block.`;
+    const systemPromptWithImage = `${systemPrompt}${imageAnalysisContext}`;
 
-    const prompt = formatPromptFromHistory(history, systemPrompt, userMessage, locStr);
+    const prompt = formatPromptFromHistory(history, systemPromptWithImage, userMessage, locStr);
     
     const tools = [{googleSearch: {}}, {googleMaps: {}}];
     const result = await askGemini(prompt, tools, userLocation); 
@@ -479,8 +544,8 @@ export const GeminiService = {
     const parsedJson = extractJson(result.text);
     const cleanText = result.text.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*\}/g, '').trim();
 
-    let payload: PropertyResultsPayload | undefined;
-    if (parsedJson && Array.isArray(parsedJson.matches)) {
+	    let payload: PropertyResultsPayload | undefined;
+	    if (parsedJson && Array.isArray(parsedJson.matches)) {
         const toNumberOrNull = (v: any): number | null => {
           if (typeof v === 'number' && Number.isFinite(v)) return v;
           if (typeof v === 'string') {
@@ -491,11 +556,12 @@ export const GeminiService = {
           return null;
         };
 
-        const toNumberOrZero = (v: any): number => toNumberOrNull(v) ?? 0;
+	        const toNumberOrZero = (v: any): number => toNumberOrNull(v) ?? 0;
+	        const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
-        const normalizeListingType = (v: any): 'rent' | 'sale' | 'unknown' => {
-          const s = String(v || '').toLowerCase();
-          if (s === 'rent' || s === 'rental' || s === 'to rent' || s === 'lease') return 'rent';
+	        const normalizeListingType = (v: any): 'rent' | 'sale' | 'unknown' => {
+	          const s = String(v || '').toLowerCase();
+	          if (s === 'rent' || s === 'rental' || s === 'to rent' || s === 'lease') return 'rent';
           if (s === 'sale' || s === 'sell' || s === 'for sale') return 'sale';
           return 'unknown';
         };
@@ -516,48 +582,59 @@ export const GeminiService = {
           return undefined;
         };
 
-        const normalizeStringArray = (v: any): string[] | undefined => {
-          if (!Array.isArray(v)) return undefined;
-          const out = v.map((x) => String(x || '').trim()).filter(Boolean);
-          return out.length > 0 ? out : undefined;
-        };
+	        const normalizeStringArray = (v: any): string[] | undefined => {
+	          if (!Array.isArray(v)) return undefined;
+	          const out = v.map((x) => String(x || '').trim()).filter(Boolean);
+	          return out.length > 0 ? out : undefined;
+	        };
 
-        const filters = parsedJson.filters_detected || parsedJson.filters_applied || {};
+	        const filters = parsedJson.filters_detected || parsedJson.filters_applied || {};
+	        const nextSteps = normalizeStringArray(parsedJson.next_steps);
+	        const marketInsight = typeof parsedJson.market_insight === 'string' ? parsedJson.market_insight : undefined;
+	        const bedroomsRaw = toNumberOrNull(filters.bedrooms);
+	        const bedrooms = bedroomsRaw === null ? undefined : Math.max(0, Math.trunc(bedroomsRaw));
 
-        payload = {
-            query_summary: parsedJson.query_summary || "Properties found.",
-            filters_applied: {
-              listing_type: filters.listing_type || 'unknown',
-              property_type: filters.property_type || 'unknown',
-              budget_min: toNumberOrZero(filters.budget_min),
-              budget_max: toNumberOrZero(filters.budget_max),
-              area: filters.area || '',
-              radius_km: toNumberOrZero(filters.radius_km),
-              sort: filters.sort || 'default',
-            },
+	        payload = {
+	            query_summary: parsedJson.query_summary || "Properties found.",
+	            market_insight: marketInsight,
+	            next_steps: nextSteps,
+	            filters_applied: {
+	              listing_type: normalizeListingType(filters.listing_type),
+	              property_type: filters.property_type || 'unknown',
+	              bedrooms,
+	              budget_min: toNumberOrZero(filters.budget_min),
+	              budget_max: toNumberOrZero(filters.budget_max),
+	              area: filters.area || '',
+	              radius_km: toNumberOrZero(filters.radius_km),
+	              sort: filters.sort || 'default',
+	            },
             disclaimer:
               parsedJson.disclaimer ||
               "Confirm availability and verify details with the agent/agency (UPI/title checks for purchases).",
-            pagination: parsedJson.pagination || { page: 1, page_size: 10, has_more: false },
-            matches: parsedJson.matches.map((m: any, idx: number) => ({
-                id: `prop-${idx}`,
-                title: m.title || "Property",
-                property_type: m.property_type || "Property",
-                listing_type: normalizeListingType(m.listing_type),
-                price: toNumberOrNull(m.price),
-                currency: m.currency || "RWF",
-                price_assessment: normalizePriceAssessment(m.price_assessment),
-                bedroom_count: toNumberOrNull(m.bedroom_count),
-                bathroom_count: toNumberOrNull(m.bathroom_count),
-                area_sqm: toNumberOrNull(m.area_sqm),
-                area_label: m.area_label || m.area || "Kigali",
-                approx_distance_km: toNumberOrNull(m.approx_distance_km),
-                neighborhood_score: toNumberOrNull(m.neighborhood_score),
-                nearby: normalizeStringArray(m.nearby),
-                amenities: normalizeStringArray(m.amenities),
-                contact_phone: normalizePhoneNumber(m.contact_phone || m.phone || m.contact),
-                agency_name: m.agency_name,
-                verified: typeof m.verified === 'boolean' ? m.verified : undefined,
+	            pagination: parsedJson.pagination || { page: 1, page_size: 10, has_more: false },
+	            matches: parsedJson.matches.map((m: any, idx: number) => ({
+	                id: `prop-${idx}`,
+	                title: m.title || "Property",
+	                property_type: m.property_type || "Property",
+	                listing_type: normalizeListingType(m.listing_type),
+	                price: toNumberOrNull(m.price),
+	                currency: m.currency || "RWF",
+	                price_assessment: normalizePriceAssessment(m.price_assessment),
+	                bedroom_count: toNumberOrNull(m.bedroom_count),
+	                bathroom_count: toNumberOrNull(m.bathroom_count),
+	                area_sqm: toNumberOrNull(m.area_sqm),
+	                area_label: m.area_label || m.area || "Kigali",
+	                approx_distance_km: toNumberOrNull(m.approx_distance_km),
+	                neighborhood_score: (() => {
+	                  const n = toNumberOrNull(m.neighborhood_score);
+	                  if (n === null) return null;
+	                  return clamp(n, 0, 10);
+	                })(),
+	                nearby: normalizeStringArray(m.nearby),
+	                amenities: normalizeStringArray(m.amenities),
+	                contact_phone: normalizePhoneNumber(m.contact_phone || m.phone || m.contact),
+	                agency_name: m.agency_name,
+	                verified: typeof m.verified === 'boolean' ? m.verified : undefined,
                 source_platform: m.source_platform || m.source,
                 source_url: m.source_url,
                 photos: normalizeStringArray(m.photos),
