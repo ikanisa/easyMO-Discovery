@@ -73,7 +73,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
             : `${newMatches.length} businesses confirmed availability!`;
             
          const toast = document.createElement('div');
-         toast.className = "fixed bottom-32 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-3 rounded-full text-xs font-bold shadow-2xl z-[100] animate-in fade-in zoom-in slide-in-from-bottom-4 duration-500 flex items-center gap-2 border border-emerald-400/30 backdrop-blur-md";
+         toast.className = "frame-fixed bottom-32 bg-emerald-600 text-white px-6 py-3 rounded-full text-xs font-bold shadow-2xl z-[100] animate-in fade-in zoom-in slide-in-from-bottom-4 duration-500 flex items-center gap-2 border border-emerald-400/30 backdrop-blur-md";
          toast.innerHTML = `<span>✅</span> <span>${toastMsg}</span>`;
          document.body.appendChild(toast);
          
@@ -196,6 +196,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
           id: Date.now().toString(),
           sender: 'ai',
           text: result.text,
+          groundingLinks: result.groundingLinks,
           legalPayload: result.legalPayload,
           timestamp: Date.now()
         };
@@ -298,21 +299,43 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0f172a] absolute inset-0 z-50">
-      <div className="h-16 glass-panel flex items-center px-4 justify-between shrink-0 border-b border-white/5 bg-[#0f172a]/90 backdrop-blur-xl z-20">
-        <button onClick={onClose} className="p-2 -ml-2 text-slate-400 hover:text-white transition-colors">
-           <ICONS.ChevronDown className="w-6 h-6 rotate-90" />
-        </button>
-        <div className="flex flex-col items-center">
-          <div className="font-semibold text-sm">{getTitle()}</div>
-          {(initialSession.type === 'business' || initialSession.type === 'real_estate' || initialSession.type === 'legal') && (
-             <span className="text-[10px] text-emerald-400 font-medium">
-               {initialSession.isDemoMode ? 'Demo Mode' : 'Grounded AI'}
-             </span>
-          )}
+    <div className="fixed inset-0 flex justify-center z-50">
+      <div className="w-full relative" style={{ maxWidth: '448px' }}>
+        <div className="flex flex-col h-full bg-[#0f172a] absolute inset-0">
+          <div className="h-16 glass-panel flex items-center px-4 justify-between shrink-0 border-b border-white/5 bg-[#0f172a]/90 backdrop-blur-xl z-20">
+            <button onClick={onClose} className="p-2 -ml-2 text-slate-400 hover:text-white transition-colors">
+               <ICONS.ChevronDown className="w-6 h-6 rotate-90" />
+            </button>
+            <div className="flex flex-col items-center">
+              <div className="font-semibold text-sm">{getTitle()}</div>
+              {(initialSession.type === 'business' || initialSession.type === 'real_estate' || initialSession.type === 'legal') && (
+                 <span className="text-[10px] text-emerald-400 font-medium">
+                   {initialSession.isDemoMode ? 'Demo Mode' : 'Grounded AI'}
+                 </span>
+              )}
+            </div>
+            <div className="w-8" />
+          </div>
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      
+      {/* Chat Container - Constrained to frame */}
+      <div className="frame-fixed top-0 bottom-0 flex flex-col bg-[#0f172a] z-50 overflow-hidden">
+        <div className="h-16 glass-panel flex items-center px-4 justify-between shrink-0 border-b border-white/5 bg-[#0f172a]/90 backdrop-blur-xl z-20">
+          <button onClick={onClose} className="p-2 -ml-2 text-slate-400 hover:text-white transition-colors">
+             <ICONS.ChevronDown className="w-6 h-6 rotate-90" />
+          </button>
+          <div className="flex flex-col items-center">
+            <div className="font-semibold text-sm">{getTitle()}</div>
+            {(initialSession.type === 'business' || initialSession.type === 'real_estate' || initialSession.type === 'legal') && (
+               <span className="text-[10px] text-emerald-400 font-medium">
+                 {initialSession.isDemoMode ? 'Demo Mode' : 'Grounded AI'}
+               </span>
+            )}
+          </div>
+          <div className="w-8" />
         </div>
-        <div className="w-8" />
-      </div>
 
       <div className="flex-1 overflow-y-auto p-4 pt-4 space-y-6">
         {messages.map((msg) => (
@@ -388,7 +411,10 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
           </button>
         </div>
       </div>
+        </div>
+      </div>
     </div>
+    </>
   );
 };
 

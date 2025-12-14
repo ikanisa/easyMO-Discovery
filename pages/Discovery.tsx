@@ -413,9 +413,14 @@ const Discovery: React.FC<DiscoveryProps> = ({ role, onStartChat, onBack }) => {
             style={{ 
               right: 'max(1.25rem, calc(50% - 14rem + 1.25rem))' // 14rem = half of max-w-md (28rem), 1.25rem = right-5
             }}
+            className="frame-fixed bottom-24 z-40 pointer-events-none"
             aria-label="Schedule a Trip"
         >
-            <ICONS.Calendar className="w-6 h-6" />
+            <div className="flex justify-end pr-5 pointer-events-auto">
+              <div className="w-14 h-14 rounded-full bg-blue-600 text-white shadow-xl shadow-blue-600/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all animate-in zoom-in duration-500">
+                <ICONS.Calendar className="w-6 h-6" />
+              </div>
+            </div>
         </button>
       )}
 

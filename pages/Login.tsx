@@ -75,7 +75,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="flex flex-col h-screen w-screen items-center justify-center p-6 bg-slate-50 dark:bg-[#0f172a] relative overflow-hidden transition-colors duration-300">
+    <div className="flex flex-col min-h-[100dvh] w-full items-center justify-center p-6 bg-slate-50 dark:bg-[#0f172a] relative overflow-hidden transition-colors duration-300">
       
       {/* Theme Toggle */}
       <div className="absolute top-6 right-6 z-20">

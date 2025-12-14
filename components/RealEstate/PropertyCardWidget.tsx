@@ -1,15 +1,14 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { ICONS } from '../../constants';
 import { PropertyListing } from '../../types';
+import ImageCarousel from './ImageCarousel';
 
 interface PropertyCardWidgetProps {
   property: PropertyListing;
 }
 
 const PropertyCardWidget: React.FC<PropertyCardWidgetProps> = ({ property }) => {
-  const [copied, setCopied] = useState(false);
-
   const handleWhatsApp = (e: React.MouseEvent) => {
     e.stopPropagation();
     const draft = property.whatsapp_draft || `Hi, I am interested in ${property.title}.`;
@@ -33,8 +32,50 @@ const PropertyCardWidget: React.FC<PropertyCardWidgetProps> = ({ property }) => 
     ? `${property.price.toLocaleString()} ${property.currency}` 
     : 'Price on request';
 
+  const neighborhoodScore =
+    typeof property.neighborhood_score === 'number' && Number.isFinite(property.neighborhood_score)
+      ? Math.max(0, Math.min(10, property.neighborhood_score))
+      : null;
+
   return (
     <div className="glass-panel rounded-2xl overflow-hidden border border-slate-200 dark:border-white/10 shadow-lg bg-white dark:bg-slate-900/40 w-full mb-3">
+      {/* Property Image Gallery */}
+      <div className="relative h-48 overflow-hidden">
+        {property.photos && property.photos.length > 0 ? (
+          <ImageCarousel images={property.photos} alt={property.title} />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-900 flex items-center justify-center">
+            <ICONS.Home className="w-16 h-16 text-slate-600" />
+          </div>
+        )}
+
+        {/* Verified Badge */}
+        {property.verified && (
+          <div className="absolute top-2 left-2 bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1 border border-white/10">
+            <ICONS.CheckCircle className="w-3 h-3" /> Verified
+          </div>
+        )}
+
+        {/* Price Assessment Badge */}
+        {property.price_assessment && (
+          <div
+            className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-1 rounded-full border border-white/10 ${
+              property.price_assessment === 'below_market'
+                ? 'bg-emerald-500 text-white'
+                : property.price_assessment === 'above_market'
+                  ? 'bg-red-500 text-white'
+                  : 'bg-slate-700 text-white'
+            }`}
+          >
+            {property.price_assessment === 'below_market'
+              ? 'Great Deal'
+              : property.price_assessment === 'above_market'
+                ? 'Premium'
+                : 'Fair Price'}
+          </div>
+        )}
+      </div>
+
       <div className="p-4 flex flex-col gap-3">
         {/* Header: Type & Confidence */}
         <div className="flex justify-between items-start">
@@ -66,13 +107,29 @@ const PropertyCardWidget: React.FC<PropertyCardWidgetProps> = ({ property }) => 
           </div>
         </div>
 
+        {/* Neighborhood Score */}
+        {neighborhoodScore !== null && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500">Neighborhood</span>
+            <div className="flex-1 h-2 bg-slate-200/60 dark:bg-slate-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400"
+                style={{ width: `${neighborhoodScore * 10}%` }}
+              />
+            </div>
+            <span className="text-xs font-bold text-emerald-500 dark:text-emerald-400">
+              {neighborhoodScore.toFixed(1)}/10
+            </span>
+          </div>
+        )}
+
         {/* Features Grid */}
         <div className="grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-300">
            <div className="flex items-center gap-2 bg-slate-50 dark:bg-white/5 p-2 rounded-lg">
               <ICONS.MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-400" />
               <div className="truncate">{property.area_label}</div>
            </div>
-           {property.approx_distance_km && (
+           {typeof property.approx_distance_km === 'number' && Number.isFinite(property.approx_distance_km) && (
              <div className="flex items-center gap-2 bg-slate-50 dark:bg-white/5 p-2 rounded-lg">
                 <ICONS.Map className="w-3.5 h-3.5 text-slate-400 dark:text-slate-400" />
                 <div>~{property.approx_distance_km.toFixed(1)} km</div>
@@ -96,10 +153,58 @@ const PropertyCardWidget: React.FC<PropertyCardWidgetProps> = ({ property }) => 
            )}
         </div>
 
+        {/* Nearby Amenities */}
+        {property.nearby && property.nearby.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {property.nearby.slice(0, 3).map((poi, idx) => (
+              <span
+                key={idx}
+                className="text-[10px] bg-blue-500/15 text-blue-600 dark:text-blue-300 px-2 py-0.5 rounded-full border border-blue-500/20"
+              >
+                {poi}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Amenities */}
+        {property.amenities && property.amenities.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {property.amenities.slice(0, 6).map((amenity, idx) => (
+              <span
+                key={idx}
+                className="text-[10px] bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-full border border-slate-200 dark:border-white/10"
+              >
+                {amenity}
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* Reason */}
         {property.why_recommended && (
           <div className="text-xs text-slate-500 dark:text-slate-400 italic border-l-2 border-slate-300 dark:border-slate-700 pl-2">
             "{property.why_recommended}"
+          </div>
+        )}
+
+        {/* Source Attribution */}
+        {(property.source_platform || property.source_url) && (
+          <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex items-center justify-between">
+            <span className="text-[10px] text-slate-500 truncate">
+              {property.agency_name ? `${property.agency_name} • ` : ''}
+              via {property.source_platform || 'Google Search'}
+            </span>
+            {property.source_url && (
+              <a
+                href={property.source_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[10px] text-blue-500 dark:text-blue-300 hover:underline"
+              >
+                View original →
+              </a>
+            )}
           </div>
         )}
 

@@ -71,7 +71,7 @@ const MomoGenerator: React.FC<MomoGeneratorProps> = ({ onBack }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0f172a] absolute inset-0 z-50 overflow-y-auto no-scrollbar">
+    <div className="flex flex-col min-h-[100dvh] w-full bg-[#0f172a] overflow-y-auto no-scrollbar">
       {/* Header */}
       <div className="h-16 glass-panel flex items-center px-4 justify-between shrink-0 border-b border-white/5 bg-[#0f172a]/95 sticky top-0 z-20">
         <button onClick={onBack} className="p-2 -ml-2 text-slate-400 hover:text-white transition-colors">
