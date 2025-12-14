@@ -18,6 +18,10 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
   const [isTyping, setIsTyping] = useState(false);
   const [isSharingLocation, setIsSharingLocation] = useState(false);
   
+  // Voice Input State
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  
   // Broadcast Polling State
   const activeBroadcastRef = useRef<{ id: string, startTime: number, businesses: BusinessContact[], item: string } | null>(null);
   const knownVerifiedIdsRef = useRef<Set<string>>(new Set());
@@ -40,6 +44,52 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping, previewUrl, selectedGenericFile]);
+
+  // --- Voice Recognition Setup ---
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = false;
+        recognitionRef.current.lang = 'en-US'; // Default to English, could be dynamic
+
+        recognitionRef.current.onresult = (event: any) => {
+            const transcript = event.results[0][0].transcript;
+            setInputValue(prev => (prev ? prev + ' ' : '') + transcript);
+            setIsListening(false);
+        };
+
+        recognitionRef.current.onerror = (event: any) => {
+            console.error("Speech recognition error", event.error);
+            setIsListening(false);
+        };
+        
+        recognitionRef.current.onend = () => {
+            setIsListening(false);
+        };
+    }
+  }, []);
+
+  const toggleListening = () => {
+      if (!recognitionRef.current) {
+          alert("Voice input is not supported in this browser.");
+          return;
+      }
+      
+      if (isListening) {
+          recognitionRef.current.stop();
+          setIsListening(false);
+      } else {
+          try {
+            recognitionRef.current.start();
+            setIsListening(true);
+          } catch (e) {
+            console.error("Mic start error", e);
+            setIsListening(false);
+          }
+      }
+  };
 
   // --- Broadcast Polling Effect ---
   useEffect(() => {
@@ -67,7 +117,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
          // Mark as seen
          newMatches.forEach(m => knownVerifiedIdsRef.current.add(m.id));
 
-         // TRIGGER TOAST (New UI Requirement)
+         // TRIGGER TOAST
          const toastMsg = newMatches.length === 1 
             ? `${newMatches[0].name} has confirmed availability!`
             : `${newMatches.length} businesses confirmed availability!`;
@@ -107,7 +157,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
     }
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [activeBroadcastRef.current]);
 
   // Callback to start polling when user clicks "Ask All"
   const handleBroadcastInitiated = (requestId: string, businesses: BusinessContact[], item: string) => {
@@ -120,8 +170,6 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
       };
       // Reset seen set for new request
       knownVerifiedIdsRef.current.clear();
-      // Force re-render to trigger effect if needed (though ref mutation + effect dep usually requires state, 
-      // but here the polling is a side effect. To be safe, we can use a dummy state)
       setMessages(prev => [...prev]); 
   };
 
@@ -156,18 +204,18 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
   };
   
   // Helper to handle AI response generation
-  const handleAIResponse = async (history: Message[], userText: string, userImage?: string) => {
+  const handleAIResponse = async (history: Message[], userText: string, attachment?: { mimeType: string, data: string }) => {
     try {
       let loc = { lat: -1.9441, lng: 30.0619 }; // Default Kigali
       try { loc = await getCurrentPosition(); } catch (e) { console.warn("Using default loc"); }
 
       if (initialSession.type === 'support') {
-        const responseText = await GeminiService.chatSupport(history, userText, userImage);
+        const responseText = await GeminiService.chatSupport(history, userText, attachment);
         const aiMsg: Message = { id: Date.now().toString(), sender: 'ai', text: responseText, timestamp: Date.now() };
         setMessages(prev => [...prev, aiMsg]);
 
       } else if (initialSession.type === 'business') {
-        const result = await GeminiService.chatBob(history, userText, loc, initialSession.isDemoMode, userImage);
+        const result = await GeminiService.chatBob(history, userText, loc, initialSession.isDemoMode, attachment);
         const aiMsg: Message = {
             id: Date.now().toString(),
             sender: 'ai',
@@ -179,7 +227,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
         setMessages(prev => [...prev, aiMsg]);
 
       } else if (initialSession.type === 'real_estate') {
-        const result = await GeminiService.chatKeza(history, userText, loc, initialSession.isDemoMode, userImage);
+        const result = await GeminiService.chatKeza(history, userText, loc, initialSession.isDemoMode, attachment);
         const aiMsg: Message = {
             id: Date.now().toString(),
             sender: 'ai',
@@ -191,7 +239,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
         setMessages(prev => [...prev, aiMsg]);
         
       } else if (initialSession.type === 'legal') {
-        const result = await GeminiService.chatGatera(history, userText, loc, initialSession.isDemoMode, userImage);
+        const result = await GeminiService.chatGatera(history, userText, loc, initialSession.isDemoMode, attachment);
         const aiMsg: Message = {
           id: Date.now().toString(),
           sender: 'ai',
@@ -253,16 +301,52 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
+  // Utility to read file as base64 string (without prefix)
+  const fileToPart = (file: File): Promise<{ mimeType: string; data: string }> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64String = reader.result as string;
+            // remove data:application/pdf;base64, prefix
+            const data = base64String.split(',')[1]; 
+            resolve({ mimeType: file.type, data });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+  };
+
   const handleSend = async (textOverride?: string) => {
     const textToSend = textOverride || inputValue.trim();
     if (!textToSend && !selectedFile && !selectedGenericFile) return;
+
+    let attachment = undefined;
+    let localPreviewUrl = undefined;
+
+    // Prioritize Generic File if selected (e.g. PDF)
+    if (selectedGenericFile) {
+        try {
+            attachment = await fileToPart(selectedGenericFile);
+        } catch (e) {
+            console.error("File read error", e);
+        }
+    } 
+    // Handle Image
+    else if (selectedFile) {
+        try {
+            attachment = await fileToPart(selectedFile);
+            localPreviewUrl = previewUrl || URL.createObjectURL(selectedFile);
+        } catch (e) {
+            console.error("Image read error", e);
+        }
+    }
 
     const newUserMsg: Message = {
       id: Date.now().toString(),
       sender: 'user',
       text: textToSend,
       timestamp: Date.now(),
-      image: previewUrl ? { previewUrl: previewUrl } : undefined,
+      image: localPreviewUrl ? { previewUrl: localPreviewUrl } : undefined,
       file: selectedGenericFile ? {
         fileName: selectedGenericFile.name,
         fileSize: formatFileSize(selectedGenericFile.size),
@@ -277,7 +361,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
       clearGenericFile();
     }
     setIsTyping(true);
-    await handleAIResponse([...messages, newUserMsg], textToSend, previewUrl || undefined);
+    await handleAIResponse([...messages, newUserMsg], textToSend, attachment);
   };
   
   useEffect(() => {
@@ -285,7 +369,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
       handleSend(initialSession.initialInput);
       initialSession.initialInput = undefined;
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const getTitle = () => {
     switch (initialSession.type) {
@@ -298,20 +382,32 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0f172a] absolute inset-0 z-50">
-      <div className="h-16 glass-panel flex items-center px-4 justify-between shrink-0 border-b border-white/5 bg-[#0f172a]/90 backdrop-blur-xl z-20">
-        <button onClick={onClose} className="p-2 -ml-2 text-slate-400 hover:text-white transition-colors">
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0f172a] absolute inset-0 z-50 transition-colors duration-300">
+      <div className="h-16 glass-panel flex items-center px-4 justify-between shrink-0 border-b border-slate-200 dark:border-white/5 bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl z-20">
+        <button onClick={onClose} className="p-2 -ml-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
            <ICONS.ChevronDown className="w-6 h-6 rotate-90" />
         </button>
         <div className="flex flex-col items-center">
-          <div className="font-semibold text-sm">{getTitle()}</div>
+          <div className="font-semibold text-sm text-slate-900 dark:text-white">{getTitle()}</div>
           {(initialSession.type === 'business' || initialSession.type === 'real_estate' || initialSession.type === 'legal') && (
-             <span className="text-[10px] text-emerald-400 font-medium">
+             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
                {initialSession.isDemoMode ? 'Demo Mode' : 'Grounded AI'}
              </span>
           )}
         </div>
-        <div className="w-8" />
+        
+        {/* Right Actions Area */}
+        <div className="w-8 flex justify-end">
+           {initialSession.type === 'legal' && (
+              <button 
+                onClick={() => window.open('https://wa.me/250795588248?text=Hello,%20I%20need%20legal%20assistance.', '_blank')}
+                className="p-2 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full hover:bg-emerald-200 dark:hover:bg-emerald-500/30 transition-colors"
+                title="Chat with Human Lawyer"
+              >
+                 <ICONS.WhatsApp className="w-5 h-5" />
+              </button>
+           )}
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 pt-4 space-y-6">
@@ -325,65 +421,71 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
         ))}
         {isTyping && (
            <div className="flex justify-start animate-pulse">
-               <div className="bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 border border-white/5 flex gap-2 items-center">
-                 <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms'}} />
-                 <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms'}} />
-                 <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms'}} />
+               <div className="bg-slate-200 dark:bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 border border-slate-300 dark:border-white/5 flex gap-2 items-center">
+                 <div className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms'}} />
+                 <div className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms'}} />
+                 <div className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms'}} />
                </div>
            </div>
         )}
         <div ref={messagesEndRef} className="h-4" />
       </div>
 
-      <div className="glass-panel shrink-0 border-t border-white/5 pb-8 relative">
+      <div className="glass-panel shrink-0 border-t border-slate-200 dark:border-white/5 pb-8 relative bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-xl">
         {previewUrl && (
-          <div className="absolute bottom-full left-0 w-full p-4 bg-slate-900/90 backdrop-blur-md border-t border-white/10 flex items-center gap-4">
-            <img src={previewUrl} alt="Preview" className="h-16 w-16 rounded-lg object-cover" />
-            <button onClick={clearFile} className="p-2 bg-slate-800 rounded-full"><ICONS.XMark className="w-5 h-5" /></button>
+          <div className="absolute bottom-full left-0 w-full p-4 bg-white/95 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200 dark:border-white/10 flex items-center gap-4">
+            <img src={previewUrl} alt="Preview" className="h-16 w-16 rounded-lg object-cover shadow-sm" />
+            <button onClick={clearFile} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400"><ICONS.XMark className="w-5 h-5" /></button>
           </div>
         )}
 
         {selectedGenericFile && (
-          <div className="absolute bottom-full left-0 w-full p-3 bg-slate-900/90 backdrop-blur-md border-t border-white/10 flex items-center gap-3 animate-in slide-in-from-bottom-2">
-            <div className="p-2 bg-slate-800 rounded-lg text-blue-400">
+          <div className="absolute bottom-full left-0 w-full p-3 bg-white/95 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200 dark:border-white/10 flex items-center gap-3 animate-in slide-in-from-bottom-2">
+            <div className="p-2 bg-blue-50 dark:bg-slate-800 rounded-lg text-blue-500 dark:text-blue-400">
                <ICONS.File className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
-               <div className="text-sm font-bold text-white truncate">{selectedGenericFile.name}</div>
-               <div className="text-[10px] text-slate-400">{formatFileSize(selectedGenericFile.size)}</div>
+               <div className="text-sm font-bold text-slate-900 dark:text-white truncate">{selectedGenericFile.name}</div>
+               <div className="text-[10px] text-slate-500 dark:text-slate-400">{formatFileSize(selectedGenericFile.size)}</div>
             </div>
-            <button onClick={clearGenericFile} className="p-2 bg-slate-800 rounded-full hover:bg-red-500/20 text-slate-400 hover:text-red-500 transition-colors">
+            <button onClick={clearGenericFile} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full hover:bg-red-50 dark:hover:bg-red-500/20 text-slate-400 hover:text-red-500 transition-colors">
                <ICONS.XMark className="w-4 h-4" />
             </button>
           </div>
         )}
 
-        <div className="p-4 flex gap-3 items-end">
+        <div className="p-4 flex gap-2 items-end">
           <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} />
-          <input type="file" ref={genericFileInputRef} className="hidden" onChange={handleGenericFileSelect} />
+          <input type="file" ref={genericFileInputRef} className="hidden" accept="*/*" onChange={handleGenericFileSelect} />
           
-          <button onClick={() => fileInputRef.current?.click()} className="p-3.5 rounded-2xl bg-slate-800 text-slate-400 border border-white/5 hover:text-white transition-colors">
-            <ICONS.Camera className="w-5 h-5" />
-          </button>
-          
-          <button onClick={() => genericFileInputRef.current?.click()} className="p-3.5 rounded-2xl bg-slate-800 text-slate-400 border border-white/5 hover:text-white transition-colors">
+          {/* Attach Button (Paperclip) - Restored */}
+          <button onClick={() => genericFileInputRef.current?.click()} className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/5 hover:text-slate-900 dark:hover:text-white transition-colors">
             <ICONS.PaperClip className="w-5 h-5" />
           </button>
 
-          <button onClick={handleShareLocation} disabled={isSharingLocation} className="p-3.5 rounded-2xl bg-slate-800 text-slate-400 border border-white/5 hover:text-white transition-colors">
-            {isSharingLocation ? <span className="animate-spin">⟳</span> : <ICONS.MapPin className="w-5 h-5" />}
+          {/* Attach Button (Camera) */}
+          <button onClick={() => fileInputRef.current?.click()} className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/5 hover:text-slate-900 dark:hover:text-white transition-colors hidden sm:block">
+            <ICONS.Camera className="w-5 h-5" />
           </button>
           
+          {/* Voice Input Button */}
+          <button 
+            onClick={toggleListening}
+            className={`p-3.5 rounded-2xl border transition-all ${isListening ? 'bg-red-500 text-white border-red-500 animate-pulse shadow-red-500/30 shadow-lg' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/5 hover:text-slate-900 dark:hover:text-white'}`}
+          >
+            <ICONS.Microphone className="w-5 h-5" />
+          </button>
+
           <input
             type="text"
-            className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-sm focus:outline-none focus:border-primary/50 text-white placeholder-slate-500"
-            placeholder="Type a message..."
+            className="flex-1 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl px-5 py-3.5 text-sm focus:outline-none focus:border-blue-500 dark:focus:border-primary/50 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-500 transition-colors"
+            placeholder={isListening ? "Listening..." : "Message..."}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             autoFocus
           />
-          <button onClick={() => handleSend()} disabled={(!inputValue.trim() && !selectedFile && !selectedGenericFile) || isTyping} className="bg-primary text-white p-3.5 rounded-2xl">
+          <button onClick={() => handleSend()} disabled={(!inputValue.trim() && !selectedFile && !selectedGenericFile) || isTyping} className="bg-blue-600 hover:bg-blue-500 text-white p-3.5 rounded-2xl shadow-lg shadow-blue-500/30 transition-all active:scale-95 disabled:opacity-50 disabled:shadow-none">
             <ICONS.Send className="w-5 h-5" />
           </button>
         </div>

@@ -1,6 +1,6 @@
 
 import { PresenceUser, Role, VehicleType, Location } from '../types';
-import { formatDistance } from './location';
+import { formatDistance, calculateETA } from './location';
 import { supabase } from './supabase';
 
 export const PresenceService = {
@@ -81,17 +81,22 @@ export const PresenceService = {
     if (!data) return [];
 
     // Transform DB result to App Type
-    const results = (data as any[]).map(d => ({
-      sessionId: d.user_id,
-      role: 'driver' as Role,
-      vehicleType: d.vehicle_type || 'moto',
-      location: { lat: d.lat, lng: d.lng },
-      lastSeen: new Date(d.last_seen).getTime(),
-      isOnline: true,
-      displayName: `Driver ${d.user_id.slice(0, 4)}`,
-      distance: formatDistance(d.dist_meters / 1000),
-      _distKm: d.dist_meters / 1000
-    }));
+    const results = (data as any[]).map(d => {
+      const distKm = d.dist_meters / 1000;
+      
+      return {
+        sessionId: d.user_id,
+        role: 'driver' as Role,
+        vehicleType: d.vehicle_type || 'moto',
+        location: { lat: d.lat, lng: d.lng },
+        lastSeen: new Date(d.last_seen).getTime(),
+        isOnline: true,
+        displayName: `Driver ${d.user_id.slice(0, 4)}`,
+        distance: formatDistance(distKm),
+        eta: calculateETA(distKm),
+        _distKm: distKm
+      };
+    });
 
     // Filter by type if requested
     const filtered = vehicleTypeFilter 

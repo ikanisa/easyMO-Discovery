@@ -38,6 +38,7 @@ export interface PresenceUser {
   isOnline: boolean;
   displayName?: string;
   distance?: string; // formatted string for display
+  eta?: string; // Estimated Time of Arrival
   _distKm?: number; // Internal for sorting
 }
 
@@ -218,5 +219,6 @@ export enum AppMode {
   CHAT = 'chat', // specific active chat
   SETTINGS = 'settings',
   MOMO_GENERATOR = 'momo_generator',
-  SCANNER = 'scanner'
+  SCANNER = 'scanner',
+  ONBOARDING = 'onboarding' // NEW
 }

@@ -121,7 +121,7 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
             console.warn("Maps SDK not ready, falling back.");
         });
     }
-  }, [onChange, onLocationResolved]);
+  }, []);
 
   // --- 3. GEMINI ADDRESS RESOLUTION ---
   const handleVerifyGemini = async () => {
@@ -129,11 +129,7 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
     setIsVerifying(true);
     try {
       let userLoc;
-      try { 
-        userLoc = await getCurrentPosition(); 
-      } catch (e) {
-        console.warn('Could not get current position:', e);
-      }
+      try { userLoc = await getCurrentPosition(); } catch (e) {}
 
       const result = await GeminiService.resolveLocation(value, userLoc?.lat, userLoc?.lng);
       
@@ -154,25 +150,6 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
 
   // --- 4. MAP INITIALIZATION ---
   useEffect(() => {
-    const handleMarkerDragEnd = async () => {
-       if (!marker.current || !googleMap.current) return;
-       const pos = marker.current.getPosition();
-       const lat = pos.lat();
-       const lng = pos.lng();
-       
-       googleMap.current.panTo(pos);
-
-       const geocoder = new window.google.maps.Geocoder();
-       geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
-           if (status === "OK" && results[0]) {
-               setResolvedAddress(results[0].formatted_address);
-               setResolvedCoords({ lat, lng });
-           }
-       });
-
-       updateGeminiInsight(lat, lng);
-    };
-
     if (showMap && mapRef.current && !googleMap.current) {
       loadGoogleMaps().then(async () => {
         let lat = -1.9441;
@@ -182,9 +159,7 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
             const pos = await getCurrentPosition();
             lat = pos.lat;
             lng = pos.lng;
-        } catch(e) {
-            console.warn('Could not get position for map:', e);
-        }
+        } catch(e) {}
 
         const { Map } = await window.google.maps.importLibrary("maps");
         const { Marker } = await window.google.maps.importLibrary("marker");
@@ -224,6 +199,25 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
       });
     }
   }, [showMap]);
+
+  const handleMarkerDragEnd = async () => {
+     if (!marker.current || !googleMap.current) return;
+     const pos = marker.current.getPosition();
+     const lat = pos.lat();
+     const lng = pos.lng();
+     
+     googleMap.current.panTo(pos);
+
+     const geocoder = new window.google.maps.Geocoder();
+     geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
+         if (status === "OK" && results[0]) {
+             setResolvedAddress(results[0].formatted_address);
+             setResolvedCoords({ lat, lng });
+         }
+     });
+
+     updateGeminiInsight(lat, lng);
+  };
 
   const updateGeminiInsight = async (lat: number, lng: number) => {
       setGeminiInsight("Analyzing area...");
@@ -267,7 +261,7 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
     <div className="space-y-1 w-full relative">
       {label && (
         <div className="flex justify-between items-center">
-            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}</label>
+            <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">{label}</label>
             {isVerifying && <span className="text-[9px] text-blue-500 animate-pulse font-bold">✨ Resolving...</span>}
             {resolvedAddress && !isVerifying && (
                 <div className="flex items-center gap-2">
@@ -283,7 +277,7 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
       {/* Save Prompt Popover */}
       {showSavePrompt && (
           <div className="absolute top-8 right-0 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl p-3 animate-in zoom-in w-48">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2">Save as:</p>
+              <p className="text-[10px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-wide mb-2">Save as:</p>
               <div className="grid grid-cols-2 gap-2">
                   {(['Home', 'Work', 'School', 'Other'] as AddressLabel[]).map(lbl => (
                       <button 
@@ -318,7 +312,7 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
             onKeyDown={(e) => e.key === 'Enter' && handleVerifyGemini()}
             placeholder={placeholder || "Search places (e.g. 'Kigali Heights')"}
             autoFocus={autoFocus}
-            className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl pl-8 pr-20 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors placeholder-slate-400 dark:placeholder-slate-500 shadow-sm"
+            className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl pl-8 pr-20 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors placeholder-slate-500 dark:placeholder-slate-500 shadow-sm"
         />
 
         <div className="absolute right-2 top-2 flex gap-1">

@@ -48,7 +48,13 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
         }
 
         // 2. Pre-check permissions by listing cameras
-        await Html5Qrcode.getCameras();
+        // This throws a specific error before we even try to start the scanner instance
+        try {
+            await Html5Qrcode.getCameras();
+        } catch (permErr: any) {
+            // Re-throw to be caught by the outer block
+            throw permErr;
+        }
 
         const html5QrCode = new Html5Qrcode(readerId);
         scannerRef.current = html5QrCode;
@@ -116,7 +122,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
          }
       }
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleScanSuccess = (text: string) => {
     if (scannerRef.current) {
@@ -130,7 +136,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
 
   const getTypeInfo = (text: string) => {
       // USSD Regex: starts with * or #, ends with # (e.g., *182#) OR starts with tel:
-      const isUSSD = /^[*#].+#$/.test(text) || text.startsWith('tel:');
+      const isUSSD = /^[\*#].+#$/.test(text) || text.startsWith('tel:');
       const isURL = text.startsWith('http://') || text.startsWith('https://');
 
       if (isUSSD) return { 
