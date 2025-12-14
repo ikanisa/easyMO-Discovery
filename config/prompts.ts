@@ -106,13 +106,13 @@ Context: User is likely in Rwanda (approx lat -1.9, lng 30.0).
 
 OUTPUT JSON ONLY:
 {
-  "address": "Full formatted address",
-  "lat": -1.9xxxx,
-  "lng": 30.0xxxx,
-  "name": "Place Name"
+  "address": "Full formatted address or null if not found",
+  "lat": -1.9xxxx or null,
+  "lng": 30.0xxxx or null,
+  "name": "Place Name or null"
 }
 
-If you cannot find it, return null values for coordinates. Do not guess or make up coordinates.`,
+IMPORTANT: If you cannot find the location with confidence, return null values for lat and lng. Do not guess or make up coordinates.`,
 
   /**
    * LOCATION_INSIGHT: Provides context about GPS coordinates

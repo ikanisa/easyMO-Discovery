@@ -87,8 +87,8 @@ export const isValidRwandanPhoneNumber = (phone: string | null): boolean => {
   // Must start with +250
   if (!phone.startsWith('+250')) return false;
   
-  // Rwanda numbers should be exactly 12 characters (+250 + 9 digits)
-  if (phone.length !== 12) return false;
+  // Rwanda numbers should be exactly 13 characters (+250 = 4 chars + 9 digits = 13)
+  if (phone.length !== 13) return false;
   
   const localNumber = phone.substring(4); // Remove +250
   
@@ -97,8 +97,8 @@ export const isValidRwandanPhoneNumber = (phone: string | null): boolean => {
   if (!VALID_RWANDA_PREFIXES.includes(prefix)) return false;
   
   // Check for suspicious patterns that indicate AI hallucination
-  // Pattern 1: Sequential digits (e.g., 123456789)
-  const isSequential = '123456789'.includes(localNumber) || '987654321'.includes(localNumber);
+  // Pattern 1: Sequential digits (e.g., 123456789, 789012345)
+  const isSequential = isSequentialDigits(localNumber);
   if (isSequential) return false;
   
   // Pattern 2: All same digit (e.g., 777777777)
@@ -107,9 +107,40 @@ export const isValidRwandanPhoneNumber = (phone: string | null): boolean => {
   
   // Pattern 3: Repeating pattern (e.g., 787878787)
   const repeatingPattern = /^(\d{1,3})\1{2,}/.test(localNumber);
-  if (repeatingPattern && localNumber.length <= 9) return false;
+  if (repeatingPattern) return false;
   
   return true;
+};
+
+/**
+ * Checks if a number consists entirely of sequential digits (ascending or descending).
+ * Examples: "123456789", "987654321", "234567890"
+ */
+const isSequentialDigits = (num: string): boolean => {
+  if (num.length < 4) return false; // Too short to determine pattern
+  
+  let isAscending = true;
+  let isDescending = true;
+  
+  for (let i = 1; i < num.length; i++) {
+    const prev = parseInt(num[i - 1], 10);
+    const curr = parseInt(num[i], 10);
+    
+    // Check ascending (allow wrap from 9 to 0)
+    if ((prev + 1) % 10 !== curr) {
+      isAscending = false;
+    }
+    
+    // Check descending (allow wrap from 0 to 9)
+    if ((prev - 1 + 10) % 10 !== curr) {
+      isDescending = false;
+    }
+    
+    // Early exit if neither pattern matches
+    if (!isAscending && !isDescending) return false;
+  }
+  
+  return isAscending || isDescending;
 };
 
 /**
