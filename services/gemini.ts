@@ -3,17 +3,56 @@ import { Message, BusinessResultsPayload, PropertyResultsPayload, LegalResultsPa
 import { normalizePhoneNumber } from '../utils/phone';
 import { callBackend } from './api';
 import { GoogleGenAI } from "@google/genai";
+import { AGENT_PROMPTS, LEGAL_DISCLAIMER } from '../config/prompts';
 
 // Fallback Client-Side Instance
 const clientAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
+// --- RATE LIMITING ---
+
+/**
+ * Simple client-side rate limiter to prevent API abuse.
+ * Limits: 10 requests per minute per session.
+ */
+const rateLimiter = {
+  requests: [] as number[],
+  maxRequests: 10,
+  windowMs: 60000, // 1 minute window
+  
+  canMakeRequest(): boolean {
+    const now = Date.now();
+    // Remove requests outside the window
+    this.requests = this.requests.filter(time => now - time < this.windowMs);
+    return this.requests.length < this.maxRequests;
+  },
+  
+  recordRequest(): void {
+    this.requests.push(Date.now());
+  },
+  
+  getTimeUntilReset(): number {
+    if (this.requests.length === 0) return 0;
+    const oldestRequest = Math.min(...this.requests);
+    return Math.max(0, this.windowMs - (Date.now() - oldestRequest));
+  }
+};
 
 // --- SECURITY FIX: No Client-Side API Keys ---
 
 /**
  * Proxies the prompt to the Google Apps Script Backend.
  * Protocol: POST { "action": "secure_gemini", "prompt": "..." }
+ * Includes rate limiting to prevent API abuse.
  */
 const askGemini = async (prompt: string): Promise<string> => {
+  // Rate limit check
+  if (!rateLimiter.canMakeRequest()) {
+    const waitTime = Math.ceil(rateLimiter.getTimeUntilReset() / 1000);
+    return `I'm receiving too many requests. Please wait ${waitTime} seconds before trying again.`;
+  }
+  
+  rateLimiter.recordRequest();
+
   // 1. Try Backend (Secure)
   try {
     const response = await callBackend({
@@ -93,16 +132,7 @@ export const GeminiService = {
     userMessage: string,
     userImage?: string
   ): Promise<string> => {
-    const systemPrompt = `You are the Support Agent for "easyMO", the discovery app for Rwanda.
-    Knowledge:
-    - Rides: "Find Ride" on Home.
-    - MoMo: "MoMo QR" generator.
-    - Market: Finds goods/services (use Bob).
-    - Legal Drafter: Gatera (in Services tab).
-    
-    Answer briefly and helpfully. If they need to talk to a human admin, tell them to use the WhatsApp button on the Support page.`;
-
-    const prompt = formatPromptFromHistory(history, systemPrompt, userMessage, "Unknown");
+    const prompt = formatPromptFromHistory(history, AGENT_PROMPTS.SUPPORT, userMessage, "Unknown");
     return await askGemini(prompt);
   },
 
@@ -111,25 +141,10 @@ export const GeminiService = {
    * Uses Google Maps Grounding (via Gemini) to turn a text query into a structured address.
    */
   resolveLocation: async (query: string, userLat?: number, userLng?: number): Promise<{ address: string, lat?: number, lng?: number, name?: string }> => {
-    const systemPrompt = `You are a Location Resolver.
-    Your Job: Take a place name or description and find the exact official address and coordinates using Google Maps data.
+    const prompt = `
+    ${AGENT_PROMPTS.LOCATION_RESOLVER}
     
     Input: "${query}"
-    Context: User is likely in Rwanda (approx lat -1.9, lng 30.0).
-    
-    OUTPUT JSON ONLY:
-    {
-      "address": "Full formatted address",
-      "lat": -1.9xxxx,
-      "lng": 30.0xxxx,
-      "name": "Place Name"
-    }
-    
-    If you cannot find it, guess the best approximate location in Kigali or return null values.`;
-
-    const prompt = `
-    ${systemPrompt}
-    
     User Query: ${query}
     ${userLat ? `User Coords: ${userLat}, ${userLng}` : ''}
     `;
@@ -149,9 +164,8 @@ export const GeminiService = {
    */
   getLocationInsight: async (lat: number, lng: number): Promise<string> => {
     const prompt = `
-      Act as a local guide. I am at coordinates: ${lat}, ${lng} in Rwanda.
-      In 10 words or less, describe this area (e.g. "Busy commercial hub", "Quiet residential street", "Near the convention center").
-      Be concise and accurate.
+      ${AGENT_PROMPTS.LOCATION_INSIGHT}
+      Coordinates: ${lat}, ${lng} in Rwanda.
     `;
     const text = await askGemini(prompt);
     return text.replace(/"/g, '').trim();
@@ -170,37 +184,7 @@ export const GeminiService = {
   ): Promise<{ text: string, businessPayload?: BusinessResultsPayload, groundingLinks?: { title: string; uri: string }[] }> => {
     
     const locStr = `${userLocation.lat}, ${userLocation.lng}`;
-    const systemPrompt = `You are "Bob", easyMO's Procurement & Discovery Agent.
-    
-    YOUR JOB:
-    1. Identify what the user needs (Product, Service, or Professional).
-    2. Search for businesses/people nearby in Rwanda.
-    3. Return a Structured JSON list of contacts.
-
-    CRITICAL INSTRUCTIONS:
-    - If user asks for "Lawyer", "Notary", "Plumber", "Mechanic" -> YOU find them. (Do not refer to Gatera. Gatera only writes contracts).
-    - If user asks for "Cement", "Phone", "Food" -> YOU find them.
-    - Always extract the 'need_description' for the WhatsApp broadcast.
-
-    JSON SCHEMA (Strict):
-    {
-      "query_summary": "I found 5 hardware stores in Kicukiro...",
-      "need_description": "2 bags of cement", 
-      "user_location_label": "Kicukiro",
-      "matches": [ 
-        { 
-          "name": "Business/Person Name", 
-          "phone": "+250...", 
-          "category": "Hardware", 
-          "distance": "0.5km",
-          "snippet": "Stock available"
-        } 
-      ]
-    }
-    
-    End your response with this JSON block.`;
-
-    const prompt = formatPromptFromHistory(history, systemPrompt, userMessage, locStr);
+    const prompt = formatPromptFromHistory(history, AGENT_PROMPTS.BOB, userMessage, locStr);
     const rawText = await askGemini(prompt);
     
     const parsedJson = extractJson(rawText);
@@ -242,20 +226,7 @@ export const GeminiService = {
   ): Promise<{ text: string, propertyPayload?: PropertyResultsPayload, groundingLinks?: { title: string; uri: string }[] }> => {
     
     const locStr = `${userLocation.lat}, ${userLocation.lng}`;
-    const systemPrompt = `You are "Keza", easyMO's Real Estate Concierge.
-    
-    YOUR JOB:
-    Find apartments, houses, and land for Rent or Sale in Rwanda.
-    
-    JSON SCHEMA:
-    {
-       "query_summary": "Found 3 apartments in Gisozi...",
-       "matches": [
-          { "title": "2 Bedroom Apartment", "price": 300000, "currency": "RWF", "listing_type": "rent", "contact_phone": "+250...", "area_label": "Gisozi" }
-       ]
-    }`;
-
-    const prompt = formatPromptFromHistory(history, systemPrompt, userMessage, locStr);
+    const prompt = formatPromptFromHistory(history, AGENT_PROMPTS.KEZA, userMessage, locStr);
     const rawText = await askGemini(prompt);
     const parsedJson = extractJson(rawText);
     const cleanText = rawText.replace(/```json[\s\S]*?```/g, '').replace(/\{[\s\S]*\}/g, '').trim();
@@ -302,30 +273,13 @@ export const GeminiService = {
     userImage?: string
   ): Promise<{ text: string, legalPayload?: LegalResultsPayload, groundingLinks?: { title: string; uri: string }[] }> => {
     
-    const systemPrompt = `You are "Gatera", easyMO's AI Notary Assistant & Legal Drafter.
-
-    YOUR IDENTITY:
-    - You are a specialized Legal Document Generator.
-    - You speak English, Kinyarwanda, and French.
-
-    YOUR ONLY FUNCTION:
-    - **Drafting Contracts**: Generate professional text for Sales Agreements, Employment Contracts, Tenant Agreements, Power of Attorney, etc.
-    - **Irembo Guidance**: Explain procedures for notary services.
-
-    CRITICAL RULES:
-    1. **YOU ARE NOT A DIRECTORY**: Do NOT search for lawyers, notaries, or bailiffs.
-    2. **REFUSE SEARCH REQUESTS**: If the user asks "Find me a lawyer" or "Where is a notary?", reply: "I am a Drafting AI. I create contracts. To find a person, please go back and ask 'Bob' in the Market tab."
-    3. **NO PHONE NUMBERS**: Never invent contact details.
-    4. **DRAFTING**: When drafting, use clear placeholders like [NAME], [DATE], [AMOUNT]. Use bold headings.
-
-    Example Request: "Draft a car sale agreement."
-    Example Response: "Here is a standard Car Sale Agreement template... **AGREEMENT OF SALE**..."
-    `;
-    
-    const prompt = formatPromptFromHistory(history, systemPrompt, userMessage, `${userLocation.lat},${userLocation.lng}`);
+    const prompt = formatPromptFromHistory(history, AGENT_PROMPTS.GATERA, userMessage, `${userLocation.lat},${userLocation.lng}`);
     const rawText = await askGemini(prompt);
     
-    return { text: rawText, legalPayload: undefined };
+    // Add legal disclaimer for drafting responses
+    const responseWithDisclaimer = rawText + LEGAL_DISCLAIMER;
+    
+    return { text: responseWithDisclaimer, legalPayload: undefined };
   },
   
   // Aliases
