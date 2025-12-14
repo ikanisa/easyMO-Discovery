@@ -170,6 +170,16 @@ html.dark .soft-border {
   max-width: var(--frame-max);
 }
 
+/* Frame-fixed for toasts and other centered elements */
+.frame-fixed.bottom-24,
+.frame-fixed.bottom-32 {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
 /* Safe Area Helpers */
 .safe-bottom {
   padding-bottom: env(safe-area-inset-bottom);

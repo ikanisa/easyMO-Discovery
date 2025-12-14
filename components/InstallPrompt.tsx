@@ -90,7 +90,7 @@ const InstallPrompt: React.FC = () => {
   if (!isVisible) return null;
 
   return (
-    <div className="fixed bottom-24 left-4 right-4 z-[60] animate-in slide-in-from-bottom-6 duration-700">
+    <div className="frame-fixed bottom-24 px-4 z-[60] animate-in slide-in-from-bottom-6 duration-700">
       <div className="glass-panel p-5 rounded-3xl border border-white/10 shadow-2xl bg-[#0f172a]/95 backdrop-blur-xl flex flex-col gap-4 relative overflow-hidden">
         
         {/* Ambient Glow */}

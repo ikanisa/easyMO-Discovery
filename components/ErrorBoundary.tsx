@@ -32,7 +32,7 @@ class ErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="flex flex-col items-center justify-center h-screen w-screen bg-slate-900 text-white p-6 text-center animate-in fade-in zoom-in duration-300">
+        <div className="flex flex-col items-center justify-center min-h-screen w-full bg-slate-900 text-white p-6 text-center animate-in fade-in zoom-in duration-300">
           <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mb-6 border border-red-500/20 shadow-2xl shadow-red-500/10">
             <ICONS.XMark className="w-10 h-10 text-red-500" />
           </div>

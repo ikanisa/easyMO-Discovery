@@ -8,6 +8,22 @@ interface LayoutProps {
   onNavigate: (mode: AppMode) => void;
 }
 
+/**
+ * Layout Component - Frame-First UI System
+ * 
+ * This layout enforces mobile-first design with desktop containment:
+ * - All content is constrained to a phone-width frame (max 420px)
+ * - On desktop, the app appears centered with a backdrop
+ * - On mobile, the app fills the screen naturally
+ * 
+ * IMPORTANT: Any fixed-position elements MUST use the "frame-fixed" class
+ * instead of standard Tailwind "fixed" to stay constrained within the frame.
+ * Avoid using w-screen, w-full with left-0 on fixed elements.
+ * 
+ * Examples:
+ * ✅ <nav className="frame-fixed bottom-0 ...">
+ * ❌ <nav className="fixed inset-x-0 bottom-0 w-full ...">
+ */
 const Layout: React.FC<LayoutProps> = ({ children, currentMode, onNavigate }) => {
   return (
     // App Frame - Constrained phone canvas with desktop backdrop
@@ -18,7 +34,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentMode, onNavigate }) =>
       </main>
 
       {/* Bottom Navigation - Fixed within app frame */}
-      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-phone z-50 px-4 pb-6 pt-2 pointer-events-none">
+      <nav className="frame-fixed bottom-0 z-50 px-4 pb-6 pt-2 pointer-events-none">
         <div className="glass-panel rounded-pill flex justify-around items-center h-16 shadow-glass pointer-events-auto">
           <NavButton
             active={currentMode === AppMode.HOME}

@@ -199,7 +199,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
   const resultInfo = scannedResult ? getTypeInfo(scannedResult) : null;
 
   return (
-    <div className="flex flex-col h-full bg-black absolute inset-0 z-50 overflow-hidden">
+    <div className="flex flex-col min-h-screen w-full bg-black overflow-hidden">
       {/* Header */}
       <div className="absolute top-0 left-0 w-full z-20 flex justify-between items-center p-4 bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
         <button 

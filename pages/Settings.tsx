@@ -181,7 +181,7 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0f172a] absolute inset-0 z-50 overflow-y-auto no-scrollbar animate-in slide-in-from-right duration-300">
+    <div className="flex flex-col min-h-screen w-full bg-slate-50 dark:bg-[#0f172a] overflow-y-auto no-scrollbar animate-in slide-in-from-right duration-300">
       {renderCountryModal()}
       
       {/* Header */}

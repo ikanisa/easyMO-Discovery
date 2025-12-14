@@ -101,7 +101,7 @@ const BusinessCardWidget: React.FC<BusinessCardWidgetProps> = ({
 
     // Show toast
     const toast = document.createElement('div');
-    toast.className = "fixed bottom-24 left-1/2 -translate-x-1/2 max-w-phone bg-emerald-600 text-white px-5 py-3 rounded-card text-xs font-bold card-shadow z-[100] animate-in fade-in zoom-in slide-in-from-bottom-4 duration-300 flex items-center gap-2";
+    toast.className = "frame-fixed bottom-24 bg-emerald-600 text-white px-5 py-3 rounded-card text-xs font-bold card-shadow z-[100] animate-in fade-in zoom-in slide-in-from-bottom-4 duration-300 flex items-center gap-2";
     toast.innerHTML = `<span>Request queued! Watch for a WhatsApp reply.</span>`;
     document.body.appendChild(toast);
     setTimeout(() => {
