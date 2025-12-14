@@ -402,27 +402,9 @@ export const GeminiService = {
     
     runBackgroundMemoryExtraction(userMessage, rawText);
 
-    const parsedJson = extractJson(rawText);
-    const cleanText = rawText.replace(/```json[\s\S]*?```/g, '').replace(/```[\s\S]*?```/g, '').replace(/\{[\s\S]*\}/g, '').trim();
-
-    let legalPayload: LegalResultsPayload | undefined;
-    if (parsedJson && Array.isArray(parsedJson.matches)) {
-        legalPayload = {
-            query_summary: "Here are recommended legal professionals:",
-            matches: parsedJson.matches.map((m: any, idx: number) => ({
-                id: `legal-${idx}`,
-                name: m.name,
-                category: m.category || 'Lawyer',
-                distance: m.distance || 'Kigali',
-                phoneNumber: normalizePhoneNumber(m.phone) || m.phone,
-                confidence: 'High',
-                snippet: m.snippet,
-                whatsappDraft: "Hello Counsel, I found you on easyMO and require legal assistance."
-            }))
-        };
-    }
-
-    return { text: cleanText || rawText, legalPayload };
+    // Gatera no longer returns JSON payloads (no lawyer finder mode)
+    // Return the rich text response directly
+    return { text: rawText };
   },
   
   // Aliases
