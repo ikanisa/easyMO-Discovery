@@ -18,6 +18,42 @@ interface LayoutProps {
  */
 const Layout: React.FC<LayoutProps> = ({ children, currentMode, onNavigate }) => {
   return (
+    <AppFrame>
+      {/* Content Area - Scrollable */}
+      <main className="min-h-[100dvh] overflow-auto pb-24 no-scrollbar scroll-smooth liquid-bg">
+        {children}
+      </main>
+
+      {/* Bottom Navigation - Positioned within the frame */}
+      <nav className="frame-fixed bottom-0 z-50 px-4 pb-6 pt-2 pointer-events-none">
+        <div className="glass-panel rounded-pill flex justify-around items-center h-16 shadow-glass pointer-events-auto">
+          <NavButton
+            active={currentMode === AppMode.HOME}
+            onClick={() => onNavigate(AppMode.HOME)}
+            icon={ICONS.Home}
+            label="Home"
+          />
+          <NavButton
+            active={currentMode === AppMode.DISCOVERY}
+            onClick={() => onNavigate(AppMode.DISCOVERY)}
+            icon={ICONS.Bike}
+            label="Ride"
+          />
+          <NavButton
+            active={currentMode === AppMode.BUSINESS}
+            onClick={() => onNavigate(AppMode.BUSINESS)}
+            icon={ICONS.Store}
+            label="Market"
+          />
+          <NavButton
+            active={currentMode === AppMode.SERVICES}
+            onClick={() => onNavigate(AppMode.SERVICES)}
+            icon={ICONS.Grid}
+            label="Services"
+          />
+        </div>
+      </nav>
+    </AppFrame>
     <div className="app-frame">
       <div className="app-frame-inner">
         <main className="min-h-[100dvh] overflow-auto pb-24 no-scrollbar scroll-smooth liquid-bg">

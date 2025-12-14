@@ -191,6 +191,15 @@ const App: React.FC = () => {
 
           {/* Header Section */}
           <div className="pt-12 px-6 pb-6 text-center animate-in fade-in slide-in-from-top-4 duration-700">
+            <h1 className="text-5xl font-black italic tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-emerald-400">
+              easyMO
+            </h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium tracking-wide">
+              Your Everyday Companion
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-500 tracking-wider">
+              Move • Shop • Legal • Business
+            </p>
             <h1 className="text-5xl font-black italic tracking-tighter mb-2 bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-emerald-400 drop-shadow-sm">
               easyMO
             </h1>
@@ -223,6 +232,7 @@ const App: React.FC = () => {
             
             {/* Section: Mobility */}
             <section>
+              <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 px-1 flex items-center gap-2">
               <h2 className="flex items-center gap-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 px-1">
                 <span className="flex-1 h-px bg-slate-300 dark:bg-slate-700"></span>
                 Mobility
@@ -257,6 +267,7 @@ const App: React.FC = () => {
 
             {/* Section: Discovery & Tools */}
             <section>
+              <h2 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 px-1 flex items-center gap-2">
               <h2 className="flex items-center gap-3 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-4 px-1">
                 <span className="flex-1 h-px bg-slate-300 dark:bg-slate-700"></span>
                 Lifestyle & Tools

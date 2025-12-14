@@ -116,6 +116,23 @@ const InstallPrompt: React.FC = () => {
             <span className="text-xl leading-none font-bold text-slate-400 ml-1">+</span>
           </div>
         ) : (
+           // Android / Desktop Action
+           <div className="flex gap-3 relative z-10">
+                <button 
+                    onClick={handleDismiss}
+                    className="flex-1 py-3 rounded-xl font-bold text-xs text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 transition-all"
+                >
+                    Not Now
+                </button>
+                <Button 
+                    variant="primary" 
+                    onClick={handleInstall}
+                    className="flex-[2] h-auto py-3 text-xs shadow-blue-500/20"
+                    icon={<ICONS.Check className="w-4 h-4" />}
+                >
+                    Install App
+                </Button>
+            </div>
           <div className="flex gap-3 relative z-10">
             <button
               onClick={handleDismiss}
