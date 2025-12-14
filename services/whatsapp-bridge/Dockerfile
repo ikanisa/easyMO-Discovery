@@ -7,7 +7,7 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
 # Copy app code
-COPY index.js ./
+COPY index.js gemini-integration.js vendor-matching.js broadcast.js ./
 
 ENV NODE_ENV=production
 ENV PORT=8080
