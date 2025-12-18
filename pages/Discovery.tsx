@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ICONS } from '../../constants';
+import { ICONS } from '../constants';
 import NearbyListCard from '../components/Discovery/NearbyListCard';
 import ScheduleModal from '../components/Scheduling/ScheduleModal';
 import SmartLocationInput from '../components/Location/SmartLocationInput';
@@ -9,6 +9,7 @@ import { PresenceService } from '../services/presence';
 import { LocationService } from '../services/location';
 import { GeminiService } from '../services/gemini';
 import { NetworkService } from '../services/supabase';
+import { useUIStore } from '../state/uiStore';
 
 interface DiscoveryProps {
   role: Role;
@@ -38,7 +39,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ role, onStartChat, onBack }) => {
   const [myVehicleType, setMyVehicleType] = useState<VehicleType>('moto'); 
 
   // State
-  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const { isScheduleSheetOpen, openScheduleSheet, closeScheduleSheet } = useUIStore();
   const lastUpdateRef = useRef<number>(0);
 
   // 1. Connectivity Listener
@@ -147,7 +148,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ role, onStartChat, onBack }) => {
 
   return (
     <div className="flex flex-col min-h-full bg-slate-50 dark:bg-[#0f172a] relative overflow-hidden transition-colors duration-500">
-      {showScheduleModal && <ScheduleModal onClose={() => setShowScheduleModal(false)} onSchedule={() => {}} />}
+      <ScheduleModal open={isScheduleSheetOpen} onClose={closeScheduleSheet} onSchedule={() => {}} />
 
       {/* Offline Banner */}
       {!isOnline && (
@@ -273,7 +274,7 @@ const Discovery: React.FC<DiscoveryProps> = ({ role, onStartChat, onBack }) => {
       {/* FAB */}
       {role === 'passenger' && isOnline && (
         <button
-            onClick={() => setShowScheduleModal(true)}
+            onClick={openScheduleSheet}
             className="fixed bottom-24 right-6 z-40 w-14 h-14 rounded-full bg-blue-600 text-white shadow-xl shadow-blue-600/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all animate-in zoom-in border border-white/20"
         >
             <ICONS.Calendar className="w-6 h-6" />
