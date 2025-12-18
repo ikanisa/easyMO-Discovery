@@ -83,6 +83,25 @@ const App: React.FC = () => {
           const { data, error } = await supabase.auth.signInAnonymously();
           if (!error) user = data.user;
         }
+
+        // Create lightweight profile if missing
+        if (user) {
+          const { error: profileError } = await supabase
+            .from('user_profiles')
+            .upsert(
+              {
+                user_id: user.id,
+                display_name: user.email || `Guest ${user.id.slice(0, 4)}`,
+                phone_number: user.phone || `Anon-${user.id.slice(0, 6)}`,
+                default_role: 'passenger',
+              },
+              { onConflict: 'user_id' }
+            );
+          if (profileError) {
+            console.warn('Profile sync warning', profileError.message);
+          }
+        }
+
         setIsAuthenticated(true);
       } catch (error) {
         setIsAuthenticated(true);

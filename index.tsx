@@ -2,6 +2,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'sonner';
 import App from './App';
 import { ThemeProvider } from './context/ThemeContext';
 import { MonitoringService } from './services/monitoring';
@@ -28,6 +29,7 @@ root.render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <App />
+        <Toaster position="top-center" richColors closeButton />
       </ThemeProvider>
     </QueryClientProvider>
   </React.StrictMode>

@@ -22,17 +22,25 @@ serve(async (req) => {
 
     const { requestId } = await req.json();
 
-    const { data, error } = await supabase
-      .from('broadcast_responses')
-      .select('*')
-      .eq('request_id', requestId);
+    try {
+      const { data, error } = await supabase
+        .from('broadcast_responses')
+        .select('*')
+        .eq('request_id', requestId);
 
-    if (error) throw error;
+      if (error) throw error;
 
-    return new Response(
-      JSON.stringify({ status: 'success', matches: data || [] }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+      return new Response(
+        JSON.stringify({ status: 'success', matches: data || [] }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    } catch (_e) {
+      // If table is missing, still return a valid response to avoid breaking the client
+      return new Response(
+        JSON.stringify({ status: 'success', matches: [] }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
   } catch (error: any) {
     return new Response(

@@ -23,17 +23,21 @@ serve(async (req) => {
     const { requestId, userLocationLabel, needDescription, businesses, action } = await req.json();
 
     // 1. Log the Request to DB
-    const { error: dbError } = await supabase
-      .from('broadcasts')
-      .insert({
-        request_id: requestId,
-        need_description: needDescription,
-        location_label: userLocationLabel,
-        target_count: businesses?.length || 0,
-        status: 'queued'
-      });
-
-    if (dbError) throw dbError;
+    // Log request if table exists
+    try {
+      const { error: dbError } = await supabase
+        .from('broadcasts')
+        .insert({
+          request_id: requestId,
+          need_description: needDescription,
+          location_label: userLocationLabel,
+          target_count: businesses?.length || 0,
+          status: 'queued'
+        });
+      if (dbError) throw dbError;
+    } catch (_e) {
+      // Best-effort logging; continue
+    }
 
     // 2. Integration with Meta (Optional / Stub)
     const metaToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
@@ -71,12 +75,16 @@ serve(async (req) => {
         const responders = businesses.slice(0, Math.min(2, businesses.length));
         
         for (const biz of responders) {
-            await supabase.from('broadcast_responses').insert({
-                request_id: requestId,
-                business_name: biz.name,
-                business_phone: biz.phone,
-                item_found: "Available"
-            });
+            try {
+              await supabase.from('broadcast_responses').insert({
+                  request_id: requestId,
+                  business_name: biz.name,
+                  business_phone: biz.phone,
+                  item_found: "Available"
+              });
+            } catch (_insertErr) {
+              // swallow if table missing
+            }
         }
     }
 

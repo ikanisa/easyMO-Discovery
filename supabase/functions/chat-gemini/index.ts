@@ -7,7 +7,7 @@ declare const Deno: any;
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-edge-secret',
 };
 
 serve(async (req) => {
@@ -17,6 +17,18 @@ serve(async (req) => {
   }
 
   try {
+    // Optional shared-secret guard to avoid public key abuse
+    const edgeSecret = Deno.env.get('EDGE_AUTH_SECRET');
+    if (edgeSecret) {
+      const provided = req.headers.get('x-edge-secret');
+      if (provided !== edgeSecret) {
+        return new Response(
+          JSON.stringify({ status: 'error', message: 'Unauthorized' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // 2. Get API Key exclusively from process.env.API_KEY as per guidelines.
     // In Edge Functions environment, we assume process.env is accessible or fall back to Deno.env for safety.
     const apiKey = (globalThis as any).process?.env?.API_KEY || Deno.env.get('GEMINI_API_KEY');
@@ -31,10 +43,8 @@ serve(async (req) => {
     const ai = new GoogleGenAI({ apiKey: (globalThis as any).process?.env?.API_KEY || apiKey });
     
     // Choose Model
-    // Fix: Default to gemini-3-flash-preview for Basic Text Tasks.
-    // Map grounding requires Gemini 2.5 series models.
-    const isMaps = tools?.some((t: any) => t.googleMaps);
-    const modelName = isMaps ? 'gemini-2.5-flash' : 'gemini-3-flash-preview';
+    // Default to gemini-2.5-flash for grounding + chat tasks.
+    const modelName = 'gemini-2.5-flash';
 
     // 5. Construct Config
     const config: any = {};

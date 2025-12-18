@@ -20,7 +20,7 @@
     "lucide-react": "0.344.0",
     "sonner": "1.4.3",
     "zustand": "4.5.2",
-    "@tanstack/react-query": "5.25.0",
+    "@tanstack/react-query": "^5.66.0",
     "clsx": "2.1.0",
     "tailwind-merge": "2.2.1"
   },
