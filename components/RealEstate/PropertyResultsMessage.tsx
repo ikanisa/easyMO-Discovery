@@ -11,7 +11,7 @@ interface PropertyResultsMessageProps {
 
 const PropertyResultsMessage: React.FC<PropertyResultsMessageProps> = ({ payload, onLoadMore }) => {
   const [showAll, setShowAll] = useState(false);
-  const { matches, filters_applied, disclaimer, pagination, query_summary, market_insight, next_steps } = payload;
+  const { matches, filters_applied, disclaimer, pagination, query_summary } = payload;
   
   const visibleCount = showAll ? matches.length : 3;
   const visibleResults = matches.slice(0, visibleCount);
@@ -26,13 +26,6 @@ const PropertyResultsMessage: React.FC<PropertyResultsMessageProps> = ({ payload
       {query_summary && (
         <div className="px-1 text-xs text-slate-400 font-medium italic">
           {query_summary}
-        </div>
-      )}
-
-      {market_insight && (
-        <div className="px-1 text-xs text-slate-300 leading-relaxed">
-          <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mr-2">Market</span>
-          {market_insight}
         </div>
       )}
 
@@ -51,12 +44,6 @@ const PropertyResultsMessage: React.FC<PropertyResultsMessageProps> = ({ payload
         {filters_applied?.property_type && filters_applied.property_type !== 'unknown' && (
           <button className="shrink-0 text-[10px] font-bold bg-white/10 border border-white/10 rounded-full px-3 py-1 text-slate-200">
              {filters_applied.property_type}
-          </button>
-        )}
-
-        {typeof filters_applied?.bedrooms === 'number' && filters_applied.bedrooms > 0 && (
-          <button className="shrink-0 text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/25 rounded-full px-3 py-1 text-emerald-300">
-            {`${filters_applied.bedrooms} BR`}
           </button>
         )}
 
@@ -105,20 +92,6 @@ const PropertyResultsMessage: React.FC<PropertyResultsMessageProps> = ({ payload
            <ICONS.PlusCircle className="w-5 h-5" />
            Show {pagination.page_size || 20} more results
         </button>
-      )}
-
-      {/* Next Steps */}
-      {next_steps && next_steps.length > 0 && (
-        <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-bold mb-2">Next Steps</div>
-          <div className="space-y-1">
-            {next_steps.slice(0, 4).map((step, idx) => (
-              <div key={idx} className="text-xs text-slate-300 leading-relaxed">
-                • {step}
-              </div>
-            ))}
-          </div>
-        </div>
       )}
 
       {/* Disclaimer */}

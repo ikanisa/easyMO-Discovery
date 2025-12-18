@@ -1,58 +1,60 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import App from './App';
-import './index.css';
 import { ThemeProvider } from './context/ThemeContext';
-import { PWAProvider } from './hooks/usePWA';
-import { registerSW } from 'virtual:pwa-register';
+import { MonitoringService } from './services/monitoring';
+
+// Initialize Monitoring
+MonitoringService.init();
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      gcTime: 1000 * 60 * 60 * 24, // 24 hours
+      retry: 2,
+    },
+  },
+});
 
 const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
-}
+if (!rootElement) throw new Error("Root not found");
 
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <ThemeProvider>
-      <PWAProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
         <App />
-      </PWAProvider>
-    </ThemeProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   </React.StrictMode>
 );
 
-// Register Service Worker with vite-plugin-pwa
-// This handles update prompts automatically via the 'prompt' registerType in vite.config.ts
-const updateSW = registerSW({
-  onNeedRefresh() {
-    // Dispatch a custom event that the UpdatePrompt component can listen to
-    window.dispatchEvent(new CustomEvent('swNeedRefresh', { detail: { updateSW } }));
-  },
-  onOfflineReady() {
-    console.log('App is ready to work offline');
-    window.dispatchEvent(new CustomEvent('swOfflineReady'));
-  },
-  onRegisteredSW(swUrl, r) {
-    console.log('Service Worker registered:', swUrl);
-    // Check for updates periodically (every hour) only when tab is visible
-    if (r) {
-      const checkUpdate = () => {
-        if (document.visibilityState === 'visible') {
-          r.update();
+// Hardened Service Worker Registration
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    try {
+      // Use absolute path relative to current origin to avoid sandbox mismatch
+      const swUrl = new URL('./sw.js', window.location.href).href;
+      
+      navigator.serviceWorker.register(swUrl).then(
+        (reg) => console.debug('SW registered successfully'),
+        (err) => {
+          // Check for origin mismatch errors common in cloud preview environments
+          if (err.message?.includes('origin')) {
+            console.warn('ServiceWorker registration skipped: Origin mismatch in preview environment.');
+          } else {
+            MonitoringService.captureException(err, { context: 'SW_Registration_Failure' });
+          }
         }
-      };
-      setInterval(checkUpdate, 60 * 60 * 1000);
-      // Also check for updates when tab becomes visible
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-          r.update();
-        }
+      ).catch(e => {
+         console.warn('ServiceWorker registration failed silently:', e.message);
       });
+    } catch (e) {
+      console.error('ServiceWorker setup error:', e);
     }
-  },
-  onRegisterError(error) {
-    console.error('Service Worker registration error:', error);
-  }
-});
+  });
+}

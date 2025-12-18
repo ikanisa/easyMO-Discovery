@@ -11,19 +11,21 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [theme, setTheme] = useState<Theme>('dark');
-
-  useEffect(() => {
-    // Initial load logic
-    const storedTheme = localStorage.getItem('easyMO_theme') as Theme;
-    if (storedTheme) {
-      setTheme(storedTheme);
-    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setTheme('dark');
-    } else {
-      setTheme('light');
+  // Initialize state lazily to respect storage or system preference immediately
+  const [theme, setTheme] = useState<Theme>(() => {
+    // Check local storage first
+    if (typeof window !== 'undefined') {
+      const storedTheme = localStorage.getItem('easyMO_theme');
+      if (storedTheme === 'dark' || storedTheme === 'light') {
+        return storedTheme;
+      }
+      // Fallback to system preference
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        return 'dark';
+      }
     }
-  }, []);
+    return 'light'; // Default fallback
+  });
 
   useEffect(() => {
     // Apply theme to HTML element
@@ -33,6 +35,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } else {
       root.classList.remove('dark');
     }
+    // Persist to local storage
     localStorage.setItem('easyMO_theme', theme);
   }, [theme]);
 
@@ -47,7 +50,6 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   );
 };
 
-// eslint-disable-next-line react-refresh/only-export-components
 export const useTheme = () => {
   const context = useContext(ThemeContext);
   if (!context) {

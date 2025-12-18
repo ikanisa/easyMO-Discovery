@@ -1,6 +1,7 @@
 
 import { supabase } from './supabase';
 import { CONFIG } from '../config';
+import { MonitoringService } from './monitoring';
 
 export interface ApiResponse {
   status?: 'success' | 'error' | 'ok';
@@ -21,11 +22,10 @@ export async function callBackend(payload: any): Promise<ApiResponse> {
   if (payload.action === 'secure_gemini') functionName = 'chat-gemini';
   else if (payload.action === 'queue_broadcast' || payload.action === 'batch_broadcast') functionName = 'whatsapp-broadcast';
   else if (payload.action === 'check_broadcast_status') functionName = 'whatsapp-status';
-  else if (payload.action === 'schedule_trip') functionName = 'schedule-trip';
-  else if (payload.action === 'update_presence') functionName = 'update-presence';
   else if (payload.action === 'create_request') functionName = 'log-request';
   else {
     console.warn("Unknown action:", payload.action);
+    MonitoringService.captureMessage(`Unknown action called: ${payload.action}`, 'warning');
     return { status: 'error', message: 'Unknown action' };
   }
 
@@ -41,6 +41,8 @@ export async function callBackend(payload: any): Promise<ApiResponse> {
          console.warn(`Non-critical Edge Function '${functionName}' failed silently:`, error.message);
          return { status: 'error', message: 'Logging failed' };
       }
+      
+      MonitoringService.captureException(error, { functionName, payload });
       console.error(`Edge Function '${functionName}' failed:`, error);
       throw error;
     }
@@ -51,6 +53,7 @@ export async function callBackend(payload: any): Promise<ApiResponse> {
     // Suppress console.error for log-request
     if (functionName !== 'log-request') {
         console.error(`Backend API Error (${functionName}):`, error);
+        MonitoringService.captureException(error, { functionName, payload });
     } else {
         console.debug(`Backend API Warn (${functionName}):`, error.message);
     }

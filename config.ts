@@ -11,4 +11,8 @@ export const CONFIG = {
   // Feature Flags
   ENABLE_REAL_PRESENCE: true, 
   ENABLE_DEMO_MODE: false, // DISABLED: Live Mode Active
+
+  // Monitoring
+  SENTRY_DSN: '', // Add your Sentry DSN here for production monitoring
+  ENVIRONMENT: 'production'
 };

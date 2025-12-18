@@ -1,15 +1,14 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ICONS } from '../constants';
-import VehicleSelector from '../components/Discovery/VehicleSelector';
+import { ICONS } from '../../constants';
 import NearbyListCard from '../components/Discovery/NearbyListCard';
 import ScheduleModal from '../components/Scheduling/ScheduleModal';
 import SmartLocationInput from '../components/Location/SmartLocationInput';
 import { PresenceUser, VehicleType, Role, Location } from '../types';
 import { PresenceService } from '../services/presence';
 import { LocationService } from '../services/location';
-import { callBackend } from '../services/api';
-import { CONFIG } from '../config';
+import { GeminiService } from '../services/gemini';
+import { NetworkService } from '../services/supabase';
 
 interface DiscoveryProps {
   role: Role;
@@ -17,409 +16,269 @@ interface DiscoveryProps {
   onBack: () => void;
 }
 
-const RadarView = ({ active, text }: { active: boolean, text: string }) => (
-  <div className="flex flex-col items-center justify-center py-20 text-slate-500 gap-8 animate-in fade-in zoom-in duration-700">
-     <div className="relative w-64 h-64 flex items-center justify-center">
-        {/* Outer Scanner Ring */}
-        <div className="absolute inset-0 border border-slate-200 dark:border-white/5 rounded-full" />
-        <div className="absolute inset-12 border border-slate-200 dark:border-white/10 rounded-full" />
-        
-        {/* Ripples */}
-        {active && (
-          <>
-            <div className="absolute inset-0 border-2 border-cyan-500/30 rounded-full animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite]" />
-            <div className="absolute inset-20 border-2 border-blue-500/20 rounded-full animate-[ping_3s_cubic-bezier(0,0,0.2,1)_infinite_1s]" />
-          </>
-        )}
-        
-        {/* Center Node */}
-        <div className={`
-           w-24 h-24 rounded-full flex items-center justify-center backdrop-blur-2xl shadow-[0_0_50px_rgba(0,0,0,0.1)] dark:shadow-[0_0_50px_rgba(0,0,0,0.5)] z-10 border transition-all duration-500
-           ${active ? 'bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border-cyan-500/50 shadow-cyan-500/20' : 'bg-white/80 dark:bg-slate-900/80 border-slate-200 dark:border-white/10'}
-        `}>
-           <ICONS.Map className={`w-10 h-10 transition-colors duration-500 ${active ? 'text-cyan-600 dark:text-cyan-400 drop-shadow-[0_0_10px_rgba(34,211,238,0.8)]' : 'text-slate-400 dark:text-slate-600'}`} />
-        </div>
-        
-        {/* Radar Sweep */}
-        {active && (
-           <div className="absolute inset-0 rounded-full overflow-hidden animate-[spin_3s_linear_infinite]">
-              <div className="w-1/2 h-1/2 bg-gradient-to-br from-cyan-500/20 to-transparent absolute top-0 left-0 origin-bottom-right rounded-tl-full blur-xl" />
-           </div>
-        )}
-     </div>
-     <div className="text-center space-y-2">
-       <p className="text-sm font-bold tracking-[0.2em] uppercase text-slate-400 dark:text-slate-400 animate-pulse">
-         {text}
-       </p>
-       {active && <div className="h-1 w-24 bg-cyan-500/20 rounded-full mx-auto overflow-hidden">
-          <div className="h-full w-1/2 bg-cyan-500 rounded-full animate-[shimmer_1.5s_infinite_linear]" />
-       </div>}
-     </div>
-  </div>
-);
+const VEHICLE_FILTERS: { id: VehicleType | 'all'; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'moto', label: 'Moto' },
+  { id: 'cab', label: 'Cab' },
+  { id: 'liffan', label: 'Liffan' },
+  { id: 'truck', label: 'Truck' },
+  { id: 'other', label: 'Bus/Other' }
+];
 
 const Discovery: React.FC<DiscoveryProps> = ({ role, onStartChat, onBack }) => {
-  const [selectedVehicle, setSelectedVehicle] = useState<VehicleType>(role === 'vendor' ? 'shop' : 'moto');
+  const [activeFilter, setActiveFilter] = useState<VehicleType | 'all'>('all');
   const [nearbyUsers, setNearbyUsers] = useState<PresenceUser[]>([]);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [currentLocation, setCurrentLocation] = useState<Location | null>(null);
-  const [privacyMode, setPrivacyMode] = useState(false);
-  const [destinationQuery, setDestinationQuery] = useState('');
+  const [locationContext, setLocationContext] = useState<string>("Locating...");
+  const [isOnline, setIsOnline] = useState(NetworkService.isOnline());
   
-  // Connection Status
-  const [isUpdating, setIsUpdating] = useState(false);
-  
-  // Modal State
+  // Driver Specific
+  const [isDrivingOnline, setIsDrivingOnline] = useState(false);
+  const [myVehicleType, setMyVehicleType] = useState<VehicleType>('moto'); 
+
+  // State
   const [showScheduleModal, setShowScheduleModal] = useState(false);
-
-  // Driver/Vendor specific state
-  const [isOnline, setIsOnline] = useState(false);
   const lastUpdateRef = useRef<number>(0);
-  const privacyModeRef = useRef(false);
 
-  // Update privacy mode ref
+  // 1. Connectivity Listener
   useEffect(() => {
-    privacyModeRef.current = privacyMode;
-  }, [privacyMode]);
+    const handleConnectivity = (status: boolean) => {
+        setIsOnline(status);
+        if (status) {
+            // Force a sync and refresh when coming back online
+            PresenceService.syncPending();
+            if (currentLocation) fetchNearbyNow();
+        }
+    };
+    NetworkService.addListener(handleConnectivity);
+    return () => NetworkService.removeListener(handleConnectivity);
+  }, [currentLocation]);
 
-  // Handle Driver/Vendor Toggle
-  const toggleOnline = async () => {
-    const newState = !isOnline;
-    setIsOnline(newState);
-    
-    if (newState) {
-      // GOING ONLINE: Start Wake Lock & Watcher
-      await LocationService.requestWakeLock();
-    } else {
-      // GOING OFFLINE: Stop Wake Lock & Watcher
-      await LocationService.releaseWakeLock();
-      await PresenceService.goOffline();
-      setNearbyUsers([]);
-      // Stop watcher handled in useEffect cleanup
-    }
+  // 2. Initial Load & Location Watch
+  useEffect(() => {
+    LocationService.startWatching(
+      async (loc) => {
+        setCurrentLocation(loc);
+        setLocationError(null);
+
+        // Get Gemini Context once (debounced)
+        if (locationContext === "Locating..." && isOnline) {
+            try {
+                const insight = await GeminiService.getLocationInsight(loc.lat, loc.lng);
+                setLocationContext(insight);
+            } catch(e) {
+                setLocationContext("Unknown Area");
+            }
+        }
+
+        // Broadcast presence if driver/online or passenger
+        const now = Date.now();
+        if (now - lastUpdateRef.current > 30000) {
+            lastUpdateRef.current = now;
+            if (role === 'passenger' || (role === 'driver' && isDrivingOnline)) {
+                await PresenceService.upsertPresence(
+                    role, 
+                    loc, 
+                    role === 'driver' ? myVehicleType : undefined, 
+                    true
+                );
+            }
+        }
+      },
+      (err) => setLocationError(err)
+    );
+
+    return () => LocationService.stopWatching();
+  }, [role, isDrivingOnline, myVehicleType, isOnline]);
+
+  const fetchNearbyNow = async () => {
+      if (!currentLocation || !isOnline) return;
+      try {
+         const targetRole: Role = role === 'passenger' ? 'driver' : 'passenger';
+         const users = await PresenceService.getNearby(targetRole, currentLocation);
+         setNearbyUsers(users);
+      } catch (err) {
+        console.error(err);
+      }
   };
 
-  // Effect 1: Handle Location Watching (Sending my location)
-  useEffect(() => {
-    const shouldWatch = role === 'passenger' || ((role === 'driver' || role === 'vendor') && isOnline);
-    
-    if (shouldWatch) {
-      LocationService.startWatching(
-        async (loc) => {
-          setCurrentLocation(loc);
-          setLocationError(null);
-
-          const now = Date.now();
-          // BROADCAST THROTTLE: Only update backend every 60 seconds (60000ms)
-          if (now - lastUpdateRef.current > 60000) {
-            lastUpdateRef.current = now;
-            
-            let broadcastLoc = loc;
-            if (role === 'passenger' && privacyModeRef.current) {
-               broadcastLoc = {
-                  lat: Math.round(loc.lat * 100) / 100 + 0.005,
-                  lng: Math.round(loc.lng * 100) / 100 + 0.005
-               };
-            }
-
-            const myType = role === 'vendor' ? 'shop' : (role === 'driver' ? selectedVehicle : undefined);
-            await PresenceService.upsertPresence(role, broadcastLoc, myType, true);
-          }
-        },
-        (err) => setLocationError(err)
-      );
-    } else {
-      LocationService.stopWatching();
-    }
-
-    return () => {
-      LocationService.stopWatching();
-    };
-  }, [role, isOnline, selectedVehicle]);
-
-  // Effect 2: Polling Nearby Users (Receiving others)
+  // 3. Fetch Nearby Users (Polling)
   useEffect(() => {
     let timer: any;
     let isActive = true;
 
-    const fetchNearby = async () => {
-      if (!currentLocation) {
-          if (isActive) timer = setTimeout(fetchNearby, 2000);
+    const fetchLoop = async () => {
+      if (!currentLocation || !isOnline) {
+          if (isActive) timer = setTimeout(fetchLoop, 2000);
           return;
       }
       
-      setIsUpdating(true);
-      try {
-         const typeFilter = role === 'passenger' ? selectedVehicle : undefined;
-         const nearby = await PresenceService.getNearby(role, currentLocation, typeFilter);
-         if (isActive) setNearbyUsers(nearby);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        if (isActive) setIsUpdating(false);
-        if (isActive) timer = setTimeout(fetchNearby, 15000); // Poll every 15s to save quota
-      }
+      await fetchNearbyNow();
+      if (isActive) timer = setTimeout(fetchLoop, 10000);
     };
 
-    const shouldPoll = role === 'passenger' || ((role === 'driver' || role === 'vendor') && isOnline);
+    fetchLoop();
+    return () => clearTimeout(timer);
+  }, [currentLocation, role, isOnline]);
 
-    if (shouldPoll) {
-      fetchNearby(); 
-    } else {
-      setNearbyUsers([]);
-    }
+  // Filter Logic
+  const filteredUsers = nearbyUsers.filter(u => {
+      if (activeFilter === 'all') return true;
+      return u.vehicleType === activeFilter;
+  });
 
-    return () => {
-        isActive = false;
-        clearTimeout(timer);
-    };
-  }, [role, isOnline, selectedVehicle, currentLocation]); 
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      LocationService.releaseWakeLock();
-      LocationService.stopWatching();
-    };
-  }, []);
-
-  const handleScheduleConfirm = async (details: any) => {
-      // Connect to backend to save the trip
-      try {
-        const response = await callBackend({
-          action: 'schedule_trip',
-          ...details,
-          role,
-          vehicleType: role === 'driver' ? selectedVehicle : undefined
-        });
-
-        if (response.status === 'success') {
-          alert(`✅ Trip scheduled successfully for ${details.date} at ${details.time}`);
-        } else {
-          throw new Error(response.error || response.message || 'Failed to schedule trip');
-        }
-      } catch (error: any) {
-        console.error('Schedule trip error:', error);
-        alert(`❌ Error scheduling trip: ${error.message}`);
+  const toggleOnline = async () => {
+      if (!isOnline) return; // Prevent toggle when network is down
+      
+      const newState = !isDrivingOnline;
+      setIsDrivingOnline(newState);
+      if (newState) {
+          await LocationService.requestWakeLock();
+          // Force immediate update
+          if (currentLocation) {
+              await PresenceService.upsertPresence(role, currentLocation, myVehicleType, true);
+          }
+      } else {
+          await LocationService.releaseWakeLock();
+          await PresenceService.goOffline();
       }
   };
 
   return (
-    <div className="flex flex-col min-h-full bg-slate-50 dark:bg-[#0f172a] text-slate-900 dark:text-white relative overflow-hidden transition-colors duration-300">
-      
-      {showScheduleModal && (
-          <ScheduleModal 
-            onClose={() => setShowScheduleModal(false)}
-            onSchedule={handleScheduleConfirm}
-          />
+    <div className="flex flex-col min-h-full bg-slate-50 dark:bg-[#0f172a] relative overflow-hidden transition-colors duration-500">
+      {showScheduleModal && <ScheduleModal onClose={() => setShowScheduleModal(false)} onSchedule={() => {}} />}
+
+      {/* Offline Banner */}
+      {!isOnline && (
+          <div className="bg-amber-600 text-white text-[10px] font-black uppercase tracking-[0.2em] py-1.5 text-center animate-in slide-in-from-top duration-300 z-50">
+              Offline Mode • Limited Discovery
+          </div>
       )}
 
-      {/* Immersive Background Gradients */}
-      <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-blue-100/50 dark:from-indigo-900/40 via-slate-50/0 dark:via-slate-900/0 to-transparent pointer-events-none" />
-      <div className="absolute top-[-100px] right-[-50px] w-96 h-96 bg-blue-500/10 dark:bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-[-100px] left-[-50px] w-96 h-96 bg-emerald-500/10 dark:bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none" />
-
-      {/* Floating Header */}
-      <div className="relative z-30 px-6 pt-8 pb-4 flex justify-between items-center">
-        <button 
-           onClick={onBack}
-           className="w-10 h-10 rounded-full bg-white dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 backdrop-blur-md flex items-center justify-center transition-all active:scale-95 group shadow-sm"
-        >
-           <ICONS.ChevronDown className="w-5 h-5 rotate-90 text-slate-500 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white" />
-        </button>
-        
-        {/* Status Pill */}
-        {role === 'passenger' && (
-           <div className="px-3 py-1 rounded-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 backdrop-blur-md flex items-center gap-2 shadow-sm">
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
-              <span className="text-[10px] font-bold tracking-widest uppercase text-slate-500 dark:text-slate-300">Live Map</span>
-           </div>
-        )}
-      </div>
-
-      {/* Main Content Scroll */}
-      <div className="flex-1 px-4 pb-32 relative z-10 overflow-y-auto no-scrollbar">
-        
-        {/* Header Title Area */}
-        <div className="mb-6 px-2 flex justify-between items-end">
-           <div>
-               <h1 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-slate-900 via-slate-700 to-slate-500 dark:from-white dark:via-slate-200 dark:to-slate-400 tracking-tight">
-                 {role === 'passenger' ? 'Find a Ride' : (role === 'vendor' ? 'Vendor Portal' : 'Driver Portal')}
-               </h1>
-               <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
-                 {role === 'passenger' ? 'Connect with nearby drivers instantly.' : 'Manage your availability and requests.'}
-               </p>
-           </div>
-           
-           {/* Schedule Button (Header) */}
-           <button 
-             onClick={() => setShowScheduleModal(true)}
-             className="flex flex-col items-center gap-1 group active:scale-95 transition-transform"
-           >
-              <div className="w-10 h-10 rounded-full bg-white dark:bg-white/10 border border-slate-200 dark:border-white/10 flex items-center justify-center text-blue-500 dark:text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-colors shadow-sm">
-                  <ICONS.Calendar className="w-5 h-5" />
-              </div>
-              <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Plan</span>
-           </button>
-        </div>
-
-        {/* Destination Input (Passenger Only) - New Feature */}
-        {role === 'passenger' && (
-           <div className="mb-6 animate-in slide-in-from-bottom-2 fade-in">
-              <SmartLocationInput 
-                 label="Where to?"
-                 value={destinationQuery}
-                 onChange={setDestinationQuery}
-                 placeholder="Search or select saved place..."
-              />
-           </div>
-        )}
-
-        {/* DRIVER: Massive Status Toggle Card */}
-        {(role === 'driver' || role === 'vendor') && (
-          <div className="mb-8 animate-in slide-in-from-bottom-4 duration-700">
-            <div className={`
-              relative p-1 rounded-[2rem] transition-all duration-500
-              ${isOnline ? 'bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-500 shadow-[0_0_40px_rgba(16,185,129,0.3)]' : 'bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800'}
-            `}>
-              <div className={`
-                 h-full w-full rounded-[1.9rem] p-6 flex flex-col items-center text-center backdrop-blur-xl transition-all duration-500 relative overflow-hidden
-                 ${isOnline ? 'bg-white/90 dark:bg-slate-900/90' : 'bg-slate-50 dark:bg-[#0f172a]'}
-              `}>
-                 {/* Online Radiance */}
-                 {isOnline && <div className="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-1 bg-emerald-400 blur-[20px]" />}
-
-                 <div className="mb-4 relative">
-                    <div className={`w-20 h-20 rounded-full flex items-center justify-center transition-all duration-500 ${isOnline ? 'bg-emerald-500/20 text-emerald-500 dark:text-emerald-400 ring-2 ring-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.4)]' : 'bg-white dark:bg-slate-800 text-slate-400 dark:text-slate-500 ring-1 ring-slate-200 dark:ring-white/10'}`}>
-                       {isOnline ? <ICONS.Broadcast className="w-8 h-8 animate-pulse" /> : <ICONS.Moon className="w-8 h-8" />}
-                    </div>
-                 </div>
-
-                 <h2 className={`text-2xl font-black mb-1 ${isOnline ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>
-                    {isOnline ? 'You are Online' : 'You are Offline'}
-                 </h2>
-                 <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-6 max-w-[200px]">
-                    {isOnline ? 'Visible to customers. Keep screen active.' : 'Go online to start receiving requests.'}
-                 </p>
-
-                 <button 
-                   onClick={toggleOnline}
-                   className={`
-                     w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all active:scale-[0.98] shadow-lg
-                     ${isOnline 
-                        ? 'bg-red-500/10 hover:bg-red-500/20 text-red-500 dark:text-red-400 border border-red-500/20' 
-                        : 'bg-emerald-500 hover:bg-emerald-400 text-white shadow-emerald-500/20'}
-                   `}
-                 >
-                    {isOnline ? 'Stop Sharing' : 'Go Online Now'}
-                 </button>
-              </div>
-            </div>
-            
-            {/* My Vehicle Type Selector (Driver) */}
-            {role === 'driver' && (
-               <div className="mt-8">
-                  <div className="flex justify-between items-end mb-4 px-2">
-                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">
-                        My Vehicle Type
-                      </label>
-                  </div>
-                  <VehicleSelector selected={selectedVehicle} onSelect={setSelectedVehicle} />
-               </div>
-            )}
-          </div>
-        )}
-
-        {/* PASSENGER: Glass Vehicle Selector */}
-        {role !== 'vendor' && role !== 'driver' && (
-          <div className="mb-8 animate-in slide-in-from-bottom-4 duration-700 delay-100">
-            <div className="flex justify-between items-center mb-4 px-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
-                  Choose Vehicle
-                </label>
-                
-                {/* Privacy Toggle Pill */}
-                <button 
-                  onClick={() => setPrivacyMode(!privacyMode)}
-                  className={`
-                    flex items-center gap-2 px-3 py-1.5 rounded-full text-[10px] font-bold transition-all border
-                    ${privacyMode 
-                      ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 shadow-[0_0_15px_rgba(16,185,129,0.1)]' 
-                      : 'bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/10 hover:bg-slate-50 dark:hover:bg-white/10'}
-                  `}
-                >
-                  <span className={`w-1.5 h-1.5 rounded-full ${privacyMode ? 'bg-emerald-500 dark:bg-emerald-400 animate-pulse' : 'bg-slate-400 dark:bg-slate-500'}`} />
-                  {privacyMode ? 'Privacy On' : 'Exact Loc'}
-                </button>
-            </div>
-            
-            <VehicleSelector selected={selectedVehicle} onSelect={setSelectedVehicle} />
-          </div>
-        )}
-
-        {/* Error Banner */}
-        {locationError && (
-          <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-4 animate-in fade-in backdrop-blur-md">
-             <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center shrink-0 text-red-500 dark:text-red-400">
-                <ICONS.MapPin className="w-5 h-5" />
-             </div>
-             <div className="flex-1">
-                <h3 className="font-bold text-red-600 dark:text-red-200 text-xs uppercase tracking-wide mb-1">Location Error</h3>
-                <p className="text-xs text-red-600/80 dark:text-red-200/60 leading-relaxed">{locationError}</p>
-             </div>
-             <button onClick={() => window.location.reload()} className="p-2 bg-red-500/20 rounded-lg text-red-600 dark:text-red-200">
-                <ICONS.Check className="w-4 h-4" />
-             </button>
-          </div>
-        )}
-
-        {/* Results Area */}
-        <div className="flex-1 min-h-[300px]">
-          <div className="flex justify-between items-end mb-4 px-2">
-              <h2 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                {(role === 'driver' || role === 'vendor') ? 'Live Requests' : 'Nearby Results'}
-                {isUpdating && <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping ml-1" />}
-              </h2>
-              {nearbyUsers.length > 0 && <span className="text-[10px] text-cyan-600 dark:text-cyan-400 font-bold bg-cyan-500/10 px-2 py-1 rounded-lg border border-cyan-500/20">LIVE</span>}
-          </div>
-          
-          {nearbyUsers.length === 0 ? (
-            <RadarView 
-               active={role === 'passenger' || isOnline} 
-               text={role === 'passenger' 
-                 ? `Searching for ${selectedVehicle}s...` 
-                 : isOnline ? 'Scanning area...' : 'Go online to view map'}
-            />
-          ) : (
-            <div className="space-y-3 pb-20">
-              {nearbyUsers.map((user, idx) => (
-                <NearbyListCard 
-                  key={user.sessionId} 
-                  user={user} 
-                  index={idx} 
-                  onChat={onStartChat} 
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-      
-      {/* FAB for Scheduling (Passenger Only) - positioned within app frame */}
-      {role === 'passenger' && (
-        <div className="frame-fixed bottom-24 z-40 pointer-events-none">
-          <div className="flex justify-end px-4 pointer-events-auto">
-            <button
-              onClick={() => setShowScheduleModal(true)}
-              className="w-14 h-14 rounded-full bg-blue-600 text-white shadow-xl shadow-blue-600/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all animate-in zoom-in duration-500"
-              aria-label="Schedule a Trip"
-            >
-              <ICONS.Calendar className="w-6 h-6" />
+      {/* Header */}
+      <div className="relative z-30 px-6 pt-6 pb-4 flex justify-between items-start bg-white/95 dark:bg-[#0f172a]/95 backdrop-blur-md border-b border-slate-200 dark:border-white/5 sticky top-0">
+        <div className="flex items-center gap-3">
+            <button onClick={onBack} className="p-2 -ml-2 rounded-full hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+               <ICONS.ChevronDown className="w-5 h-5 rotate-90 text-slate-700 dark:text-slate-300" />
             </button>
-          </div>
+            <div>
+               <h1 className="text-xl font-black text-slate-900 dark:text-white leading-none">
+                 {role === 'passenger' ? 'Find Ride' : 'Passengers'}
+               </h1>
+               <div className="flex items-center gap-1.5 mt-1 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
+                  <ICONS.MapPin className="w-3 h-3" />
+                  <span className="truncate max-w-[150px] animate-in fade-in">{locationContext}</span>
+               </div>
+            </div>
         </div>
-      )}
+        
+        {role === 'driver' && (
+            <button 
+                onClick={toggleOnline}
+                disabled={!isOnline}
+                className={`px-4 py-2 rounded-full text-xs font-bold transition-all shadow-lg ${
+                    !isOnline ? 'bg-slate-300 dark:bg-slate-800 text-slate-500 cursor-not-allowed' :
+                    isDrivingOnline ? 'bg-emerald-600 text-white shadow-emerald-500/30' : 
+                    'bg-slate-200 dark:bg-slate-800 text-slate-600'
+                }`}
+            >
+                {isDrivingOnline ? 'Online' : 'Go Online'}
+            </button>
+        )}
+      </div>
 
+      {/* Content */}
+      <div className="flex-1 px-4 pt-4 pb-32 overflow-y-auto no-scrollbar">
+        
+        {/* Error State */}
+        {locationError && (
+          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-600 text-xs font-bold flex items-center gap-2">
+             <ICONS.MapPin className="w-4 h-4" /> {locationError}
+          </div>
+        )}
+
+        {/* Offline Warning */}
+        {!isOnline && (
+            <div className="mb-6 p-4 rounded-2xl bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
+                    <ICONS.XMark className="w-5 h-5" />
+                </div>
+                <div>
+                    <h4 className="text-xs font-bold text-slate-900 dark:text-white mb-1">No Connection</h4>
+                    <p className="text-[10px] text-slate-600 dark:text-slate-400 leading-relaxed font-bold">
+                        Showing results from your last session. Location tracking will resume and sync once you are back online.
+                    </p>
+                </div>
+            </div>
+        )}
+
+        {/* Filters (Passenger Only) */}
+        {role === 'passenger' && (
+            <div className="flex gap-2 overflow-x-auto no-scrollbar mb-6 pb-2">
+                {VEHICLE_FILTERS.map(f => (
+                    <button
+                        key={f.id}
+                        onClick={() => setActiveFilter(f.id)}
+                        className={`
+                            px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all
+                            ${activeFilter === f.id 
+                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 scale-105' 
+                                : 'bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-600 hover:bg-slate-50 dark:hover:bg-white/10'}
+                        `}
+                    >
+                        {f.label}
+                    </button>
+                ))}
+            </div>
+        )}
+
+        {/* Results List */}
+        {currentLocation && (
+            <div className="space-y-3">
+                <div className="flex justify-between items-end px-1 mb-2">
+                    <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">
+                        {role === 'passenger' ? 'Nearest Drivers' : 'Nearby Requests'}
+                    </h3>
+                    <span className="text-[10px] bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-md font-black">
+                        {filteredUsers.length} Found
+                    </span>
+                </div>
+
+                {filteredUsers.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-8">
+                        <div className="w-16 h-16 bg-slate-100 dark:bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400 shadow-inner">
+                            <ICONS.Search className="w-8 h-8" />
+                        </div>
+                        <p className="text-slate-600 text-sm font-bold text-center mb-6 px-8">
+                            {isOnline 
+                                ? `No active ${role === 'passenger' ? 'drivers' : 'passengers'} found nearby.` 
+                                : `Reconnect to see live ${role === 'passenger' ? 'drivers' : 'passengers'}.`}
+                        </p>
+                    </div>
+                ) : (
+                    filteredUsers.map((user, idx) => (
+                        <NearbyListCard 
+                            key={user.sessionId} 
+                            user={user} 
+                            index={idx} 
+                            onChat={onStartChat} 
+                        />
+                    ))
+                )}
+            </div>
+        )}
+      </div>
+
+      {/* FAB */}
+      {role === 'passenger' && isOnline && (
+        <button
+            onClick={() => setShowScheduleModal(true)}
+            className="fixed bottom-24 right-6 z-40 w-14 h-14 rounded-full bg-blue-600 text-white shadow-xl shadow-blue-600/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all animate-in zoom-in border border-white/20"
+        >
+            <ICONS.Calendar className="w-6 h-6" />
+        </button>
+      )}
     </div>
   );
 };

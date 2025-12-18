@@ -48,7 +48,13 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
         }
 
         // 2. Pre-check permissions by listing cameras
-        await Html5Qrcode.getCameras();
+        // This throws a specific error before we even try to start the scanner instance
+        try {
+            await Html5Qrcode.getCameras();
+        } catch (permErr: any) {
+            // Re-throw to be caught by the outer block
+            throw permErr;
+        }
 
         const html5QrCode = new Html5Qrcode(readerId);
         scannerRef.current = html5QrCode;
@@ -116,7 +122,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
          }
       }
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleScanSuccess = (text: string) => {
     if (scannerRef.current) {
@@ -130,7 +136,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
 
   const getTypeInfo = (text: string) => {
       // USSD Regex: starts with * or #, ends with # (e.g., *182#) OR starts with tel:
-      const isUSSD = /^[*#].+#$/.test(text) || text.startsWith('tel:');
+      const isUSSD = /^[\*#].+#$/.test(text) || text.startsWith('tel:');
       const isURL = text.startsWith('http://') || text.startsWith('https://');
 
       if (isUSSD) return { 
@@ -199,7 +205,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
   const resultInfo = scannedResult ? getTypeInfo(scannedResult) : null;
 
   return (
-    <div className="flex flex-col min-h-[100dvh] w-full bg-black overflow-hidden">
+    <div className="flex flex-col h-full bg-black absolute inset-0 z-50 overflow-hidden">
       {/* Header */}
       <div className="absolute top-0 left-0 w-full z-20 flex justify-between items-center p-4 bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
         <button 

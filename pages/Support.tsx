@@ -15,7 +15,7 @@ const Support: React.FC<SupportProps> = ({ onStartChat }) => {
         </div>
         <h1 className="text-3xl font-bold mb-2">How can we help?</h1>
         <p className="text-slate-400 max-w-xs mx-auto">
-          Our AI support agent can help with common questions immediately.
+          Our smart support assistant can help with common questions immediately.
         </p>
       </div>
 
@@ -28,7 +28,7 @@ const Support: React.FC<SupportProps> = ({ onStartChat }) => {
             <ICONS.Chat className="w-5 h-5" />
           </div>
           <div className="flex-1">
-            <h3 className="font-semibold text-lg">Chat with Support AI</h3>
+            <h3 className="font-semibold text-lg">Chat with Support</h3>
             <p className="text-xs text-slate-400">Instant answers, 24/7</p>
           </div>
           <ICONS.Check className="w-5 h-5 text-slate-500" />

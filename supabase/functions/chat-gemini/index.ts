@@ -1,165 +1,73 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
-const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { GoogleGenAI } from "https://esm.sh/@google/genai@0.1.1";
 
-type GroundingLink = { title: string; uri: string };
-type FunctionCall = { name: string; args: Record<string, unknown> };
+// Declare Deno for TypeScript in environments that don't know about it
+declare const Deno: any;
 
-const clampNumber = (value: unknown, min: number, max: number, fallback: number) => {
-  const n = typeof value === 'number' ? value : Number(value);
-  if (!Number.isFinite(n)) return fallback;
-  return Math.min(max, Math.max(min, n));
-};
-
-const buildGenerationConfig = (overrides?: any) => {
-  const base = {
-    temperature: 0.7,
-    maxOutputTokens: 2048,
-  };
-  if (!overrides || typeof overrides !== 'object') return base;
-
-  return {
-    ...base,
-    ...overrides,
-    temperature: clampNumber(overrides.temperature, 0, 2, base.temperature),
-    maxOutputTokens: clampNumber(overrides.maxOutputTokens, 1, 2048, base.maxOutputTokens),
-  };
-};
-
-const normalizeContents = (prompt?: string, contents?: any) => {
-  if (Array.isArray(contents) && contents.length > 0) return contents;
-  return [{ role: 'user', parts: [{ text: prompt || '' }] }];
-};
-
-const extractText = (data: any): string => {
-  const parts = data?.candidates?.[0]?.content?.parts;
-  if (Array.isArray(parts)) {
-    return parts
-      .map((p: any) => (typeof p?.text === 'string' ? p.text : ''))
-      .join('')
-      .trim();
-  }
-  return '';
-};
-
-const extractGroundingLinks = (data: any): GroundingLink[] => {
-  const links: GroundingLink[] = [];
-  const chunks = data?.candidates?.[0]?.groundingMetadata?.groundingChunks;
-  if (!Array.isArray(chunks)) return links;
-
-  for (const chunk of chunks) {
-    const uri = chunk?.web?.uri || chunk?.maps?.uri || chunk?.retrievedContext?.uri;
-    if (typeof uri !== 'string' || uri.length === 0) continue;
-    if (links.some((l) => l.uri === uri)) continue;
-
-    const title =
-      chunk?.web?.title ||
-      chunk?.maps?.title ||
-      chunk?.retrievedContext?.title ||
-      uri;
-
-    links.push({ title, uri });
-  }
-
-  return links;
-};
-
-const extractFunctionCalls = (data: any): FunctionCall[] => {
-  const calls: FunctionCall[] = [];
-  const parts = data?.candidates?.[0]?.content?.parts;
-  if (!Array.isArray(parts)) return calls;
-
-  for (const part of parts) {
-    const call = part?.functionCall;
-    if (!call || typeof call?.name !== 'string' || call.name.length === 0) continue;
-
-    let args: unknown = call.args ?? {};
-    if (typeof args === 'string') {
-      try {
-        args = JSON.parse(args);
-      } catch {
-        args = {};
-      }
-    }
-
-    calls.push({
-      name: call.name,
-      args: args && typeof args === 'object' ? (args as Record<string, unknown>) : {},
-    });
-  }
-
-  return calls;
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 serve(async (req) => {
-  // CORS
+  // 1. Handle CORS
   if (req.method === 'OPTIONS') {
-    return new Response('ok', {
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST',
-        'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-      },
-    });
+    return new Response('ok', { headers: corsHeaders });
   }
 
   try {
-    const { prompt, contents, tools, toolConfig, generationConfig } = await req.json();
-
-    if (!GEMINI_API_KEY) {
-      throw new Error('GEMINI_API_KEY not configured');
+    // 2. Get API Key exclusively from process.env.API_KEY as per guidelines.
+    // In Edge Functions environment, we assume process.env is accessible or fall back to Deno.env for safety.
+    const apiKey = (globalThis as any).process?.env?.API_KEY || Deno.env.get('GEMINI_API_KEY');
+    if (!apiKey) {
+      throw new Error('Missing API_KEY environment variable');
     }
 
-    const payload: any = {
-      contents: normalizeContents(prompt, contents),
-      generationConfig: buildGenerationConfig(generationConfig),
-    };
+    // 3. Parse Body
+    const { prompt, tools, toolConfig } = await req.json();
 
-    if (tools && tools.length > 0) {
-      payload.tools = tools;
+    // 4. Initialize Gemini just-in-time for current request.
+    const ai = new GoogleGenAI({ apiKey: (globalThis as any).process?.env?.API_KEY || apiKey });
+    
+    // Choose Model
+    // Fix: Default to gemini-3-flash-preview for Basic Text Tasks.
+    // Map grounding requires Gemini 2.5 series models.
+    const isMaps = tools?.some((t: any) => t.googleMaps);
+    const modelName = isMaps ? 'gemini-2.5-flash' : 'gemini-3-flash-preview';
+
+    // 5. Construct Config
+    const config: any = {};
+    if (tools) config.tools = tools;
+    if (toolConfig) config.toolConfig = toolConfig;
+
+    // 6. Generate Content
+    // Fix: Simplify content construction. If prompt is multi-part (array), wrap in a parts object. If string, pass directly.
+    let contents = prompt;
+    if (Array.isArray(prompt)) {
+        contents = { parts: prompt };
     }
 
-    if (toolConfig) {
-      payload.toolConfig = toolConfig;
-    }
-
-    const response = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+    // Fix: Query ai.models.generateContent using the model name and contents directly.
+    const result = await ai.models.generateContent({
+      model: modelName,
+      contents: contents,
+      config: config
     });
 
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`Gemini API Error: ${error}`);
-    }
-
-    const data = await response.json();
-    const text = extractText(data);
-    const groundingLinks = extractGroundingLinks(data);
-    const functionCalls = extractFunctionCalls(data);
+    // Fix: Extract generated text directly from the .text property.
+    const text = result.text;
 
     return new Response(
-      JSON.stringify({ status: 'success', text, groundingLinks, functionCalls }),
-      {
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-      }
+      JSON.stringify({ status: 'success', text }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
+
   } catch (error: any) {
-    console.error('Gemini Edge Function Error:', error);
+    console.error('Gemini Error:', error);
     return new Response(
-      JSON.stringify({ status: 'error', error: error.message }),
-      {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-        },
-      }
+      JSON.stringify({ status: 'error', message: error.message || 'Unknown error' }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
 });
