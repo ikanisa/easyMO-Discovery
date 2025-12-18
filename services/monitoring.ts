@@ -1,7 +1,8 @@
-
-import * as Sentry from '@sentry/react';
 import { CONFIG } from '../config';
 
+// Lightweight monitoring shim: when @sentry/react is not installed (or incompatible),
+// this module provides safe no-op wrappers that log to console. If you install
+// Sentry later and expose it as window.__SENTRY__, this will call through.
 export const MonitoringService = {
   init: () => {
     if (!CONFIG.SENTRY_DSN) {
@@ -9,33 +10,26 @@ export const MonitoringService = {
       return;
     }
 
-    Sentry.init({
-      dsn: CONFIG.SENTRY_DSN,
-      integrations: [
-        Sentry.browserTracingIntegration(),
-        Sentry.replayIntegration(),
-      ],
-      // Performance Monitoring
-      tracesSampleRate: 1.0,
-      // Session Replay
-      replaysSessionSampleRate: 0.1,
-      replaysOnErrorSampleRate: 1.0,
-      environment: CONFIG.ENVIRONMENT,
-      release: CONFIG.VERSION
-    });
+    console.warn("Monitoring: Sentry DSN provided but @sentry/react not installed or incompatible; skipping Sentry initialization.");
   },
 
   captureException: (error: any, context?: any) => {
     console.error("Caught Exception:", error, context);
-    if (CONFIG.SENTRY_DSN) {
-      Sentry.captureException(error, { extra: context });
+    try {
+      const Sentry = (window as any).__SENTRY__;
+      if (Sentry?.captureException) Sentry.captureException(error, { extra: context });
+    } catch (e) {
+      // swallow
     }
   },
 
-  captureMessage: (message: string, level: Sentry.SeverityLevel = 'info') => {
-    console.log(`[${level.toUpperCase()}] ${message}`);
-    if (CONFIG.SENTRY_DSN) {
-      Sentry.captureMessage(message, level);
+  captureMessage: (message: string, level: any = 'info') => {
+    console.log(`[${String(level).toUpperCase()}] ${message}`);
+    try {
+      const Sentry = (window as any).__SENTRY__;
+      if (Sentry?.captureMessage) Sentry.captureMessage(message, level);
+    } catch (e) {
+      // swallow
     }
   }
 };
