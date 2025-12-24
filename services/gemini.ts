@@ -50,9 +50,19 @@ const askGemini = async (
     }
   }
 
-  // 2. Fallback to Direct Client Call (Prototype Mode)
+  // 2. Fallback to Direct Client Call (Development/Prototype Mode ONLY)
+  // SECURITY: This fallback exposes the API key in the client bundle.
+  // It should ONLY be used during local development when Edge Functions are unavailable.
+  const isDevelopment = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  
+  if (!isDevelopment) {
+    console.error("Backend Gemini unavailable and client fallback disabled in production.");
+    return "I'm having trouble connecting. Please try again in a moment.";
+  }
+
   try {
-      console.log("Using Direct Gemini Client (Fallback)");
+      console.warn("⚠️ Using Direct Gemini Client (Dev Fallback - NOT FOR PRODUCTION)");
       // Fix: Create instance just-in-time as per guidelines to ensure current key usage, exclusively using process.env.API_KEY.
       const clientAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
       
