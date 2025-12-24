@@ -1,138 +1,51 @@
 {
-  "id": "/",
   "name": "easyMO Discovery",
   "short_name": "easyMO",
-  "description": "Chat-first discovery for rides, marketplace, services & finance",
-  "start_url": "/?source=pwa",
-  "scope": "/",
+  "start_url": "/",
   "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone", "browser"],
   "background_color": "#0f172a",
   "theme_color": "#0f172a",
   "orientation": "portrait-primary",
-  "categories": ["lifestyle", "transportation", "shopping"],
+  "categories": ["travel", "business", "utilities"],
+  "description": "The Super App for Mobility, Shopping, and Payments in Rwanda.",
   "icons": [
     {
       "src": "/icon.svg",
-      "sizes": "any",
+      "sizes": "192x192 512x512",
       "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/icons/icon-72.png",
-      "sizes": "72x72",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-96.png",
-      "sizes": "96x96",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-128.png",
-      "sizes": "128x128",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-144.png",
-      "sizes": "144x144",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-152.png",
-      "sizes": "152x152",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-384.png",
-      "sizes": "384x384",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png"
-    },
-    {
-      "src": "/icons/maskable-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/screenshots/home.png",
-      "sizes": "1080x1920",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Home Screen"
-    },
-    {
-      "src": "/screenshots/discovery.png",
-      "sizes": "1080x1920",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Discovery Mode"
+      "purpose": "any maskable"
     }
   ],
   "shortcuts": [
     {
-      "name": "Book a Ride",
-      "short_name": "Rides",
-      "url": "/rides",
-      "description": "Book transportation services",
-      "icons": [
-        {
-          "src": "/icons/icon-96.png",
-          "sizes": "96x96",
-          "type": "image/png"
-        }
-      ]
+      "name": "Find Ride",
+      "short_name": "Ride",
+      "description": "Find a moto or cab nearby",
+      "url": "/?mode=discovery",
+      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
     },
     {
-      "name": "Marketplace",
-      "short_name": "Shop",
-      "url": "/marketplace",
-      "description": "Browse marketplace items",
-      "icons": [
-        {
-          "src": "/icons/icon-96.png",
-          "sizes": "96x96",
-          "type": "image/png"
-        }
-      ]
-    },
-    {
-      "name": "Services",
-      "short_name": "Services",
-      "url": "/services",
-      "description": "Find local services",
-      "icons": [
-        {
-          "src": "/icons/icon-96.png",
-          "sizes": "96x96",
-          "type": "image/png"
-        }
-      ]
+      "name": "MoMo QR",
+      "short_name": "Pay",
+      "description": "Generate Payment Code",
+      "url": "/?mode=momo",
+      "icons": [{ "src": "/icon.svg", "sizes": "192x192" }]
     }
   ],
-  "share_target": {
-    "action": "/share",
-    "method": "POST",
-    "enctype": "multipart/form-data",
-    "params": {
-      "title": "title",
-      "text": "text",
-      "url": "url"
+  "screenshots": [
+    {
+      "src": "/icon.svg",
+      "sizes": "1280x720",
+      "type": "image/svg+xml",
+      "form_factor": "wide",
+      "label": "Discover Local Businesses"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "720x1280",
+      "type": "image/svg+xml",
+      "form_factor": "narrow",
+      "label": "Chat with Agents"
     }
-  },
-  "launch_handler": {
-    "client_mode": "navigate-existing"
-  }
+  ]
 }

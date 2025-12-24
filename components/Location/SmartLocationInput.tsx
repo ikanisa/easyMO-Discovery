@@ -121,7 +121,7 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
             console.warn("Maps SDK not ready, falling back.");
         });
     }
-  }, [onChange, onLocationResolved]);
+  }, []);
 
   // --- 3. GEMINI ADDRESS RESOLUTION ---
   const handleVerifyGemini = async () => {
@@ -129,11 +129,7 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
     setIsVerifying(true);
     try {
       let userLoc;
-      try { 
-        userLoc = await getCurrentPosition(); 
-      } catch (e) {
-        console.warn('Could not get current position:', e);
-      }
+      try { userLoc = await getCurrentPosition(); } catch (e) {}
 
       const result = await GeminiService.resolveLocation(value, userLoc?.lat, userLoc?.lng);
       
@@ -154,25 +150,6 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
 
   // --- 4. MAP INITIALIZATION ---
   useEffect(() => {
-    const handleMarkerDragEnd = async () => {
-       if (!marker.current || !googleMap.current) return;
-       const pos = marker.current.getPosition();
-       const lat = pos.lat();
-       const lng = pos.lng();
-       
-       googleMap.current.panTo(pos);
-
-       const geocoder = new window.google.maps.Geocoder();
-       geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
-           if (status === "OK" && results[0]) {
-               setResolvedAddress(results[0].formatted_address);
-               setResolvedCoords({ lat, lng });
-           }
-       });
-
-       updateGeminiInsight(lat, lng);
-    };
-
     if (showMap && mapRef.current && !googleMap.current) {
       loadGoogleMaps().then(async () => {
         let lat = -1.9441;
@@ -182,9 +159,7 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
             const pos = await getCurrentPosition();
             lat = pos.lat;
             lng = pos.lng;
-        } catch(e) {
-            console.warn('Could not get position for map:', e);
-        }
+        } catch(e) {}
 
         const { Map } = await window.google.maps.importLibrary("maps");
         const { Marker } = await window.google.maps.importLibrary("marker");
@@ -224,6 +199,25 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
       });
     }
   }, [showMap]);
+
+  const handleMarkerDragEnd = async () => {
+     if (!marker.current || !googleMap.current) return;
+     const pos = marker.current.getPosition();
+     const lat = pos.lat();
+     const lng = pos.lng();
+     
+     googleMap.current.panTo(pos);
+
+     const geocoder = new window.google.maps.Geocoder();
+     geocoder.geocode({ location: { lat, lng } }, (results: any, status: any) => {
+         if (status === "OK" && results[0]) {
+             setResolvedAddress(results[0].formatted_address);
+             setResolvedCoords({ lat, lng });
+         }
+     });
+
+     updateGeminiInsight(lat, lng);
+  };
 
   const updateGeminiInsight = async (lat: number, lng: number) => {
       setGeminiInsight("Analyzing area...");
@@ -267,7 +261,7 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
     <div className="space-y-1 w-full relative">
       {label && (
         <div className="flex justify-between items-center">
-            <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">{label}</label>
+            <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-widest">{label}</label>
             {isVerifying && <span className="text-[9px] text-blue-500 animate-pulse font-bold">✨ Resolving...</span>}
             {resolvedAddress && !isVerifying && (
                 <div className="flex items-center gap-2">
@@ -283,7 +277,7 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
       {/* Save Prompt Popover */}
       {showSavePrompt && (
           <div className="absolute top-8 right-0 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-xl shadow-xl p-3 animate-in zoom-in w-48">
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wide mb-2">Save as:</p>
+              <p className="text-[10px] font-bold text-slate-600 dark:text-slate-500 uppercase tracking-wide mb-2">Save as:</p>
               <div className="grid grid-cols-2 gap-2">
                   {(['Home', 'Work', 'School', 'Other'] as AddressLabel[]).map(lbl => (
                       <button 
@@ -318,14 +312,14 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
             onKeyDown={(e) => e.key === 'Enter' && handleVerifyGemini()}
             placeholder={placeholder || "Search places (e.g. 'Kigali Heights')"}
             autoFocus={autoFocus}
-            className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl pl-8 pr-20 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors placeholder-slate-400 dark:placeholder-slate-500 shadow-sm"
+            className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl pl-8 pr-20 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors placeholder-slate-500 dark:placeholder-slate-500 shadow-sm"
         />
 
         <div className="absolute right-2 top-2 flex gap-1">
             <button 
                 onClick={handleVerifyGemini}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-blue-500 hover:bg-blue-500/10 transition-colors"
-                title="Auto-Resolve with Gemini"
+                title="Auto-Resolve Location"
             >
                 <ICONS.Sparkles className="w-4 h-4" />
             </button>
@@ -376,69 +370,65 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
 
       {/* Google Maps Modal */}
       {showMap && (
-          <>
-              <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm animate-in fade-in duration-300" />
-
-              <div className="frame-fixed top-0 bottom-0 z-[71] flex items-center justify-center p-4 pointer-events-none">
-                  <div className="bg-white dark:bg-slate-900 w-full max-w-[420px] rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[75vh] pointer-events-auto animate-in fade-in zoom-in duration-300">
-                      
-                      <div className="p-4 border-b border-slate-200 dark:border-white/10 flex justify-between items-center bg-slate-50 dark:bg-white/5">
-                          <div>
-                            <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                                <ICONS.MapPin className="w-5 h-5 text-red-500" />
-                                Refine Location
-                            </h3>
-                            {resolvedAddress && <p className="text-[10px] text-slate-500 truncate max-w-[200px]">{resolvedAddress}</p>}
+          <div className="fixed inset-0 z-[70] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in duration-300">
+              <div className="bg-white dark:bg-slate-900 w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl flex flex-col h-[75vh]">
+                  
+                  <div className="p-4 border-b border-slate-200 dark:border-white/10 flex justify-between items-center bg-slate-50 dark:bg-white/5">
+                      <div>
+                        <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <ICONS.MapPin className="w-5 h-5 text-red-500" />
+                            Refine Location
+                        </h3>
+                        {resolvedAddress && <p className="text-[10px] text-slate-500 truncate max-w-[200px]">{resolvedAddress}</p>}
+                      </div>
+                      <button onClick={() => setShowMap(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-full transition-colors">
+                          <ICONS.XMark className="w-5 h-5 text-slate-500" />
+                      </button>
+                  </div>
+                  
+                  <div className="flex-1 relative bg-slate-100 dark:bg-slate-800">
+                      {mapError ? (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
+                              <ICONS.Map className="w-12 h-12 text-slate-300 mb-4" />
+                              <p className="text-slate-500 font-bold mb-2">{mapError}</p>
+                              <button onClick={() => setShowMap(false)} className="text-blue-500 text-sm font-bold">Close & Use Text</button>
                           </div>
-                          <button onClick={() => setShowMap(false)} className="p-2 hover:bg-slate-200 dark:hover:bg-white/10 rounded-full transition-colors">
-                              <ICONS.XMark className="w-5 h-5 text-slate-500" />
+                      ) : (
+                          <>
+                             <div ref={mapRef} className="absolute inset-0 z-10" />
+                             
+                             <div className="absolute top-4 left-4 right-14 z-20 pointer-events-none">
+                                <div className="glass-panel p-3 rounded-xl bg-white/90 dark:bg-slate-900/90 shadow-xl border border-emerald-500/20 backdrop-blur-md animate-in slide-in-from-top-2">
+                                   <div className="flex items-start gap-2">
+                                      <ICONS.Sparkles className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                                      <div>
+                                         <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block mb-1">Location Insight</span>
+                                         <p className="text-xs text-slate-700 dark:text-slate-300 leading-snug">
+                                            {geminiInsight || "Thinking..."}
+                                         </p>
+                                      </div>
+                                   </div>
+                                </div>
+                             </div>
+                          </>
+                      )}
+                      
+                      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 w-full max-w-[200px]">
+                          <button 
+                            onClick={handleConfirmPin}
+                            disabled={!!mapError}
+                            className="w-full bg-black dark:bg-white text-white dark:text-black py-3.5 rounded-full font-bold shadow-2xl hover:scale-105 active:scale-95 transition-transform flex items-center justify-center gap-2 border-2 border-white/20 disabled:opacity-50 disabled:scale-100"
+                          >
+                              <ICONS.Check className="w-4 h-4" /> Confirm Location
                           </button>
                       </div>
-                      
-                      <div className="flex-1 relative bg-slate-100 dark:bg-slate-800">
-                          {mapError ? (
-                              <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
-                                  <ICONS.Map className="w-12 h-12 text-slate-300 mb-4" />
-                                  <p className="text-slate-500 font-bold mb-2">{mapError}</p>
-                                  <button onClick={() => setShowMap(false)} className="text-blue-500 text-sm font-bold">Close & Use Text</button>
-                              </div>
-                          ) : (
-                              <>
-                                 <div ref={mapRef} className="absolute inset-0 z-10" />
-                                 
-                                 <div className="absolute top-4 left-4 right-14 z-20 pointer-events-none">
-                                    <div className="glass-panel p-3 rounded-xl bg-white/90 dark:bg-slate-900/90 shadow-xl border border-emerald-500/20 backdrop-blur-md animate-in slide-in-from-top-2">
-                                       <div className="flex items-start gap-2">
-                                          <ICONS.Sparkles className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                                          <div>
-                                             <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block mb-1">Gemini Insight</span>
-                                             <p className="text-xs text-slate-700 dark:text-slate-300 leading-snug">
-                                                {geminiInsight || "Thinking..."}
-                                             </p>
-                                          </div>
-                                       </div>
-                                    </div>
-                                 </div>
-                              </>
-                          )}
-                          
-                          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 w-full max-w-[200px]">
-                              <button 
-                                onClick={handleConfirmPin}
-                                disabled={!!mapError}
-                                className="w-full bg-black dark:bg-white text-white dark:text-black py-3.5 rounded-full font-bold shadow-2xl hover:scale-105 active:scale-95 transition-transform flex items-center justify-center gap-2 border-2 border-white/20 disabled:opacity-50 disabled:scale-100"
-                              >
-                                  <ICONS.Check className="w-4 h-4" /> Confirm Location
-                              </button>
-                          </div>
-                      </div>
-                      
-                      <div className="p-2 text-center text-[9px] text-slate-400 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-white/10">
-                          Map data ©2024 Google • AI Context by Gemini
-                      </div>
+                  </div>
+                  
+                  <div className="p-2 text-center text-[9px] text-slate-400 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-white/10">
+                      Map data ©2024 Google • Smart Context
                   </div>
               </div>
-          </>
+          </div>
       )}
     </div>
   );

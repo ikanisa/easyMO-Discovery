@@ -2,64 +2,84 @@
 <img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
 </div>
 
-# Run and deploy your AI Studio app
+# easyMO Discovery
 
-This contains everything you need to run your app locally.
+A chat-first PWA for mobility, shopping, and payments in Rwanda. Built with React 19, Vite, and Supabase.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1Ergpo9qShjEXsBGtV41JqJP315y4iVy_
+## Quick Start
 
-## 🚀 Quick Start
-
-**Prerequisites:** Node.js 18+
-
-### ⚡ Fast Track (3 Steps)
-
-1. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-2. **Add your Gemini API key to `.env.local`:**
-   ```bash
-   GEMINI_API_KEY=your_actual_api_key_here
-   ```
-
-3. **Run the app:**
-   ```bash
-   npm run dev
-   ```
-
-🎉 **That's it!** Your app should now be running at http://localhost:5173
-
-### 📚 New to this project?
-- Read [QUICKSTART.md](QUICKSTART.md) for detailed setup instructions
-- See [DEPENDENCY_FIX_REPORT.md](DEPENDENCY_FIX_REPORT.md) for what's been fixed
-- **IMPORTANT:** Review [SECURITY.md](SECURITY.md) for credential management
-
-## 💻 Development Commands
+**Prerequisites:** Node.js 20+
 
 ```bash
-npm run dev           # Start development server
-npm run build         # Build for production
-npm run preview       # Preview production build
-npm run lint          # Check code quality
-npm run format        # Auto-format code
-npm run format:check  # Check if code needs formatting
+# Install dependencies
+npm install
+
+# Copy environment template
+cp .env.example .env.local
+
+# Add your Supabase credentials to .env.local
+# VITE_SUPABASE_URL=https://your-project.supabase.co
+# VITE_SUPABASE_ANON_KEY=your_anon_key
+
+# Run locally
+npm run dev
 ```
 
-## AI Agents
+## Deploy to Cloudflare Pages
 
-### Gatera - Legal Expert
+### Option 1: Via Dashboard (Recommended)
 
-Gatera is the AI Legal Expert with **exactly 2 modes**:
+1. Push code to GitHub
+2. Go to [Cloudflare Pages](https://dash.cloudflare.com/pages)
+3. Create new project → Connect to Git
+4. Configure build settings:
+   - **Build command:** `npm run build`
+   - **Build output directory:** `dist`
+   - **Node.js version:** 20
+5. Add environment variables:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
 
-1. **Legal Advisor** - Answers legal questions using Rwandan law (IRAC method) via Google Search
-2. **Contract Drafter** - Generates professional legal documents
+### Option 2: Via CLI
 
-**Critical Rules:**
-- Gatera does NOT use Google Maps
-- Gatera does NOT find lawyers, notaries, or bailiffs
-- Gatera ONLY uses Google Search for legal research
-- To find legal professionals, users must use Bob agent in the Market tab
+```bash
+# First time: authenticate with Cloudflare
+npx wrangler login
 
-**Why?** Gatera is designed for legal content generation and advice, not as a business directory. Finding professionals is Bob's responsibility.
+# Deploy
+npm run pages:deploy
+```
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `VITE_SUPABASE_URL` | ✅ | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | ✅ | Supabase anonymous key |
+| `GEMINI_API_KEY` | ❌ | Only for local dev fallback |
+
+> **Note:** AI features are handled by Supabase Edge Functions which have their own secrets configured in the Supabase dashboard.
+
+## Project Structure
+
+```
+├── pages/          # Route components
+├── components/     # Reusable UI components
+├── services/       # API & business logic
+├── supabase/       # Edge functions & migrations
+├── public/         # Static assets + Cloudflare config
+└── dist/           # Build output (git-ignored)
+```
+
+## Tech Stack
+
+- **Frontend:** React 19 + Vite + TypeScript
+- **Styling:** Tailwind CSS + Framer Motion
+- **State:** Zustand + React Query
+- **Backend:** Supabase (Auth, Database, Edge Functions)
+- **AI:** Google Gemini (via Edge Functions)
+- **Deployment:** Cloudflare Pages
+
+## License
+
+Private

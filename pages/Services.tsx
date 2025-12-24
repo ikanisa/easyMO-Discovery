@@ -48,6 +48,35 @@ const Services: React.FC<ServicesProps> = ({ onStartChat, onNavigate }) => {
     return () => window.removeEventListener('broadcast_history_updated', loadHistory);
   }, []);
 
+  const isRwanda = profile?.phone?.startsWith('+250');
+
+  const handleQuickCall = async () => {
+    // Check for support
+    if (!('contacts' in navigator && 'ContactsManager' in window)) {
+        alert("Contact picker is not supported on this device. Please use your phone app.");
+        return;
+    }
+
+    try {
+        const props = ['tel'];
+        const opts = { multiple: false };
+        const contacts = await (navigator as any).contacts.select(props, opts);
+        
+        if (contacts && contacts.length > 0) {
+            const contact = contacts[0];
+            if (contact.tel && contact.tel.length > 0) {
+                // Remove spaces and initiate call
+                const number = contact.tel[0].replace(/\s/g, '');
+                window.open(`tel:${number}`, '_self');
+            } else {
+                alert("No phone number found for this contact.");
+            }
+        }
+    } catch (e) {
+        console.error("Contact selection failed or cancelled", e);
+    }
+  };
+
   return (
     <div className="px-4 pt-16 flex flex-col min-h-full animate-in fade-in zoom-in duration-300">
       
@@ -80,7 +109,7 @@ const Services: React.FC<ServicesProps> = ({ onStartChat, onNavigate }) => {
                </div>
             </div>
          </div>
-         <div className="text-[10px] text-center text-slate-500 mt-2 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+         <div className="text-[10px] text-center text-slate-500 dark:text-slate-500 mt-2 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
             Tap to edit profile & settings
          </div>
       </div>
@@ -89,7 +118,7 @@ const Services: React.FC<ServicesProps> = ({ onStartChat, onNavigate }) => {
       {broadcasts.length > 0 && (
         <div className="mb-8">
            <div className="flex justify-between items-end mb-3 px-1">
-              <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Recent Broadcasts</h2>
+              <h2 className="text-xs font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest">Recent Broadcasts</h2>
               <span className="text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 font-bold">
                  {broadcasts.length} Active
               </span>
@@ -112,11 +141,9 @@ const Services: React.FC<ServicesProps> = ({ onStartChat, onNavigate }) => {
                        </span>
                     </div>
                     
-                    <div className="pl-9 text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-2 font-medium">
+                    <div className="pl-9 text-[10px] text-slate-600 dark:text-slate-400 flex items-center gap-2 font-medium">
                        <ICONS.MapPin className="w-3 h-3 text-slate-600 dark:text-slate-500" />
                        {req.userLocationLabel}
-                       <span className="w-1 h-1 bg-slate-400 rounded-full" />
-                       <span className="text-blue-600 dark:text-blue-400">{req.businesses?.length || 0} Businesses</span> contacted
                     </div>
                  </div>
               ))}
@@ -124,81 +151,120 @@ const Services: React.FC<ServicesProps> = ({ onStartChat, onNavigate }) => {
         </div>
       )}
 
-      {/* Services Section */}
-      <div className="flex-1 space-y-6 max-w-md mx-auto w-full pb-24">
-        
-        {/* Section 1: Professional Services */}
-        <div>
-          <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 px-1">Legal & Admin</h2>
-          
-          <div className="space-y-3">
-            {/* Notary Services AI - Explicitly Drafting */}
+      {/* Quick Actions / Services */}
+      <div className="pl-6 pb-8">
+        <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 pr-6 flex items-center gap-2">
+           Services
+        </h2>
+        <div className="flex gap-4 overflow-x-auto no-scrollbar pr-6 pb-4">
+           {/* Quick Action 1: Notary - Updated Label - RWANDA ONLY */}
+           {isRwanda && (
+             <button 
+                onClick={() => onStartChat('legal')}
+                className="min-w-[140px] h-32 rounded-3xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 p-4 flex flex-col justify-between hover:bg-slate-50 dark:hover:bg-white/10 transition-colors animate-in slide-in-from-right-4 duration-700 shadow-sm"
+             >
+                <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                   <ICONS.Scale className="w-4 h-4" />
+                </div>
+                <div className="text-left">
+                   <div className="text-sm font-bold text-slate-900 dark:text-slate-200">Legal Advisor</div>
+                   <div className="text-[10px] text-slate-500 font-medium">Research & Draft</div>
+                </div>
+             </button>
+           )}
+
+           {/* Quick Action 2: Insurance - RWANDA ONLY */}
+           {isRwanda && (
+             <button 
+                onClick={() => window.open('https://wa.me/250795588248?text=Hello,%20I%20would%20like%20to%20inquire%20about%20insurance%20services.', '_blank')}
+                className="min-w-[140px] h-32 rounded-3xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-white/5 p-4 flex flex-col justify-between hover:bg-slate-50 dark:hover:bg-white/10 transition-colors animate-in slide-in-from-right-4 duration-700 shadow-sm"
+                style={{ animationDelay: '100ms' }}
+             >
+                <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                   <ICONS.ShieldCheck className="w-4 h-4" />
+                </div>
+                <div className="text-left">
+                   <div className="text-sm font-bold text-slate-900 dark:text-slate-200">Insurance</div>
+                   <div className="text-[10px] text-slate-500 font-medium">Get Covered</div>
+                </div>
+             </button>
+           )}
+        </div>
+      </div>
+
+      {/* Tools Grid */}
+      <div className="mb-8">
+         <h2 className="text-xs font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest mb-4 px-1">Utilities</h2>
+         <div className="grid grid-cols-2 gap-4">
             <button 
-              onClick={() => onStartChat('legal')}
-              className="w-full glass-panel p-4 rounded-2xl flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-white/5 active:scale-[0.98] transition-all group border border-slate-200 dark:border-amber-500/20 bg-white dark:bg-white/5 shadow-sm"
+               onClick={() => onNavigate(AppMode.MOMO_GENERATOR)}
+               className="glass-panel p-4 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-white/5 transition-all border border-slate-200 dark:border-white/5 shadow-sm"
             >
-              <div className="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 group-hover:scale-105 transition-transform">
-                <ICONS.Clipboard className="w-6 h-6" />
-              </div>
-              <div className="flex-1 text-left">
-                <div className="font-bold text-slate-900 dark:text-white">Notary AI (Gatera)</div>
-                <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">Generate Contracts & Letters</div>
-              </div>
-              <div className="px-2 py-1 bg-amber-100 dark:bg-amber-500/10 rounded text-[10px] font-bold text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-500/20">
-                 AI
-              </div>
+               <div className="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center text-orange-600 dark:text-orange-400">
+                  <ICONS.QrCode className="w-5 h-5" />
+               </div>
+               <span className="text-xs font-bold text-slate-700 dark:text-slate-200">MoMo QR</span>
             </button>
 
-            {/* Insurance - WhatsApp Deep Link */}
-            <a 
-              href="https://wa.me/250795588248?text=Hello,%20I%20would%20like%20to%20inquire%20about%20insurance%20services."
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full glass-panel p-4 rounded-2xl flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-white/5 active:scale-[0.98] transition-all group border border-slate-200 dark:border-indigo-500/20 bg-white dark:bg-white/5 shadow-sm"
+            <button 
+               onClick={() => onNavigate(AppMode.SCANNER)}
+               className="glass-panel p-4 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-white/5 transition-all border border-slate-200 dark:border-white/5 shadow-sm"
             >
-              <div className="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 group-hover:scale-105 transition-transform">
-                <ICONS.ShieldCheck className="w-6 h-6" />
-              </div>
-              <div className="flex-1 text-left">
-                <div className="font-bold text-slate-900 dark:text-white">Insurance</div>
-                <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">Get quotes & coverage</div>
-              </div>
-              <div className="px-2 py-1 bg-indigo-100 dark:bg-indigo-500/10 rounded text-[10px] font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/20">
-                 RW
-              </div>
-            </a>
-          </div>
-        </div>
+               <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center text-blue-600 dark:text-blue-400">
+                  <ICONS.Scan className="w-5 h-5" />
+               </div>
+               <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Scanner</span>
+            </button>
 
-        {/* Section 2: Human Contact */}
-        <div>
-           <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-3 px-1">Human Contact</h2>
-           <a 
-            href="https://wa.me/250796884076?text=Hello,%20I%20need%20assistance%20with%20easyMO." 
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-full glass-panel p-4 rounded-2xl flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-white/5 active:scale-[0.98] transition-all group border border-slate-200 dark:border-emerald-500/10 bg-white dark:bg-white/5 shadow-sm"
-          >
-            <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 group-hover:scale-105 transition-transform">
-              <ICONS.WhatsApp className="w-6 h-6" />
-            </div>
-            <div className="flex-1 text-left">
-              <div className="font-bold text-slate-900 dark:text-white">Customer Support</div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium">Chat with a human agent</div>
-            </div>
-            <ICONS.ChevronDown className="w-5 h-5 text-slate-400 -rotate-90" />
-          </a>
-        </div>
-        
-         {/* Footer */}
-        <div>
-           <div className="glass-panel p-4 rounded-2xl flex items-center justify-between text-xs text-slate-400 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/5">
-             <span>Version 2.2.1-light-opt</span>
-             <span>Terms & Privacy</span>
-           </div>
-        </div>
-
+            <button 
+               onClick={handleQuickCall}
+               className="glass-panel p-4 rounded-2xl flex flex-col items-center justify-center gap-2 hover:bg-slate-50 dark:hover:bg-white/5 transition-all border border-slate-200 dark:border-white/5 shadow-sm"
+            >
+               <div className="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-500/20 flex items-center justify-center text-green-600 dark:text-green-400">
+                  <ICONS.Phone className="w-5 h-5" />
+               </div>
+               <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Quick Call</span>
+            </button>
+         </div>
       </div>
+
+      {/* Agents List */}
+      <div>
+         <h2 className="text-xs font-bold text-slate-600 dark:text-slate-500 uppercase tracking-widest mb-4 px-1">Smart Assistants</h2>
+         <div className="space-y-3">
+            {/* Gatera (Legal AI) - RWANDA ONLY */}
+            {isRwanda && (
+              <button 
+                 onClick={() => onStartChat('legal')}
+                 className="w-full glass-panel p-4 rounded-2xl flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-white/5 transition-all border border-slate-200 dark:border-white/5 shadow-sm"
+              >
+                 <div className="w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-500/20 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                    <ICONS.Scale className="w-5 h-5" />
+                 </div>
+                 <div className="flex-1 text-left">
+                    <div className="text-sm font-bold text-slate-900 dark:text-white">Gatera (Legal Advisor)</div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">Contracts & Legal Advice</div>
+                 </div>
+                 <ICONS.ChevronDown className="w-4 h-4 -rotate-90 text-slate-400" />
+              </button>
+            )}
+            
+            <button 
+               onClick={() => onNavigate(AppMode.ONBOARDING)}
+               className="w-full glass-panel p-4 rounded-2xl flex items-center gap-4 hover:bg-slate-50 dark:hover:bg-white/5 transition-all border border-slate-200 dark:border-white/5 shadow-sm"
+            >
+               <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                  <ICONS.Store className="w-5 h-5" />
+               </div>
+               <div className="flex-1 text-left">
+                  <div className="text-sm font-bold text-slate-900 dark:text-white">Become a Partner</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">Register Business or Driver</div>
+               </div>
+               <ICONS.ChevronDown className="w-4 h-4 -rotate-90 text-slate-400" />
+            </button>
+         </div>
+      </div>
+
     </div>
   );
 };

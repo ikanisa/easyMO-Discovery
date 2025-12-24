@@ -38,6 +38,7 @@ export interface PresenceUser {
   isOnline: boolean;
   displayName?: string;
   distance?: string; // formatted string for display
+  eta?: string; // Estimated Time of Arrival
   _distKm?: number; // Internal for sorting
 }
 
@@ -96,21 +97,11 @@ export interface PropertyListing {
   listing_type: 'rent' | 'sale' | 'unknown';
   price: number | null;
   currency: string;
-  price_assessment?: 'below_market' | 'fair' | 'above_market';
   bedroom_count: number | null;
   bathroom_count: number | null;
-  area_sqm?: number | null;
   area_label: string;
   approx_distance_km: number | null;
-  neighborhood_score?: number | null;
-  nearby?: string[];
-  amenities?: string[];
   contact_phone: string | null;
-  agency_name?: string;
-  verified?: boolean;
-  source_platform?: string;
-  source_url?: string;
-  photos?: string[];
   confidence: 'high' | 'medium' | 'low';
   why_recommended: string;
   whatsapp_draft: string;
@@ -118,12 +109,9 @@ export interface PropertyListing {
 
 export interface PropertyResultsPayload {
   query_summary: string;
-  market_insight?: string;
-  next_steps?: string[];
   filters_applied: {
     listing_type: string;
     property_type: string;
-    bedrooms?: number;
     budget_min: number;
     budget_max: number;
     area: string;
@@ -169,11 +157,6 @@ export interface AgentMemory {
   embedding?: number[]; // For future vector search
 }
 // ---------------------------
-
-export interface AIFunctionCall {
-  name: string;
-  args: Record<string, unknown>;
-}
 
 export interface Message {
   id: string;
@@ -237,5 +220,5 @@ export enum AppMode {
   SETTINGS = 'settings',
   MOMO_GENERATOR = 'momo_generator',
   SCANNER = 'scanner',
-  ONBOARDING = 'onboarding' // Business onboarding flow
+  ONBOARDING = 'onboarding' // NEW
 }

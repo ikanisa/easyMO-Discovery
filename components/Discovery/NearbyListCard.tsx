@@ -1,8 +1,10 @@
 
 import React from 'react';
+import { motion } from 'framer-motion';
 import { PresenceUser, VehicleType } from '../../types';
 import { ICONS } from '../../constants';
-import Button from '../Button';
+import { calculateETA } from '../../services/location';
+import { cn } from '../../utils/ui';
 
 interface NearbyListCardProps {
   user: PresenceUser;
@@ -10,80 +12,135 @@ interface NearbyListCardProps {
   index: number;
 }
 
-const getVehicleIcon = (type?: VehicleType) => {
-  switch (type) {
-    case 'moto': return ICONS.Bike;
-    case 'shop': return ICONS.Store;
-    case 'cab': 
-    case 'liffan':
-    case 'truck':
-    case 'other':
-      return ICONS.Car;
-    default: return ICONS.Car;
-  }
+const VEHICLE_ICON_MAP: Record<string, any> = {
+  moto: ICONS.Moto,
+  cab: ICONS.Taxi,
+  liffan: ICONS.Sedan,
+  truck: ICONS.Pickup,
+  other: ICONS.Bus,
 };
 
 const NearbyListCard: React.FC<NearbyListCardProps> = ({ user, onChat, index }) => {
+  const etaString = user.eta || (user._distKm ? calculateETA(user._distKm, user.vehicleType) : undefined);
   
+  const isMinutes = etaString?.includes('min');
+  const minutesVal = isMinutes ? parseInt(etaString || '99') : 99;
+  const isFast = isMinutes && minutesVal <= 10;
+  const isImmediate = isMinutes && minutesVal <= 3;
+
+  const VehicleIcon = user.vehicleType ? (VEHICLE_ICON_MAP[user.vehicleType] || ICONS.Car) : ICONS.User;
+
   return (
-    <div 
-      className="glass-panel p-3 rounded-2xl flex items-center justify-between border border-slate-200 dark:border-white/5 bg-white dark:bg-slate-800/40 hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all shadow-sm dark:shadow-lg animate-in slide-in-from-bottom-2 fade-in fill-mode-backwards backdrop-blur-md"
-      style={{ animationDelay: `${index * 100}ms` }}
+    <motion.div 
+      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ 
+        delay: index * 0.05, 
+        type: "spring", 
+        stiffness: 260, 
+        damping: 20 
+      }}
+      whileHover={{ y: -2 }}
+      whileTap={{ scale: 0.98 }}
+      className={cn(
+        "relative overflow-hidden group mb-3",
+        "bg-white/90 dark:bg-slate-900/40 backdrop-blur-2xl",
+        "border border-white/60 dark:border-white/10",
+        "rounded-[2rem] p-4 flex items-center justify-between",
+        "shadow-[0_8px_32px_rgba(0,0,0,0.06)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.2)]",
+        "transition-all duration-300"
+      )}
     >
-      <div className="flex items-center gap-3.5">
-        <div className={`
-            w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold shadow-lg shrink-0 relative border border-white/20
-            ${user.role === 'vendor' ? 'bg-gradient-to-br from-orange-500 to-pink-600' : 'bg-gradient-to-br from-blue-600 to-indigo-600'}
-        `}>
-           {user.role === 'vendor' ? <ICONS.Store className="w-4 h-4 text-white" /> : <span className="text-sm text-white">{user.displayName?.[0]}</span>}
-           
-           {/* Online Status Dot (Avatar Corner) */}
-           {user.isOnline && (
-              <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-white dark:bg-[#0f172a] rounded-full flex items-center justify-center">
-                 <div className="w-2 h-2 bg-emerald-400 rounded-full shadow-[0_0_8px_rgba(52,211,153,0.8)]"></div>
-              </div>
-           )}
+      {/* Background Liquid Gradient Glow */}
+      <div className="absolute -inset-24 bg-gradient-to-br from-blue-500/5 via-transparent to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+      <div className="flex items-center gap-4 relative z-10">
+        {/* Avatar Section */}
+        <div className="relative shrink-0">
+            <div className={cn(
+                "w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg border border-white/40",
+                "bg-gradient-to-tr from-slate-200 to-slate-300 dark:from-slate-800 dark:to-slate-700",
+                user.role === 'driver' && "from-blue-600 to-indigo-700",
+                user.role === 'vendor' && "from-orange-500 to-pink-600"
+            )}>
+               <VehicleIcon className={cn(
+                 "w-7 h-7",
+                 user.role === 'passenger' ? "text-slate-600 dark:text-slate-400" : "text-white"
+               )} />
+            </div>
+            
+            {/* Online Indicator Badge */}
+            <div className="absolute -bottom-1 -right-1">
+                <div className="relative flex h-4 w-4">
+                  {user.isOnline && (
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  )}
+                  <span className={cn(
+                    "relative inline-flex rounded-full h-4 w-4 border-2 border-white dark:border-slate-900",
+                    user.isOnline ? "bg-emerald-500" : "bg-slate-400 dark:bg-slate-600"
+                  )}></span>
+                </div>
+            </div>
         </div>
         
-        <div>
-          <div className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-            {user.displayName || 'Unknown'}
-            
-            {/* Active Sharing Pulsing Dot */}
-            {user.isOnline && (
-                <span className="relative flex h-2 w-2 ml-0.5" title="Live Location">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-            )}
-
-            {user.role !== 'passenger' && (
-               <span className="text-[9px] px-1.5 py-0.5 bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/5 rounded text-slate-500 dark:text-slate-300 uppercase tracking-wider font-bold">
+        {/* Info Section */}
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <h3 className="font-black text-base text-slate-900 dark:text-white truncate max-w-[120px]">
+              {user.displayName || 'Unknown'}
+            </h3>
+            {user.role !== 'passenger' && user.vehicleType && (
+               <span className="text-[9px] px-2 py-0.5 bg-blue-600/10 dark:bg-blue-400/10 text-blue-800 dark:text-blue-300 rounded-full font-black uppercase tracking-tighter border border-blue-200 dark:border-blue-400/20">
                  {user.vehicleType}
                </span>
             )}
           </div>
           
-          <div className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-2 mt-0.5 font-medium">
-            <span className="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                <ICONS.MapPin className="w-3 h-3" />
-                {user.distance}
-            </span>
-            <span className="w-1 h-1 rounded-full bg-slate-400 dark:bg-slate-600"></span>
-            <span className="capitalize">{user.role === 'vendor' ? 'Shop' : (user.role === 'passenger' ? 'Passenger' : 'Driver')}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Distance Pill */}
+            <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-white/5 px-2 py-1 rounded-xl border border-slate-200 dark:border-white/5 text-slate-700 dark:text-slate-400">
+                <ICONS.MapPin className="w-3 h-3 text-slate-500" />
+                <span className="text-[10px] font-bold tracking-tight">{user.distance || 'Near'}</span>
+            </div>
+            
+            {/* ETA Pill */}
+            {etaString && (
+                <div className={cn(
+                    "flex items-center gap-1.5 px-2.5 py-1 rounded-xl border font-black text-[10px] transition-colors duration-500",
+                    isImmediate
+                      ? "bg-emerald-500 text-white border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                      : isFast 
+                        ? "bg-emerald-100 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-500/20" 
+                        : "bg-blue-100 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-500/20"
+                )}>
+                    {isImmediate ? (
+                      <span className="relative flex h-1.5 w-1.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
+                      </span>
+                    ) : (
+                      <ICONS.Clock className="w-3 h-3" />
+                    )}
+                    {isImmediate ? 'ARRIVING NOW' : `IN ${etaString.toUpperCase()}`}
+                </div>
+            )}
           </div>
         </div>
       </div>
       
-      <Button 
-        variant="primary" 
-        className="!py-2 !px-4 !text-xs !rounded-xl !font-bold tracking-wide shadow-lg shadow-blue-500/20 active:scale-95 transition-transform bg-blue-600 hover:bg-blue-500 border-none text-white"
+      {/* Interaction Button */}
+      <button 
         onClick={() => onChat(user)}
-        icon={<ICONS.Chat className="w-3.5 h-3.5"/>}
+        className={cn(
+          "h-12 w-12 rounded-2xl flex items-center justify-center transition-all shrink-0",
+          "bg-blue-600 text-white shadow-[0_8px_16px_rgba(37,99,235,0.2)]",
+          "hover:bg-blue-500 hover:scale-105 active:scale-90",
+          "border border-white/20"
+        )}
       >
-        Chat
-      </Button>
-    </div>
+        <ICONS.Chat className="w-5 h-5" />
+      </button>
+    </motion.div>
   );
 };
 

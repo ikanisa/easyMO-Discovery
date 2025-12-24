@@ -1,13 +1,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { AIFunctionCall, Message, ChatSession as ChatSessionType, BusinessListing, PropertyListing } from '../types';
+import { Message, ChatSession as ChatSessionType, BusinessListing } from '../types';
 import { ICONS } from '../constants';
 import MessageBubble from '../components/Chat/MessageBubble';
 import { GeminiService } from '../services/gemini';
 import { getCurrentPosition } from '../services/location';
 import { pollBroadcastResponses, BusinessContact } from '../services/whatsapp';
-import { addFavorite, addViewingRequest, getUserPhoneFromStorage } from '../services/realEstateActions';
-import { logAgentEvent } from '../services/telemetry';
 
 interface ChatSessionProps {
   session: ChatSessionType;
@@ -19,6 +17,10 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [isSharingLocation, setIsSharingLocation] = useState(false);
+  
+  // Voice Input State
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
   
   // Broadcast Polling State
   const activeBroadcastRef = useRef<{ id: string, startTime: number, businesses: BusinessContact[], item: string } | null>(null);
@@ -42,6 +44,52 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping, previewUrl, selectedGenericFile]);
+
+  // --- Voice Recognition Setup ---
+  useEffect(() => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = false;
+        recognitionRef.current.interimResults = false;
+        recognitionRef.current.lang = 'en-US'; // Default to English, could be dynamic
+
+        recognitionRef.current.onresult = (event: any) => {
+            const transcript = event.results[0][0].transcript;
+            setInputValue(prev => (prev ? prev + ' ' : '') + transcript);
+            setIsListening(false);
+        };
+
+        recognitionRef.current.onerror = (event: any) => {
+            console.error("Speech recognition error", event.error);
+            setIsListening(false);
+        };
+        
+        recognitionRef.current.onend = () => {
+            setIsListening(false);
+        };
+    }
+  }, []);
+
+  const toggleListening = () => {
+      if (!recognitionRef.current) {
+          alert("Voice input is not supported in this browser.");
+          return;
+      }
+      
+      if (isListening) {
+          recognitionRef.current.stop();
+          setIsListening(false);
+      } else {
+          try {
+            recognitionRef.current.start();
+            setIsListening(true);
+          } catch (e) {
+            console.error("Mic start error", e);
+            setIsListening(false);
+          }
+      }
+  };
 
   // --- Broadcast Polling Effect ---
   useEffect(() => {
@@ -69,13 +117,13 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
          // Mark as seen
          newMatches.forEach(m => knownVerifiedIdsRef.current.add(m.id));
 
-         // TRIGGER TOAST (New UI Requirement)
+         // TRIGGER TOAST
          const toastMsg = newMatches.length === 1 
             ? `${newMatches[0].name} has confirmed availability!`
             : `${newMatches.length} businesses confirmed availability!`;
             
          const toast = document.createElement('div');
-         toast.className = "frame-fixed bottom-32 bg-emerald-600 text-white px-6 py-3 rounded-full text-xs font-bold shadow-2xl z-[100] animate-in fade-in zoom-in slide-in-from-bottom-4 duration-500 flex items-center gap-2 border border-emerald-400/30 backdrop-blur-md";
+         toast.className = "fixed bottom-32 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-3 rounded-full text-xs font-bold shadow-2xl z-[100] animate-in fade-in zoom-in slide-in-from-bottom-4 duration-500 flex items-center gap-2 border border-emerald-400/30 backdrop-blur-md";
          toast.innerHTML = `<span>✅</span> <span>${toastMsg}</span>`;
          document.body.appendChild(toast);
          
@@ -109,7 +157,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
     }
 
     return () => clearTimeout(timer);
-  }, []);
+  }, [activeBroadcastRef.current]);
 
   // Callback to start polling when user clicks "Ask All"
   const handleBroadcastInitiated = (requestId: string, businesses: BusinessContact[], item: string) => {
@@ -122,8 +170,6 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
       };
       // Reset seen set for new request
       knownVerifiedIdsRef.current.clear();
-      // Force re-render to trigger effect if needed (though ref mutation + effect dep usually requires state, 
-      // but here the polling is a side effect. To be safe, we can use a dummy state)
       setMessages(prev => [...prev]); 
   };
 
@@ -157,148 +203,19 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
     if (genericFileInputRef.current) genericFileInputRef.current.value = '';
   };
   
-	  // Helper to handle AI response generation
-	  const handleAIResponse = async (history: Message[], userText: string, userImage?: string) => {
-	    try {
-	      let loc = { lat: -1.9441, lng: 30.0619 }; // Default Kigali
-	      try { loc = await getCurrentPosition(); } catch (e) { console.warn("Using default loc"); }
+  // Helper to handle AI response generation
+  const handleAIResponse = async (history: Message[], userText: string, attachment?: { mimeType: string, data: string }) => {
+    try {
+      let loc = { lat: -1.9441, lng: 30.0619 }; // Default Kigali
+      try { loc = await getCurrentPosition(); } catch (e) { console.warn("Using default loc"); }
 
-	      const findPropertyById = (lookup: Message[], propertyId: string): PropertyListing | null => {
-	        if (!propertyId) return null;
-	        for (let i = lookup.length - 1; i >= 0; i--) {
-	          const payload = lookup[i].propertyPayload;
-	          if (!payload) continue;
-	          const match = payload.matches.find((m) => m.id === propertyId);
-	          if (match) return match;
-	        }
-	        return null;
-	      };
-
-	      const handleKezaFunctionCalls = async (calls: AIFunctionCall[], lookup: Message[]) => {
-	        if (!Array.isArray(calls) || calls.length === 0) return;
-	        const now = Date.now();
-	        const followUps: Message[] = [];
-
-	        for (const call of calls) {
-	          const args = call?.args || {};
-
-	          if (call.name === 'save_favorite') {
-	            const property_id = typeof (args as any).property_id === 'string' ? (args as any).property_id : '';
-	            const notes = typeof (args as any).notes === 'string' ? (args as any).notes : undefined;
-	            const property = findPropertyById(lookup, property_id);
-	            if (!property) {
-	              followUps.push({
-	                id: `sys-${now}-fav-missing`,
-	                sender: 'system',
-	                text: `⚠️ I couldn't find property "${property_id}" to save. Ask me for listings again.`,
-	                timestamp: Date.now(),
-	              });
-	              continue;
-	            }
-
-	            const favorite = addFavorite(property, notes);
-	            void logAgentEvent('keza_save_favorite', {
-	              favorite_id: favorite.id,
-	              property_id,
-	              source_url: property.source_url || null,
-	            });
-
-	            followUps.push({
-	              id: `sys-${now}-fav-${favorite.id}`,
-	              sender: 'system',
-	              text: `✅ Saved to favorites: ${property.title}`,
-	              timestamp: Date.now(),
-	            });
-	          }
-
-	          if (call.name === 'schedule_viewing') {
-	            const property_id = typeof (args as any).property_id === 'string' ? (args as any).property_id : '';
-	            const preferred_date = typeof (args as any).preferred_date === 'string' ? (args as any).preferred_date : undefined;
-	            const preferred_time = typeof (args as any).preferred_time === 'string' ? (args as any).preferred_time : undefined;
-	            const notes = typeof (args as any).notes === 'string' ? (args as any).notes : undefined;
-	            const user_phone =
-	              typeof (args as any).user_phone === 'string'
-	                ? (args as any).user_phone
-	                : getUserPhoneFromStorage() || undefined;
-
-	            const property = findPropertyById(lookup, property_id);
-	            if (!property) {
-	              followUps.push({
-	                id: `sys-${now}-view-missing`,
-	                sender: 'system',
-	                text: `⚠️ I couldn't find property "${property_id}" to schedule. Ask me for listings again.`,
-	                timestamp: Date.now(),
-	              });
-	              continue;
-	            }
-
-	            const viewing = addViewingRequest({
-	              property,
-	              preferred_date,
-	              preferred_time,
-	              user_phone,
-	              notes,
-	              status: 'pending',
-	            });
-
-	            void logAgentEvent('keza_schedule_viewing', {
-	              viewing_id: viewing.id,
-	              property_id,
-	              preferred_date: preferred_date || null,
-	              preferred_time: preferred_time || null,
-	              source_url: property.source_url || null,
-	            });
-
-	            const when = [preferred_date, preferred_time].filter(Boolean).join(' ');
-	            followUps.push({
-	              id: `sys-${now}-view-${viewing.id}`,
-	              sender: 'system',
-	              text: `📅 Viewing request saved for: ${property.title}${when ? ` (${when})` : ''}`,
-	              timestamp: Date.now(),
-	            });
-	          }
-
-	          if (call.name === 'compare_neighborhoods') {
-	            const neighborhoods = Array.isArray((args as any).neighborhoods)
-	              ? ((args as any).neighborhoods as unknown[]).map((n) => String(n))
-	              : [];
-	            const criteria = Array.isArray((args as any).criteria)
-	              ? ((args as any).criteria as unknown[]).map((c) => String(c))
-	              : undefined;
-
-	            if (neighborhoods.length < 2) {
-	              followUps.push({
-	                id: `sys-${now}-cmp-missing`,
-	                sender: 'system',
-	                text: '⚠️ Please provide at least two neighborhoods to compare.',
-	                timestamp: Date.now(),
-	              });
-	              continue;
-	            }
-
-	            void logAgentEvent('keza_compare_neighborhoods', { neighborhoods, criteria: criteria || [] });
-
-	            const comparison = await GeminiService.compareNeighborhoods(neighborhoods, criteria, loc);
-	            followUps.push({
-	              id: `ai-${Date.now()}-cmp`,
-	              sender: 'ai',
-	              text: comparison.text,
-	              groundingLinks: comparison.groundingLinks,
-	              timestamp: Date.now(),
-	            });
-	          }
-	        }
-
-	        if (followUps.length > 0) setMessages((prev) => [...prev, ...followUps]);
-	      };
-
-	      if (initialSession.type === 'support') {
-	        const responseText = await GeminiService.chatSupport(history, userText, userImage);
-	        const aiMsg: Message = { id: Date.now().toString(), sender: 'ai', text: responseText, timestamp: Date.now() };
-	        setMessages(prev => [...prev, aiMsg]);
+      if (initialSession.type === 'support') {
+        const responseText = await GeminiService.chatSupport(history, userText, attachment);
+        const aiMsg: Message = { id: Date.now().toString(), sender: 'ai', text: responseText, timestamp: Date.now() };
+        setMessages(prev => [...prev, aiMsg]);
 
       } else if (initialSession.type === 'business') {
-        const result = await GeminiService.chatBob(history, userText, loc, initialSession.isDemoMode, userImage);
+        const result = await GeminiService.chatBob(history, userText, loc, initialSession.isDemoMode, attachment);
         const aiMsg: Message = {
             id: Date.now().toString(),
             sender: 'ai',
@@ -309,26 +226,24 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
         };
         setMessages(prev => [...prev, aiMsg]);
 
-	      } else if (initialSession.type === 'real_estate') {
-	        const result = await GeminiService.chatKeza(history, userText, loc, initialSession.isDemoMode, userImage);
-	        const aiMsg: Message = {
-	            id: Date.now().toString(),
-	            sender: 'ai',
-	            text: result.text,
-	            groundingLinks: result.groundingLinks,
-	            propertyPayload: result.propertyPayload,
-	            timestamp: Date.now()
-	        };
-	        setMessages(prev => [...prev, aiMsg]);
-	        await handleKezaFunctionCalls(result.functionCalls || [], [...history, aiMsg]);
-	        
-	      } else if (initialSession.type === 'legal') {
-        const result = await GeminiService.chatGatera(history, userText, loc, initialSession.isDemoMode, userImage);
+      } else if (initialSession.type === 'real_estate') {
+        const result = await GeminiService.chatKeza(history, userText, loc, initialSession.isDemoMode, attachment);
+        const aiMsg: Message = {
+            id: Date.now().toString(),
+            sender: 'ai',
+            text: result.text,
+            groundingLinks: result.groundingLinks,
+            propertyPayload: result.propertyPayload,
+            timestamp: Date.now()
+        };
+        setMessages(prev => [...prev, aiMsg]);
+        
+      } else if (initialSession.type === 'legal') {
+        const result = await GeminiService.chatGatera(history, userText, loc, initialSession.isDemoMode, attachment);
         const aiMsg: Message = {
           id: Date.now().toString(),
           sender: 'ai',
           text: result.text,
-          groundingLinks: result.groundingLinks,
           legalPayload: result.legalPayload,
           timestamp: Date.now()
         };
@@ -386,16 +301,52 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
+  // Utility to read file as base64 string (without prefix)
+  const fileToPart = (file: File): Promise<{ mimeType: string; data: string }> => {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            const base64String = reader.result as string;
+            // remove data:application/pdf;base64, prefix
+            const data = base64String.split(',')[1]; 
+            resolve({ mimeType: file.type, data });
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+  };
+
   const handleSend = async (textOverride?: string) => {
     const textToSend = textOverride || inputValue.trim();
     if (!textToSend && !selectedFile && !selectedGenericFile) return;
+
+    let attachment = undefined;
+    let localPreviewUrl = undefined;
+
+    // Prioritize Generic File if selected (e.g. PDF)
+    if (selectedGenericFile) {
+        try {
+            attachment = await fileToPart(selectedGenericFile);
+        } catch (e) {
+            console.error("File read error", e);
+        }
+    } 
+    // Handle Image
+    else if (selectedFile) {
+        try {
+            attachment = await fileToPart(selectedFile);
+            localPreviewUrl = previewUrl || URL.createObjectURL(selectedFile);
+        } catch (e) {
+            console.error("Image read error", e);
+        }
+    }
 
     const newUserMsg: Message = {
       id: Date.now().toString(),
       sender: 'user',
       text: textToSend,
       timestamp: Date.now(),
-      image: previewUrl ? { previewUrl: previewUrl } : undefined,
+      image: localPreviewUrl ? { previewUrl: localPreviewUrl } : undefined,
       file: selectedGenericFile ? {
         fileName: selectedGenericFile.name,
         fileSize: formatFileSize(selectedGenericFile.size),
@@ -410,7 +361,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
       clearGenericFile();
     }
     setIsTyping(true);
-    await handleAIResponse([...messages, newUserMsg], textToSend, previewUrl || undefined);
+    await handleAIResponse([...messages, newUserMsg], textToSend, attachment);
   };
   
   useEffect(() => {
@@ -418,37 +369,46 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
       handleSend(initialSession.initialInput);
       initialSession.initialInput = undefined;
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const getTitle = () => {
     switch (initialSession.type) {
-      case 'support': return 'Support AI';
-      case 'business': return 'Bob (Buy & Sell)';
-      case 'real_estate': return 'Keza (Real Estate)';
-      case 'legal': return 'Gatera (Legal)';
+      case 'support': return 'Support Assistant';
+      case 'business': return 'Bob (Procurement)';
+      case 'real_estate': return 'Keza (Property)';
+      case 'legal': return 'Gatera (Legal Advisor)';
       default: return initialSession.peerName || 'Chat';
     }
   };
 
   return (
-    <>
-      <div className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-
-      <div className="frame-fixed top-0 bottom-0 flex flex-col bg-[#0f172a] z-50 overflow-hidden">
-        <div className="h-16 glass-panel flex items-center px-4 justify-between shrink-0 border-b border-white/5 bg-[#0f172a]/90 backdrop-blur-xl z-20">
-          <button onClick={onClose} className="p-2 -ml-2 text-slate-400 hover:text-white transition-colors">
-            <ICONS.ChevronDown className="w-6 h-6 rotate-90" />
-          </button>
-          <div className="flex flex-col items-center">
-            <div className="font-semibold text-sm">{getTitle()}</div>
-            {(initialSession.type === 'business' || initialSession.type === 'real_estate' || initialSession.type === 'legal') && (
-              <span className="text-[10px] text-emerald-400 font-medium">
-                {initialSession.isDemoMode ? 'Demo Mode' : 'Grounded AI'}
-              </span>
-            )}
-          </div>
-          <div className="w-8" />
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0f172a] absolute inset-0 z-50 transition-colors duration-300">
+      <div className="h-16 glass-panel flex items-center px-4 justify-between shrink-0 border-b border-slate-200 dark:border-white/5 bg-white/90 dark:bg-[#0f172a]/90 backdrop-blur-xl z-20">
+        <button onClick={onClose} className="p-2 -ml-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
+           <ICONS.ChevronDown className="w-6 h-6 rotate-90" />
+        </button>
+        <div className="flex flex-col items-center">
+          <div className="font-semibold text-sm text-slate-900 dark:text-white">{getTitle()}</div>
+          {(initialSession.type === 'business' || initialSession.type === 'real_estate' || initialSession.type === 'legal') && (
+             <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+               {initialSession.isDemoMode ? 'Demo Mode' : 'Smart Search'}
+             </span>
+          )}
         </div>
+        
+        {/* Right Actions Area */}
+        <div className="w-8 flex justify-end">
+           {initialSession.type === 'legal' && (
+              <button 
+                onClick={() => window.open('https://wa.me/250795588248?text=Hello,%20I%20need%20legal%20assistance.', '_blank')}
+                className="p-2 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full hover:bg-emerald-200 dark:hover:bg-emerald-500/30 transition-colors"
+                title="Chat with Human Lawyer"
+              >
+                 <ICONS.WhatsApp className="w-5 h-5" />
+              </button>
+           )}
+        </div>
+      </div>
 
       <div className="flex-1 overflow-y-auto p-4 pt-4 space-y-6">
         {messages.map((msg) => (
@@ -461,71 +421,76 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
         ))}
         {isTyping && (
            <div className="flex justify-start animate-pulse">
-               <div className="bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 border border-white/5 flex gap-2 items-center">
-                 <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms'}} />
-                 <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms'}} />
-                 <div className="w-2 h-2 bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms'}} />
+               <div className="bg-slate-200 dark:bg-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 border border-slate-300 dark:border-white/5 flex gap-2 items-center">
+                 <div className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0ms'}} />
+                 <div className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '150ms'}} />
+                 <div className="w-2 h-2 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '300ms'}} />
                </div>
            </div>
         )}
         <div ref={messagesEndRef} className="h-4" />
       </div>
 
-      <div className="glass-panel shrink-0 border-t border-white/5 pb-8 relative">
+      <div className="glass-panel shrink-0 border-t border-slate-200 dark:border-white/5 pb-8 relative bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-xl">
         {previewUrl && (
-          <div className="absolute bottom-full left-0 w-full p-4 bg-slate-900/90 backdrop-blur-md border-t border-white/10 flex items-center gap-4">
-            <img src={previewUrl} alt="Preview" className="h-16 w-16 rounded-lg object-cover" />
-            <button onClick={clearFile} className="p-2 bg-slate-800 rounded-full"><ICONS.XMark className="w-5 h-5" /></button>
+          <div className="absolute bottom-full left-0 w-full p-4 bg-white/95 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200 dark:border-white/10 flex items-center gap-4">
+            <img src={previewUrl} alt="Preview" className="h-16 w-16 rounded-lg object-cover shadow-sm" />
+            <button onClick={clearFile} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-500 dark:text-slate-400"><ICONS.XMark className="w-5 h-5" /></button>
           </div>
         )}
 
         {selectedGenericFile && (
-          <div className="absolute bottom-full left-0 w-full p-3 bg-slate-900/90 backdrop-blur-md border-t border-white/10 flex items-center gap-3 animate-in slide-in-from-bottom-2">
-            <div className="p-2 bg-slate-800 rounded-lg text-blue-400">
+          <div className="absolute bottom-full left-0 w-full p-3 bg-white/95 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200 dark:border-white/10 flex items-center gap-3 animate-in slide-in-from-bottom-2">
+            <div className="p-2 bg-blue-50 dark:bg-slate-800 rounded-lg text-blue-500 dark:text-blue-400">
                <ICONS.File className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
-               <div className="text-sm font-bold text-white truncate">{selectedGenericFile.name}</div>
-               <div className="text-[10px] text-slate-400">{formatFileSize(selectedGenericFile.size)}</div>
+               <div className="text-sm font-bold text-slate-900 dark:text-white truncate">{selectedGenericFile.name}</div>
+               <div className="text-[10px] text-slate-500 dark:text-slate-400">{formatFileSize(selectedGenericFile.size)}</div>
             </div>
-            <button onClick={clearGenericFile} className="p-2 bg-slate-800 rounded-full hover:bg-red-500/20 text-slate-400 hover:text-red-500 transition-colors">
+            <button onClick={clearGenericFile} className="p-2 bg-slate-100 dark:bg-slate-800 rounded-full hover:bg-red-50 dark:hover:bg-red-500/20 text-slate-400 hover:text-red-500 transition-colors">
                <ICONS.XMark className="w-4 h-4" />
             </button>
           </div>
         )}
 
-        <div className="p-4 flex gap-3 items-end">
+        <div className="p-4 flex gap-2 items-end">
           <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileSelect} />
-          <input type="file" ref={genericFileInputRef} className="hidden" onChange={handleGenericFileSelect} />
+          <input type="file" ref={genericFileInputRef} className="hidden" accept="*/*" onChange={handleGenericFileSelect} />
           
-          <button onClick={() => fileInputRef.current?.click()} className="p-3.5 rounded-2xl bg-slate-800 text-slate-400 border border-white/5 hover:text-white transition-colors">
-            <ICONS.Camera className="w-5 h-5" />
-          </button>
-          
-          <button onClick={() => genericFileInputRef.current?.click()} className="p-3.5 rounded-2xl bg-slate-800 text-slate-400 border border-white/5 hover:text-white transition-colors">
+          {/* Attach Button (Paperclip) - Restored */}
+          <button onClick={() => genericFileInputRef.current?.click()} className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/5 hover:text-slate-900 dark:hover:text-white transition-colors">
             <ICONS.PaperClip className="w-5 h-5" />
           </button>
 
-          <button onClick={handleShareLocation} disabled={isSharingLocation} className="p-3.5 rounded-2xl bg-slate-800 text-slate-400 border border-white/5 hover:text-white transition-colors">
-            {isSharingLocation ? <span className="animate-spin">⟳</span> : <ICONS.MapPin className="w-5 h-5" />}
+          {/* Attach Button (Camera) */}
+          <button onClick={() => fileInputRef.current?.click()} className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-white/5 hover:text-slate-900 dark:hover:text-white transition-colors hidden sm:block">
+            <ICONS.Camera className="w-5 h-5" />
           </button>
           
+          {/* Voice Input Button */}
+          <button 
+            onClick={toggleListening}
+            className={`p-3.5 rounded-2xl border transition-all ${isListening ? 'bg-red-500 text-white border-red-500 animate-pulse shadow-red-500/30 shadow-lg' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/5 hover:text-slate-900 dark:hover:text-white'}`}
+          >
+            <ICONS.Microphone className="w-5 h-5" />
+          </button>
+
           <input
             type="text"
-            className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-sm focus:outline-none focus:border-primary/50 text-white placeholder-slate-500"
-            placeholder="Type a message..."
+            className="flex-1 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl px-5 py-3.5 text-sm focus:outline-none focus:border-blue-500 dark:focus:border-primary/50 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-500 transition-colors"
+            placeholder={isListening ? "Listening..." : "Message..."}
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
             autoFocus
           />
-          <button onClick={() => handleSend()} disabled={(!inputValue.trim() && !selectedFile && !selectedGenericFile) || isTyping} className="bg-primary text-white p-3.5 rounded-2xl">
+          <button onClick={() => handleSend()} disabled={(!inputValue.trim() && !selectedFile && !selectedGenericFile) || isTyping} className="bg-blue-600 hover:bg-blue-500 text-white p-3.5 rounded-2xl shadow-lg shadow-blue-500/30 transition-all active:scale-95 disabled:opacity-50 disabled:shadow-none">
             <ICONS.Send className="w-5 h-5" />
           </button>
         </div>
       </div>
-      </div>
-    </>
+    </div>
   );
 };
 
