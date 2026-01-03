@@ -11,8 +11,8 @@
     "pages:deploy": "npm run build && npx wrangler pages deploy dist --project-name easymo-discovery"
   },
   "dependencies": {
-    "react": "19.0.0",
-    "react-dom": "^19.2.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "@google/genai": "^1.32.0",
     "qrcode": "1.5.3",
     "html5-qrcode": "2.3.8",
@@ -29,6 +29,9 @@
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.17",
     "typescript": "~5.8.2",
     "vite": "^6.2.0",
     "wrangler": "^3.99.0"

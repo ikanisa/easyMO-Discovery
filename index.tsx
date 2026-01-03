@@ -1,4 +1,5 @@
 
+import './index.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -41,7 +42,7 @@ if ('serviceWorker' in navigator) {
     try {
       // Use absolute path relative to current origin to avoid sandbox mismatch
       const swUrl = new URL('./sw.js', window.location.href).href;
-      
+
       navigator.serviceWorker.register(swUrl).then(
         (reg) => console.debug('SW registered successfully'),
         (err) => {
@@ -53,7 +54,7 @@ if ('serviceWorker' in navigator) {
           }
         }
       ).catch(e => {
-         console.warn('ServiceWorker registration failed silently:', e.message);
+        console.warn('ServiceWorker registration failed silently:', e.message);
       });
     } catch (e) {
       console.error('ServiceWorker setup error:', e);
