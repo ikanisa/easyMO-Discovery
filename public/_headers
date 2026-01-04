@@ -8,14 +8,21 @@
   X-XSS-Protection: 1; mode=block
   Referrer-Policy: strict-origin-when-cross-origin
   Permissions-Policy: geolocation=(self), camera=(self), microphone=()
+  Cache-Control: no-cache
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.cloudflare.com; frame-src 'none'; object-src 'none'; worker-src 'self' blob:; manifest-src 'self'
 
 # Service Worker - Never cache
-/sw.js
+/service-worker.js
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0
 
 # PWA Manifest - Short cache
-/manifest.json
+/manifest.webmanifest
   Cache-Control: public, max-age=3600
+
+# Offline fallback - Never cache
+/offline.html
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0
 
 # Static assets - Long cache (Vite adds hash to filenames)
 /assets/*
@@ -27,4 +34,8 @@
 /*.png
   Cache-Control: public, max-age=86400
 /*.webp
+  Cache-Control: public, max-age=86400
+/icons/*
+  Cache-Control: public, max-age=86400
+/screenshots/*
   Cache-Control: public, max-age=86400

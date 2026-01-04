@@ -3,17 +3,19 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Toaster, toast } from 'sonner';
 import Layout from './components/Layout';
-import ErrorBoundary from './components/ErrorBoundary';
 import LoadingScreen from './components/LoadingScreen';
 import { AppMode, ChatSession as ChatSessionType, Role, PresenceUser } from './types';
 import { ICONS } from './constants';
 import { useTheme } from './context/ThemeContext';
 import { sendCategoryRequest } from './services/requestLogger';
 import InstallPrompt from './components/InstallPrompt';
-import { supabase, NetworkService } from './services/supabase';
+import { supabase, NetworkService, isSupabaseConfigured } from './services/supabase';
 import { LocationService } from './services/location';
 import PermissionModal from './components/Location/PermissionModal';
+import OfflineBanner from './components/OfflineBanner';
 import { hapticFeedback } from './utils/ui';
+import { OfflineQueue } from './services/offlineQueue';
+import { flushQueuedRequests } from './services/api';
 
 // Lazy Load Pages
 const Discovery = React.lazy(() => import('./pages/Discovery'));
@@ -60,6 +62,8 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
+  const [queuedCount, setQueuedCount] = useState(0);
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const { theme, toggleTheme } = useTheme();
   const [mode, setMode] = useState<AppMode>(AppMode.HOME);
   const [userRole, setUserRole] = useState<Role | null>(null);
@@ -68,12 +72,48 @@ const App: React.FC = () => {
   const [showPermissionModal, setShowPermissionModal] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const modeParam = params.get('mode');
+
+    if (modeParam) {
+      switch (modeParam) {
+        case 'discovery':
+        case 'ride':
+          setMode(AppMode.DISCOVERY);
+          break;
+        case 'services':
+          setMode(AppMode.SERVICES);
+          break;
+        case 'business':
+          setMode(AppMode.BUSINESS);
+          break;
+        case 'momo':
+          setMode(AppMode.MOMO_GENERATOR);
+          break;
+        case 'scanner':
+          setMode(AppMode.SCANNER);
+          break;
+        default:
+          break;
+      }
+
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  useEffect(() => {
     setIsOnline(NetworkService.isOnline());
     NetworkService.addListener((status) => {
         setIsOnline(status);
         if (!status) toast.error("You are offline", { description: "Discovery features may be limited." });
         else toast.success("Back online");
     });
+
+    if (!isSupabaseConfigured) {
+      setIsAuthenticated(true);
+      setIsAuthChecking(false);
+      return;
+    }
 
     const initAuth = async () => {
       try {
@@ -110,6 +150,48 @@ const App: React.FC = () => {
       }
     };
     initAuth();
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const syncQueue = async () => {
+      if (!isOnline) return;
+      const result = await flushQueuedRequests();
+      if (result.flushed > 0 && isMounted) {
+        setLastSyncedAt(Date.now());
+      }
+      const count = await OfflineQueue.getCount();
+      if (isMounted) setQueuedCount(count);
+    };
+
+    syncQueue();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOnline]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const refreshCount = async () => {
+      const count = await OfflineQueue.getCount();
+      if (isMounted) setQueuedCount(count);
+    };
+
+    refreshCount();
+
+    const handler = (event: Event) => {
+      const customEvent = event as CustomEvent<number>;
+      setQueuedCount(customEvent.detail || 0);
+    };
+
+    window.addEventListener('offline-queue-updated', handler);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('offline-queue-updated', handler);
+    };
   }, []);
 
   useEffect(() => {
@@ -167,11 +249,13 @@ const App: React.FC = () => {
                                </div>
                                <div className="relative group w-full max-w-md mx-auto">
                                   <input 
-                                     type="text" 
+                                     type="search" 
                                      value={homeSearchQuery}
                                      onChange={(e) => setHomeSearchQuery(e.target.value)}
                                      onKeyDown={(e) => e.key === 'Enter' && handleHomeSearch()}
                                      placeholder="Find products, services, or places..."
+                                     inputMode="search"
+                                     enterKeyHint="search"
                                      className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-3xl pl-6 pr-14 py-4.5 text-sm font-bold text-slate-900 dark:text-white shadow-xl"
                                   />
                                   <button onClick={handleHomeSearch} className="absolute right-2 top-2 p-2.5 bg-blue-600 text-white rounded-2xl">
@@ -211,8 +295,24 @@ const App: React.FC = () => {
   if (isAuthChecking || !isAuthenticated) return <LoadingScreen />;
 
   return (
-    <ErrorBoundary>
+    <>
       <Toaster position="top-center" expand visibleToasts={3} closeButton richColors theme={theme as any} />
+      {!isSupabaseConfigured && (
+        <div className="mx-4 mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-900 shadow-sm">
+          Missing Supabase configuration. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` to enable live features.
+        </div>
+      )}
+      <OfflineBanner
+        isOnline={isOnline}
+        queuedCount={queuedCount}
+        lastSyncedAt={lastSyncedAt}
+        onSync={async () => {
+          const result = await flushQueuedRequests();
+          if (result.flushed > 0) setLastSyncedAt(Date.now());
+          const count = await OfflineQueue.getCount();
+          setQueuedCount(count);
+        }}
+      />
       {showPermissionModal && <PermissionModal onGranted={() => setShowPermissionModal(false)} />}
       <Layout currentMode={mode} onNavigate={(m) => { hapticFeedback('light'); setMode(m); if (m === AppMode.HOME) setUserRole(null); }}>
         {renderContent()}
@@ -225,7 +325,7 @@ const App: React.FC = () => {
           </motion.div>
         </Suspense>
       )}
-    </ErrorBoundary>
+    </>
   );
 };
 

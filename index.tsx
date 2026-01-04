@@ -2,13 +2,18 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Toaster } from 'sonner';
+import { toast } from 'sonner';
+import { registerSW } from 'virtual:pwa-register';
+import './index.css';
 import App from './App';
+import ErrorBoundary from './components/ErrorBoundary';
 import { ThemeProvider } from './context/ThemeContext';
 import { MonitoringService } from './services/monitoring';
+import { initVitals } from './services/vitals';
 
 // Initialize Monitoring
 MonitoringService.init();
+initVitals();
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,35 +33,52 @@ root.render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <App />
-        <Toaster position="top-center" richColors closeButton />
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
       </ThemeProvider>
     </QueryClientProvider>
   </React.StrictMode>
 );
 
-// Hardened Service Worker Registration
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    try {
-      // Use absolute path relative to current origin to avoid sandbox mismatch
-      const swUrl = new URL('./sw.js', window.location.href).href;
-      
-      navigator.serviceWorker.register(swUrl).then(
-        (reg) => console.debug('SW registered successfully'),
-        (err) => {
-          // Check for origin mismatch errors common in cloud preview environments
-          if (err.message?.includes('origin')) {
-            console.warn('ServiceWorker registration skipped: Origin mismatch in preview environment.');
-          } else {
-            MonitoringService.captureException(err, { context: 'SW_Registration_Failure' });
-          }
+if ('serviceWorker' in navigator && import.meta.env.DEV) {
+  // Ensure dev sessions are not affected by stale service workers or caches.
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    registrations.forEach((registration) => {
+      registration.unregister();
+    });
+  });
+
+  if ('caches' in window) {
+    caches.keys().then((keys) => {
+      keys.forEach((key) => {
+        if (key.startsWith('easymo-cache-')) {
+          caches.delete(key);
         }
-      ).catch(e => {
-         console.warn('ServiceWorker registration failed silently:', e.message);
       });
-    } catch (e) {
-      console.error('ServiceWorker setup error:', e);
-    }
+    });
+  }
+}
+
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  const updateSW = registerSW({
+    immediate: true,
+    onNeedRefresh() {
+      toast('Update available', {
+        description: 'A new version is ready. Reload to update.',
+        action: {
+          label: 'Reload',
+          onClick: () => updateSW(true),
+        },
+      });
+    },
+    onOfflineReady() {
+      toast('Ready for offline use', {
+        description: 'The app shell is cached.',
+      });
+    },
+    onRegisterError(error) {
+      MonitoringService.captureException(error, { context: 'SW_Register_Error' });
+    },
   });
 }

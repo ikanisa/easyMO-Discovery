@@ -1,0 +1,10 @@
+{
+  "budgets": {
+    "jsInitial": "300kb",
+    "cssInitial": "120kb",
+    "imageMax": "500kb",
+    "fontMax": "200kb",
+    "totalRequests": 60
+  },
+  "notes": "Use with Lighthouse CI or custom scripts to enforce performance budgets."
+}

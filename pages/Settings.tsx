@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { ICONS } from '../constants';
 import { supabase } from '../services/supabase';
+import { PushService } from '../services/push';
+import { StorageService } from '../services/storage';
 import Button from '../components/Button';
 import { useTheme } from '../context/ThemeContext';
 import { ALL_COUNTRIES, CountryData } from '../data/allCountries';
@@ -10,6 +12,7 @@ import AddressBook from '../components/Address/AddressBook';
 import { MemoryService } from '../services/memory';
 import { LocationService } from '../services/location';
 import { AgentMemory } from '../types';
+import { toast } from 'sonner';
 
 interface SettingsProps {
   onBack: () => void;
@@ -20,6 +23,11 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
   const [loading, setLoading] = useState(false);
   const [notificationEnabled, setNotificationEnabled] = useState(true);
   const [locationEnabled, setLocationEnabled] = useState(LocationService.isEnabled());
+  const [pushSupported, setPushSupported] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushConfigured, setPushConfigured] = useState(true);
+  const [storageSupported, setStorageSupported] = useState(false);
+  const [storagePersisted, setStoragePersisted] = useState(false);
   
   // Profile State
   const [displayName, setDisplayName] = useState('');
@@ -54,6 +62,31 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
     setMemories(MemoryService.getLocalMemories());
   }, []);
 
+  useEffect(() => {
+    const initCapabilities = async () => {
+      const pushOk = PushService.isSupported();
+      setPushSupported(pushOk);
+      setPushConfigured(PushService.isConfigured());
+
+      if (pushOk) {
+        try {
+          const subscription = await PushService.getSubscription();
+          setPushEnabled(Boolean(subscription));
+        } catch {
+          setPushEnabled(false);
+        }
+      }
+
+      const storageOk = StorageService.isSupported();
+      setStorageSupported(storageOk);
+      if (storageOk) {
+        setStoragePersisted(await StorageService.isPersisted());
+      }
+    };
+
+    initCapabilities();
+  }, []);
+
   const loadProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -83,6 +116,43 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
     const newState = !locationEnabled;
     setLocationEnabled(newState);
     LocationService.setEnabled(newState);
+  };
+
+  const handleTogglePush = async () => {
+    if (!pushSupported) return;
+    if (!pushConfigured) {
+      toast.error('Push notifications are not configured yet.');
+      return;
+    }
+
+    if (pushEnabled) {
+      await PushService.unsubscribe();
+      setPushEnabled(false);
+      toast('Notifications disabled');
+      return;
+    }
+
+    const granted = await PushService.requestPermission();
+    if (!granted) {
+      toast.error('Notifications permission was denied.');
+      return;
+    }
+
+    try {
+      await PushService.subscribe();
+      setPushEnabled(true);
+      toast('Notifications enabled');
+    } catch (error) {
+      console.error(error);
+      toast.error('Unable to enable notifications.');
+    }
+  };
+
+  const handleStoragePersist = async () => {
+    if (!storageSupported) return;
+    const persisted = await StorageService.requestPersistence();
+    setStoragePersisted(persisted);
+    toast(persisted ? 'Offline storage enabled' : 'Offline storage not available');
   };
 
   const handleSave = async () => {
@@ -264,6 +334,54 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
               >
                  <div className={`w-6 h-6 bg-white rounded-full absolute top-1 shadow-sm transition-all duration-500 flex items-center justify-center ${locationEnabled ? 'left-7' : 'left-1'}`}>
                     <div className={`w-1 h-1 rounded-full ${locationEnabled ? 'bg-blue-600' : 'bg-slate-300'}`} />
+                 </div>
+              </button>
+           </div>
+
+           {/* Push Notifications Toggle */}
+           <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-3xl p-5 flex items-center justify-between shadow-sm transition-all">
+              <div className="flex items-center gap-4">
+                 <div className={`p-3 rounded-2xl transition-all duration-500 ${pushEnabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-100 text-slate-400'}`}>
+                    <ICONS.Bell className="w-6 h-6" />
+                 </div>
+                 <div>
+                    <div className="font-black text-slate-900 dark:text-white text-sm tracking-tight">Push Notifications</div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                       {!pushSupported ? 'Unsupported' : pushConfigured ? (pushEnabled ? 'Enabled' : 'Disabled') : 'Not Configured'}
+                    </div>
+                 </div>
+              </div>
+              <button
+                onClick={handleTogglePush}
+                disabled={!pushSupported || !pushConfigured}
+                className={`w-14 h-8 rounded-full transition-all duration-500 relative ${pushEnabled ? 'bg-emerald-600 shadow-lg shadow-emerald-500/30' : 'bg-slate-200 shadow-inner'} ${(!pushSupported || !pushConfigured) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                 <div className={`w-6 h-6 bg-white rounded-full absolute top-1 shadow-sm transition-all duration-500 flex items-center justify-center ${pushEnabled ? 'left-7' : 'left-1'}`}>
+                    <div className={`w-1 h-1 rounded-full ${pushEnabled ? 'bg-emerald-600' : 'bg-slate-300'}`} />
+                 </div>
+              </button>
+           </div>
+
+           {/* Offline Storage Toggle */}
+           <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-3xl p-5 flex items-center justify-between shadow-sm transition-all">
+              <div className="flex items-center gap-4">
+                 <div className={`p-3 rounded-2xl transition-all duration-500 ${storagePersisted ? 'bg-purple-500/20 text-purple-400' : 'bg-slate-100 text-slate-400'}`}>
+                    <ICONS.File className="w-6 h-6" />
+                 </div>
+                 <div>
+                    <div className="font-black text-slate-900 dark:text-white text-sm tracking-tight">Offline Storage</div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                       {!storageSupported ? 'Unsupported' : storagePersisted ? 'Persistent' : 'Not Persistent'}
+                    </div>
+                 </div>
+              </div>
+              <button
+                onClick={handleStoragePersist}
+                disabled={!storageSupported || storagePersisted}
+                className={`w-14 h-8 rounded-full transition-all duration-500 relative ${storagePersisted ? 'bg-purple-600 shadow-lg shadow-purple-500/30' : 'bg-slate-200 shadow-inner'} ${(!storageSupported || storagePersisted) ? 'opacity-60 cursor-not-allowed' : ''}`}
+              >
+                 <div className={`w-6 h-6 bg-white rounded-full absolute top-1 shadow-sm transition-all duration-500 flex items-center justify-center ${storagePersisted ? 'left-7' : 'left-1'}`}>
+                    <div className={`w-1 h-1 rounded-full ${storagePersisted ? 'bg-purple-600' : 'bg-slate-300'}`} />
                  </div>
               </button>
            </div>

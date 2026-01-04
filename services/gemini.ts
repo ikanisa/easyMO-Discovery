@@ -63,8 +63,17 @@ const askGemini = async (
 
   try {
       console.warn("⚠️ Using Direct Gemini Client (Dev Fallback - NOT FOR PRODUCTION)");
-      // Fix: Create instance just-in-time as per guidelines to ensure current key usage, exclusively using process.env.API_KEY.
-      const clientAI = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const apiKey =
+        (import.meta as any).env?.GEMINI_API_KEY ||
+        (import.meta as any).env?.VITE_GEMINI_API_KEY ||
+        (typeof process !== 'undefined' ? (process as any).env?.API_KEY : undefined);
+
+      if (!apiKey) {
+        return "Gemini API key is missing in dev mode. Set GEMINI_API_KEY to enable local fallback.";
+      }
+
+      // Fix: Create instance just-in-time as per guidelines to ensure current key usage.
+      const clientAI = new GoogleGenAI({ apiKey });
       
       // Fix: Select model based on task. Maps grounding requires 2.5 series.
       // General text tasks use gemini-3-flash-preview.

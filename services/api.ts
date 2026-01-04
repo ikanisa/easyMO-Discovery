@@ -1,20 +1,30 @@
 
-import { supabase } from './supabase';
+import { supabase, isSupabaseConfigured, NetworkService } from './supabase';
 import { CONFIG } from '../config';
 import { MonitoringService } from './monitoring';
+import { OfflineQueue } from './offlineQueue';
 
 export interface ApiResponse {
   status?: 'success' | 'error' | 'ok';
-  result?: 'success' | 'error';
+  result?: 'success' | 'error' | 'queued';
   message?: string;
   data?: any;
   [key: string]: any;
 }
 
+const QUEUEABLE_ACTIONS = new Set([
+  'create_request',
+  'queue_broadcast',
+  'batch_broadcast',
+]);
+
 /**
  * Invokes Supabase Edge Functions.
  */
-export async function callBackend(payload: any): Promise<ApiResponse> {
+export async function callBackend(
+  payload: any,
+  options: { skipQueue?: boolean } = {}
+): Promise<ApiResponse> {
   
   // Map actions to Edge Function names
   let functionName = '';
@@ -27,6 +37,28 @@ export async function callBackend(payload: any): Promise<ApiResponse> {
     console.warn("Unknown action:", payload.action);
     MonitoringService.captureMessage(`Unknown action called: ${payload.action}`, 'warning');
     return { status: 'error', message: 'Unknown action' };
+  }
+
+  if (!isSupabaseConfigured) {
+    return {
+      status: 'error',
+      message: 'Service is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.',
+    };
+  }
+
+  if (!options.skipQueue && !NetworkService.isOnline()) {
+    if (QUEUEABLE_ACTIONS.has(payload.action)) {
+      await OfflineQueue.enqueue(payload);
+      return {
+        status: 'ok',
+        result: 'queued',
+        message: 'Offline. Action queued for sync.',
+      };
+    }
+    return {
+      status: 'error',
+      message: 'You are offline. Please reconnect to continue.',
+    };
   }
 
   // 1. Attempt Supabase Edge Function
@@ -71,9 +103,18 @@ export async function callBackend(payload: any): Promise<ApiResponse> {
        return { status: 'success', result: 'success', message: 'Simulated success (Offline Mode)' };
     }
 
-    return { 
-        status: "error", 
-        message: "Service unavailable. Please check your internet connection." 
+    if (!options.skipQueue && QUEUEABLE_ACTIONS.has(payload.action)) {
+      await OfflineQueue.enqueue(payload);
+      return { status: 'ok', result: 'queued', message: 'Action queued for sync.' };
+    }
+
+    return {
+      status: "error",
+      message: "Service unavailable. Please check your internet connection."
     };
   }
+}
+
+export async function flushQueuedRequests() {
+  return OfflineQueue.flush((payload) => callBackend(payload, { skipQueue: true }));
 }

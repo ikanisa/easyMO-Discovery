@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ICONS } from '../constants';
 import { AppMode } from '../types';
 
@@ -9,10 +9,37 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children, currentMode, onNavigate }) => {
+  const mainRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    const node = mainRef.current;
+    if (!node) return;
+    const stored = sessionStorage.getItem(`easymo-scroll-${currentMode}`);
+    if (stored) {
+      node.scrollTop = Number(stored);
+    } else {
+      node.scrollTop = 0;
+    }
+  }, [currentMode]);
+
+  const handleScroll = () => {
+    const node = mainRef.current;
+    if (!node) return;
+    sessionStorage.setItem(`easymo-scroll-${currentMode}`, String(node.scrollTop));
+  };
+
   return (
     <div className="flex flex-col h-full relative">
       {/* Content Area - Scrollable with Safe Area padding at bottom */}
-      <main className="flex-1 overflow-auto pb-24 no-scrollbar scroll-smooth" style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))' }}>
+      <main
+        ref={mainRef}
+        className="flex-1 overflow-auto pb-24 no-scrollbar scroll-smooth"
+        style={{
+          paddingBottom: 'calc(6rem + env(safe-area-inset-bottom))',
+          WebkitOverflowScrolling: 'touch',
+        }}
+        onScroll={handleScroll}
+      >
         {children}
       </main>
 
