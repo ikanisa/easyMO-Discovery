@@ -924,6 +924,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
 
           <input
             type="text"
+            inputMode="text"
             className="flex-1 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl px-5 py-3.5 text-sm focus:outline-none focus:border-blue-500 dark:focus:border-primary/50 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-500 transition-colors"
             placeholder={isListening ? "Listening..." : "Message..."}
             value={inputValue}

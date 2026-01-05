@@ -493,6 +493,7 @@ const ChatShell: React.FC<ChatShellProps> = ({
           <div className="flex-1 relative">
             <input
               type="text"
+              inputMode="text"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyDown={(e) => {

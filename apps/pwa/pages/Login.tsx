@@ -122,6 +122,7 @@ const Login: React.FC<LoginProps> = ({ onLoginSuccess }) => {
               <div className="relative flex-1">
                 <input
                   type="tel"
+                  inputMode="numeric"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
                   placeholder="Phone number"

@@ -13,6 +13,7 @@
     "build": "npm run build --workspace=apps/pwa",
     "preview": "npm run preview --workspace=apps/pwa",
     "test:e2e": "npm run test:e2e --workspace=apps/pwa",
+    "perf:budget": "npm run perf:budget --workspace=apps/pwa",
     "pages:build": "npm run build --workspace=apps/pwa",
     "pages:deploy": "npm run pages:deploy --workspace=apps/pwa",
     "worker:dev": "npm run dev --workspace=services/agent-runtime",

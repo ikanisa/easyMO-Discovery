@@ -21,8 +21,12 @@ body {
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
   transition: background-color 0.3s ease;
+  /* System font stack: zero load time, native feel, minimal bundle size */
+  /* If custom fonts are needed, subset and preload them in index.html */
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
     Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  /* Font optimization: system fonts only, no external font files */
+  font-display: swap; /* Future-proof for if custom fonts are added */
 }
 
 button,

@@ -1,10 +1,67 @@
 {
   "budgets": {
-    "jsInitial": "300kb",
-    "cssInitial": "120kb",
-    "imageMax": "500kb",
-    "fontMax": "200kb",
-    "totalRequests": 60
+    "jsInitial": {
+      "target": "150-200kb",
+      "hardCeiling": "300kb",
+      "gzipped": true,
+      "description": "Initial route JavaScript bundle (gzipped). Target 150-200KB, hard ceiling 300KB."
+    },
+    "cssInitial": {
+      "target": "50kb",
+      "hardCeiling": "100kb",
+      "gzipped": true,
+      "description": "Initial CSS bundle (gzipped)"
+    },
+    "imageMax": {
+      "policy": "AVIF/WebP + responsive srcset; never ship original camera images",
+      "maxSize": "500kb",
+      "description": "Images must be optimized (AVIF preferred, WebP fallback), use responsive srcset"
+    },
+    "fontMax": {
+      "target": "1 family max, subset + preload",
+      "maxSize": "50kb",
+      "gzipped": true,
+      "description": "Maximum 1 font family, subset and preload. Prefer system font stack for ultra-low-end mode"
+    },
+    "totalRequests": {
+      "target": 40,
+      "hardCeiling": 60,
+      "description": "Total network requests for initial page load"
+    },
+    "coreWebVitals": {
+      "LCP": {
+        "target": "<= 2.5s",
+        "percentile": 75,
+        "fieldData": true,
+        "description": "Largest Contentful Paint - 75th percentile field data"
+      },
+      "INP": {
+        "target": "<= 200ms",
+        "percentile": 75,
+        "fieldData": true,
+        "description": "Interaction to Next Paint - 75th percentile field data"
+      },
+      "CLS": {
+        "target": "<= 0.1",
+        "percentile": 75,
+        "fieldData": true,
+        "description": "Cumulative Layout Shift - 75th percentile field data"
+      }
+    },
+    "reliability": {
+      "crashFreeSessions": {
+        "target": ">= 99.8%",
+        "description": "Crash-free session rate"
+      },
+      "offlineShell": {
+        "required": true,
+        "description": "App shell must load offline (navigation + skeleton + cached critical screens)"
+      },
+      "routeOfflineFallbacks": {
+        "required": true,
+        "description": "Meaningful offline fallback for every route"
+      }
+    }
   },
-  "notes": "Use with Lighthouse CI or custom scripts to enforce performance budgets."
+  "notes": "Enforced via Lighthouse CI in PR checks. Field data from RUM endpoint. Use with bundle-size-analyzer script."
 }

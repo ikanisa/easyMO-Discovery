@@ -241,6 +241,7 @@ const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComplete, onC
                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Your Name</label>
                <input 
                  type="text" 
+                 inputMode="text"
                  value={driverName}
                  onChange={e => setDriverName(e.target.value)}
                  className="w-full bg-slate-800 border border-slate-700 rounded-xl px-5 py-4 font-bold text-white focus:border-blue-500 outline-none transition-colors"
@@ -274,6 +275,7 @@ const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComplete, onC
                <label className="text-xs font-bold text-slate-400 uppercase tracking-widest">Plate Number</label>
                <input 
                  type="text" 
+                 inputMode="text"
                  value={plateNumber}
                  onChange={e => setPlateNumber(e.target.value.toUpperCase())}
                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-5 py-5 text-center font-black text-2xl text-yellow-500 focus:border-yellow-500/50 outline-none placeholder-slate-700 uppercase tracking-[0.2em] font-mono shadow-inner"
@@ -345,6 +347,8 @@ const BusinessOnboarding: React.FC<BusinessOnboardingProps> = ({ onComplete, onC
          <div className="p-4 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-white/5">
             <div className="flex gap-2">
                <input 
+                 type="text"
+                 inputMode="text"
                  className="flex-1 bg-slate-100 dark:bg-white/5 border-none rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500/50 outline-none text-slate-900 dark:text-white"
                  placeholder="Type here..."
                  value={chatInput}

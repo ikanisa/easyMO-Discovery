@@ -7,6 +7,7 @@ import { PushService } from '../services/push';
 import { StorageService } from '../services/storage';
 import Button from '../components/Button';
 import { useTheme } from '../context/ThemeContext';
+import { useDataSaver } from '../context/DataSaverContext';
 import { ALL_COUNTRIES, CountryData } from '../data/allCountries';
 import { normalizePhoneNumber } from '../utils/phone';
 import AddressBook from '../components/Address/AddressBook';
@@ -20,6 +21,7 @@ interface SettingsProps {
 
 const Settings: React.FC<SettingsProps> = ({ onBack }) => {
   const { theme, toggleTheme } = useTheme();
+  const { isEnabled: dataSaverEnabled, toggle: toggleDataSaver } = useDataSaver();
   const [loading, setLoading] = useState(false);
   const [notificationEnabled, setNotificationEnabled] = useState(true);
   const [locationEnabled, setLocationEnabled] = useState(LocationService.isEnabled());
@@ -222,6 +224,8 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
                 <div className="p-4 border-b border-white/5 flex gap-2 items-center">
                     <ICONS.Search className="w-5 h-5 text-slate-500" />
                     <input 
+                        type="search"
+                        inputMode="search"
                         className="bg-transparent w-full outline-none text-white placeholder-slate-500 font-bold"
                         placeholder="Search country or code..."
                         value={countrySearch}
@@ -385,6 +389,32 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
                  </div>
               </button>
            </div>
+
+           {/* Data Saver Toggle */}
+           <div className="bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-3xl p-5 flex items-center justify-between shadow-sm transition-all">
+              <div className="flex items-center gap-4">
+                 <div className={`p-3 rounded-2xl transition-all duration-500 ${dataSaverEnabled ? 'bg-orange-500/20 text-orange-400' : 'bg-slate-100 text-slate-400'}`}>
+                    <span className="text-xl">💾</span>
+                 </div>
+                 <div>
+                    <div className="font-black text-slate-900 dark:text-white text-sm tracking-tight">Data Saver Mode</div>
+                    <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
+                       {dataSaverEnabled ? 'Enabled' : 'Disabled'}
+                    </div>
+                    <div className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">
+                       Reduces images, disables autoplay
+                    </div>
+                 </div>
+              </div>
+              <button
+                onClick={toggleDataSaver}
+                className={`w-14 h-8 rounded-full transition-all duration-500 relative ${dataSaverEnabled ? 'bg-orange-600 shadow-lg shadow-orange-500/30' : 'bg-slate-200 shadow-inner'}`}
+              >
+                 <div className={`w-6 h-6 bg-white rounded-full absolute top-1 shadow-sm transition-all duration-500 flex items-center justify-center ${dataSaverEnabled ? 'left-7' : 'left-1'}`}>
+                    <div className={`w-1 h-1 rounded-full ${dataSaverEnabled ? 'bg-orange-600' : 'bg-slate-300'}`} />
+                 </div>
+              </button>
+           </div>
         </div>
 
         {/* Form Section */}
@@ -394,6 +424,7 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
               <div className="relative">
                 <input 
                   type="text" 
+                  inputMode="text"
                   value={displayName}
                   onChange={e => setDisplayName(e.target.value)}
                   className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl px-5 py-4 pl-12 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors shadow-sm"
@@ -417,6 +448,7 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
                 <div className="relative flex-1">
                     <input 
                         type="tel" 
+                        inputMode="numeric"
                         value={localPhone}
                         onChange={e => setLocalPhone(e.target.value.replace(/\D/g,''))}
                         className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-2xl px-5 py-4 font-bold text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors shadow-sm font-mono tracking-wide"
@@ -453,6 +485,7 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
                  <div className="relative">
                    <input 
                      type="text" 
+                     inputMode="text"
                      value={vehiclePlate}
                      onChange={e => setVehiclePlate(e.target.value.toUpperCase())}
                      className="w-full bg-slate-800/50 border border-slate-700 rounded-2xl px-5 py-4 text-center font-black text-xl text-yellow-500 focus:outline-none focus:border-yellow-500/50 placeholder-slate-700 uppercase tracking-widest font-mono"

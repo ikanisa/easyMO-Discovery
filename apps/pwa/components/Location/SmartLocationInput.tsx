@@ -309,6 +309,7 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
         <input 
             ref={inputRef}
             type="text" 
+            inputMode="text"
             value={value}
             onChange={(e) => {
                 onChange(e.target.value);

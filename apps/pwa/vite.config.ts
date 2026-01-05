@@ -2,6 +2,8 @@ import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+// Image optimization plugin (install with: npm install -D vite-imagetools)
+// import { imagetools } from 'vite-imagetools';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, '.', '');
@@ -25,6 +27,18 @@ export default defineConfig(({ mode }) => {
           globPatterns: ['**/*.{js,css,html,svg,png,webmanifest,json,woff2}'],
         },
       }),
+      // Image optimization (uncomment after installing vite-imagetools)
+      // imagetools({
+      //   defaultDirectives: (url) => {
+      //     if (url.searchParams.has('unoptimized')) {
+      //       return new URLSearchParams();
+      //     }
+      //     return new URLSearchParams({
+      //       format: 'avif;webp', // AVIF preferred, WebP fallback
+      //       quality: '80',
+      //     });
+      //   },
+      // }),
     ],
     // SECURITY FIX: Removed API key defines to prevent client-side exposure
     // All Gemini calls must go through Supabase Edge Functions (secure backend)

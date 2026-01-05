@@ -7,7 +7,7 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
     <meta name="theme-color" content="#0f172a" />
-    <title>easyMO Offline</title>
+    <title>easyMO - Offline</title>
     <style>
       :root {
         color-scheme: light dark;
@@ -26,44 +26,90 @@
         padding: 32px 20px;
       }
       .card {
-        max-width: 320px;
+        max-width: 360px;
         background: rgba(15, 23, 42, 0.75);
         border: 1px solid rgba(148, 163, 184, 0.2);
         border-radius: 24px;
-        padding: 28px 24px;
+        padding: 32px 24px;
         box-shadow: 0 30px 60px rgba(15, 23, 42, 0.35);
       }
+      .icon {
+        width: 80px;
+        height: 80px;
+        margin: 0 auto 24px;
+        background: rgba(59, 130, 246, 0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 40px;
+      }
       h1 {
-        font-size: 20px;
+        font-size: 24px;
         margin: 0 0 12px;
         letter-spacing: -0.02em;
       }
       p {
-        margin: 0 0 20px;
+        margin: 0 0 24px;
         font-size: 14px;
-        line-height: 1.5;
+        line-height: 1.6;
         color: rgba(226, 232, 240, 0.8);
       }
       button {
         border: none;
         background: #2563eb;
         color: white;
-        padding: 12px 18px;
+        padding: 14px 24px;
         border-radius: 14px;
         font-weight: 700;
         font-size: 14px;
         cursor: pointer;
+        width: 100%;
+        transition: background 0.2s;
+      }
+      button:hover {
+        background: #1d4ed8;
+      }
+      button:active {
+        transform: scale(0.98);
+      }
+      .status {
+        margin-top: 16px;
+        font-size: 12px;
+        color: rgba(148, 163, 184, 0.6);
       }
     </style>
   </head>
   <body>
     <div class="card">
-      <h1>You're offline</h1>
+      <div class="icon">📡</div>
+      <h1>You're Offline</h1>
       <p>
-        easyMO Discovery can still show recent content once you reconnect. Check
-        your connection and try again.
+        It looks like you've lost your internet connection. Don't worry, you can still
+        browse cached content and use basic features.
       </p>
-      <button onclick="location.reload()">Try again</button>
+      <button onclick="window.location.reload()">Try Again</button>
+      <div class="status">
+        <span id="status">Checking connection...</span>
+      </div>
     </div>
+    <script>
+      // Check connection status
+      function updateStatus() {
+        const statusEl = document.getElementById('status');
+        if (navigator.onLine) {
+          statusEl.textContent = 'Connection restored! Refreshing...';
+          setTimeout(() => window.location.reload(), 1000);
+        } else {
+          statusEl.textContent = 'Still offline';
+        }
+      }
+      
+      window.addEventListener('online', updateStatus);
+      updateStatus();
+      
+      // Periodically check
+      setInterval(updateStatus, 3000);
+    </script>
   </body>
 </html>

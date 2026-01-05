@@ -71,6 +71,7 @@ const LocationConsentModal: React.FC<LocationConsentModalProps> = ({
 
           <input
             type="text"
+            inputMode="text"
             value={manualAddress}
             onChange={(e) => setManualAddress(e.target.value)}
             placeholder="Enter address or landmark..."

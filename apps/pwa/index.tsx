@@ -8,6 +8,7 @@ import './index.css';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ThemeProvider } from './context/ThemeContext';
+import { DataSaverProvider } from './context/DataSaverContext';
 import { MonitoringService } from './services/monitoring';
 import { initVitals } from './services/vitals';
 
@@ -57,9 +58,11 @@ root.render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <ErrorBoundary>
-          <App />
-        </ErrorBoundary>
+        <DataSaverProvider>
+          <ErrorBoundary>
+            <App />
+          </ErrorBoundary>
+        </DataSaverProvider>
       </ThemeProvider>
     </QueryClientProvider>
   </React.StrictMode>
