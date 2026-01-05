@@ -79,8 +79,6 @@ export default defineConfig(({ mode }) => {
               return 'vendor';
             }
           },
-          // Chunk size warning threshold (500KB)
-          chunkSizeWarningLimit: 500,
         },
       },
       // Target modern browsers for smaller bundles
@@ -89,6 +87,8 @@ export default defineConfig(({ mode }) => {
       minify: 'esbuild',
       // Source maps for debugging (disable in production for smaller bundles)
       sourcemap: false,
+      // Chunk size warning threshold (500KB) - Vite-specific option
+      chunkSizeWarningLimit: 500,
     },
     resolve: {
       alias: {

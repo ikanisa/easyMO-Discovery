@@ -1,165 +1,16 @@
 # Cloudflare Workers Runtime Configuration
 
-This document explains the Cloudflare Workers runtime configuration, including `compatibility_date` and `nodejs_compat` flag.
+**Last Updated:** 2025-01-29
+
+---
 
 ## Overview
 
-Cloudflare Workers run on the V8 JavaScript engine with a minimal runtime that includes Web Standards APIs (fetch, Request, Response, etc.) but **not** Node.js APIs by default. This document explains how we configure the runtime to meet our needs.
-
-## Compatibility Date
-
-### What It Is
-
-The `compatibility_date` in `wrangler.toml` specifies which version of the Workers runtime to target. Each date corresponds to a snapshot of available features and behaviors.
-
-**Current setting:**
-```toml
-compatibility_date = "2025-01-27"
-```
-
-### Why It Matters
-
-- **Feature availability**: Newer dates unlock new runtime features and APIs
-- **Behavior consistency**: Ensures the runtime behaves the same way across deployments
-- **Breaking changes**: Cloudflare may introduce breaking changes with new compatibility dates
-
-### Update Policy
-
-**When to update:**
-1. **Quarterly reviews**: Update every 3-4 months to get latest features
-2. **New features needed**: When you need a feature only available in newer dates
-3. **Security updates**: When Cloudflare recommends updating for security fixes
-4. **Bug fixes**: If a bug is fixed in a newer compatibility date
-
-**How to update:**
-1. Check [Cloudflare Workers release notes](https://developers.cloudflare.com/workers/configuration/compatibility-dates/)
-2. Test in a preview environment first
-3. Update `compatibility_date` in `wrangler.toml`
-4. Test thoroughly before deploying to production
-
-**Current policy:**
-- Update quarterly (every 3 months)
-- Test in preview/staging before production
-- Monitor for breaking changes or new deprecations
-
-### Checking Available Features
-
-1. Visit: https://developers.cloudflare.com/workers/configuration/compatibility-dates/
-2. Check changelog for dates after your current date
-3. Review what's new and if you need it
-
-### Example Update Process
-
-```bash
-# 1. Update compatibility_date in wrangler.toml
-compatibility_date = "2025-04-27"  # New date
-
-# 2. Test locally
-cd worker
-npm run dev
-
-# 3. Test in preview
-wrangler deploy --env preview
-
-# 4. Deploy to production
-wrangler deploy --env production
-```
+This document explains the Cloudflare Workers runtime configuration for the easyMO Discovery agent-runtime Worker, including compatibility dates, Node.js compatibility, and update policies.
 
 ---
 
-## Node.js Compatibility Flag (`nodejs_compat`)
-
-### What It Is
-
-The `nodejs_compat` compatibility flag enables Node.js API polyfills in the Workers runtime. This allows you to use npm packages that depend on Node.js APIs (like `require()`, `Buffer`, `process`, etc.).
-
-**Current setting:**
-```toml
-compatibility_flags = ["nodejs_compat"]
-```
-
-### Why We Need It
-
-Our Workers use the following dependencies that require Node.js APIs:
-
-1. **OpenAI SDK** (`openai` package): Uses Node.js HTTP client internally
-2. **Other npm packages**: May use Node.js APIs like `Buffer`, `crypto`, etc.
-
-### Bundle Impact
-
-**⚠️ Important:** Enabling `nodejs_compat` increases your Worker bundle size.
-
-| Metric | Without nodejs_compat | With nodejs_compat | Impact |
-|--------|----------------------|-------------------|--------|
-| **Bundle size** | Smaller | ~50-200 KB larger | Depends on Node.js APIs used |
-| **Cold start** | Faster | Slightly slower | Minimal impact |
-| **Memory usage** | Lower | Slightly higher | Usually negligible |
-
-**Bundle size optimization:**
-- Only enable if absolutely necessary (as we do)
-- Use Web Standards APIs when possible (URL, fetch, etc.)
-- Consider alternative packages that don't require Node.js APIs
-
-### Alternatives
-
-If bundle size is a concern, consider:
-
-1. **Use Web Standards APIs directly**:
-   ```typescript
-   // Instead of Node.js crypto
-   import { crypto } from '@cloudflare/workers-types';
-   
-   // Use Web Crypto API
-   const key = await crypto.subtle.generateKey(...);
-   ```
-
-2. **Find alternative packages**:
-   - Look for packages specifically built for Workers/Edge
-   - Use packages that only use Web Standards APIs
-
-3. **Polyfill only what you need**:
-   - Some Node.js APIs can be polyfilled manually
-   - Only include what you actually use
-
-**Current approach:**
-We use `nodejs_compat` because:
-- OpenAI SDK requires it
-- Bundle size increase is acceptable (~100-200 KB)
-- Simpler than maintaining custom polyfills
-
-### When NOT to Use `nodejs_compat`
-
-Don't enable it if:
-- ✅ Your code only uses Web Standards APIs
-- ✅ All dependencies are Worker-compatible
-- ✅ Bundle size is critical (< 128 KB requirement)
-- ✅ You want maximum performance
-
-**Example - Worker without nodejs_compat:**
-```typescript
-// This works without nodejs_compat
-export default {
-  async fetch(request: Request): Promise<Response> {
-    const url = new URL(request.url);
-    return new Response(`Hello from ${url.pathname}`);
-  }
-};
-```
-
----
-
-## Configuration Files
-
-### Worker Configuration
-
-**Location:** `worker/wrangler.toml`
-
-```toml
-name = "easymo-agent-worker"
-main = "src/index.ts"
-compatibility_date = "2025-01-27"
-compatibility_flags = ["nodejs_compat"]
-```
+## Current Configuration
 
 **Location:** `services/agent-runtime/wrangler.toml`
 
@@ -170,131 +21,252 @@ compatibility_date = "2025-01-27"
 compatibility_flags = ["nodejs_compat"]
 ```
 
-### Environment-Specific Configuration
+---
 
-Both workers support environment-specific settings:
+## Compatibility Date
 
+### What It Is
+
+The `compatibility_date` determines which Workers runtime features and behaviors are available. It acts as a "snapshot" of the Workers runtime at that date.
+
+### Current Value
+
+```
+compatibility_date = "2025-01-27"
+```
+
+### Update Policy
+
+**Recommended:** Update quarterly or when new features are needed.
+
+**When to Update:**
+1. **New runtime features needed** (check Cloudflare Workers changelog)
+2. **Security updates** (Cloudflare may require newer compatibility dates)
+3. **Quarterly maintenance** (every 3 months)
+
+**How to Update:**
+1. **Check Cloudflare docs** for latest recommended date
+2. **Update `compatibility_date`** in `wrangler.toml`
+3. **Test thoroughly** in development environment
+4. **Deploy to preview** and test again
+5. **Deploy to production** after verification
+
+**Example:**
 ```toml
-[env.production]
-name = "easymo-agent-worker"
-
-[env.development]
-name = "easymo-agent-worker-dev"
+# Update to latest (check Cloudflare docs for current recommended date)
+compatibility_date = "2025-04-01"
 ```
+
+**⚠️ Warning:** Updating compatibility date can change runtime behavior. Always test before production deployment.
 
 ---
 
-## Testing Runtime Configuration
+## Node.js Compatibility
 
-### Local Testing
+### What It Is
 
-```bash
-cd worker
-npm run dev
-# Worker runs with your wrangler.toml configuration
-```
+The `nodejs_compat` flag enables Node.js API compatibility in the Workers runtime. This allows using Node.js modules and APIs that aren't natively supported.
 
-### Deploy and Test
+### Current Configuration
 
-```bash
-# Deploy to preview
-wrangler deploy --env preview
-
-# Test endpoints
-curl https://your-worker-preview.workers.dev/
-
-# Deploy to production
-wrangler deploy --env production
-```
-
-### Verify Runtime Version
-
-Check your Worker's runtime in Cloudflare Dashboard:
-1. Go to **Workers & Pages** → Your worker
-2. Check **Settings** → **Compatibility date**
-3. Verify it matches your `wrangler.toml`
-
----
-
-## Common Issues
-
-### Issue: "Module not found" or "require is not defined"
-
-**Problem:** Using Node.js APIs without `nodejs_compat`
-
-**Solution:** Enable `nodejs_compat` in `wrangler.toml`:
 ```toml
 compatibility_flags = ["nodejs_compat"]
 ```
 
-### Issue: Bundle size exceeds limits
+### Why It's Needed
 
-**Problem:** Worker bundle is too large
+The Worker uses:
+- **OpenAI SDK**: Requires Node.js APIs
+- **Other Node.js dependencies**: May require Node.js compatibility
 
-**Solutions:**
-1. Check if `nodejs_compat` is needed (see above)
-2. Optimize dependencies
-3. Use dynamic imports for large modules
-4. Consider splitting into multiple Workers
+### Bundle Impact
 
-### Issue: Feature not available
+**⚠️ Important:** `nodejs_compat` adds polyfills and increases bundle size.
 
-**Problem:** Runtime doesn't support a feature you need
+**Estimated Impact:**
+- Without `nodejs_compat`: ~100-200 KB
+- With `nodejs_compat`: ~300-500 KB (varies by dependencies)
 
-**Solution:** Update `compatibility_date` to a newer date that includes the feature
+**Alternatives:**
+1. **Use Workers-native alternatives** (if available)
+2. **Remove Node.js dependencies** (if possible)
+3. **Keep `nodejs_compat`** (if Node.js APIs are required)
 
-### Issue: Breaking changes after updating compatibility_date
+### When to Remove
 
-**Problem:** Code breaks after updating the date
+Consider removing `nodejs_compat` if:
+1. **All dependencies are Workers-compatible**
+2. **No Node.js APIs are used**
+3. **Bundle size is a concern**
+
+**How to Test:**
+1. **Remove `nodejs_compat`** from `wrangler.toml`
+2. **Run `wrangler dev`** locally
+3. **Check for errors** related to Node.js APIs
+4. **If errors occur**, keep `nodejs_compat`
+
+---
+
+## Runtime Assumptions
+
+### ✅ Supported
+
+- **Workers runtime APIs** (Request, Response, Fetch, etc.)
+- **Cloudflare-specific APIs** (KV, Durable Objects, etc.)
+- **Node.js APIs** (with `nodejs_compat` flag)
+- **Web Standards** (URL, TextEncoder, etc.)
+
+### ❌ Not Supported
+
+- **File system access** (no `fs` module)
+- **Native modules** (no native bindings)
+- **Process APIs** (limited `process.env` support)
+- **Long-running processes** (Workers have execution time limits)
+
+---
+
+## Environment Configuration
+
+### Development
+
+```toml
+[env.development]
+name = "easymo-agent-worker-dev"
+```
+
+**Usage:**
+```bash
+wrangler dev --env development
+wrangler deploy --env development
+```
+
+### Production
+
+```toml
+[env.production]
+name = "easymo-agent-worker"
+```
+
+**Usage:**
+```bash
+wrangler deploy --env production
+```
+
+---
+
+## Required Configuration
+
+### Minimum Required Fields
+
+```toml
+name = "worker-name"           # Required: Worker name
+main = "src/index.ts"          # Required: Entry point
+compatibility_date = "YYYY-MM-DD"  # Required: Compatibility date
+```
+
+### Optional Fields
+
+```toml
+compatibility_flags = ["nodejs_compat"]  # Optional: Node.js compatibility
+[vars]                                    # Optional: Non-secret variables
+[env.production]                          # Optional: Environment-specific config
+```
+
+---
+
+## Testing Runtime Compatibility
+
+### Local Testing
+
+```bash
+cd services/agent-runtime
+wrangler dev
+```
+
+**Check for:**
+- ✅ Worker starts without errors
+- ✅ API endpoints respond correctly
+- ✅ No Node.js API errors (if `nodejs_compat` is enabled)
+
+### Production Testing
+
+```bash
+wrangler deploy --env production
+```
+
+**Check for:**
+- ✅ Worker deploys successfully
+- ✅ API endpoints work in production
+- ✅ No runtime errors in logs
+
+---
+
+## Troubleshooting
+
+### Issue: "Compatibility date is too old"
+
+**Error:** Worker fails to deploy with compatibility date error
 
 **Solution:**
-1. Review [changelog](https://developers.cloudflare.com/workers/configuration/compatibility-dates/) for breaking changes
-2. Test in preview first
-3. Update code to match new behavior
+1. Update `compatibility_date` to a recent date
+2. Test thoroughly before production
+3. Check Cloudflare docs for recommended date
+
+### Issue: "Node.js API not found"
+
+**Error:** `ReferenceError: process is not defined` or similar
+
+**Solution:**
+1. Add `nodejs_compat` to `compatibility_flags`
+2. Or refactor to use Workers-native APIs
+3. Check if dependency requires Node.js compatibility
+
+### Issue: Bundle size too large
+
+**Symptoms:** Worker bundle exceeds size limits
+
+**Solutions:**
+1. Remove `nodejs_compat` if not needed
+2. Use Workers-native alternatives
+3. Split Worker into multiple Workers
+4. Use dynamic imports for large dependencies
 
 ---
 
 ## Best Practices
 
-### ✅ DO
+### 1. Keep Compatibility Date Current
 
-- ✅ Keep `compatibility_date` reasonably current (within 3-6 months)
-- ✅ Test compatibility date updates in preview first
-- ✅ Only enable `nodejs_compat` if absolutely necessary
-- ✅ Use Web Standards APIs when possible
-- ✅ Document why you need `nodejs_compat` (which packages require it)
-- ✅ Monitor bundle size when using `nodejs_compat`
+- Update quarterly
+- Test before production
+- Document changes
 
-### ❌ DON'T
+### 2. Minimize Node.js Compatibility
 
-- ❌ Update `compatibility_date` without testing
-- ❌ Enable `nodejs_compat` "just in case"
-- ❌ Use very old compatibility dates (may miss security fixes)
-- ❌ Use very new dates without testing (may have bugs)
+- Only enable `nodejs_compat` if needed
+- Prefer Workers-native APIs
+- Monitor bundle size
+
+### 3. Test Thoroughly
+
+- Test locally with `wrangler dev`
+- Test in preview environment
+- Test in production after deployment
+
+### 4. Document Changes
+
+- Update this document when changing compatibility
+- Note why changes were made
+- Document any breaking changes
 
 ---
 
 ## References
 
-- [Cloudflare Workers Compatibility Dates](https://developers.cloudflare.com/workers/configuration/compatibility-dates/)
-- [Node.js Compatibility](https://developers.cloudflare.com/workers/runtime-apis/nodejs/)
-- [Workers Bundles](https://developers.cloudflare.com/workers/platform/limits/#worker-size)
+- [Cloudflare Workers Compatibility Dates](https://developers.cloudflare.com/workers/platform/compatibility-dates/)
+- [Node.js Compatibility](https://developers.cloudflare.com/workers/platform/compatibility-dates/nodejs-compatibility/)
 - [Wrangler Configuration](https://developers.cloudflare.com/workers/wrangler/configuration/)
 
 ---
 
-## Maintenance Schedule
-
-| Task | Frequency | Next Due |
-|------|-----------|----------|
-| Review compatibility_date | Quarterly | April 2025 |
-| Review nodejs_compat usage | Annually | January 2026 |
-| Check bundle size | After adding dependencies | As needed |
-| Update documentation | When config changes | As needed |
-
----
-
-**Last Updated:** 2025-01-27  
-**Current Compatibility Date:** 2025-01-27  
-**Next Review:** April 2025
-
+**Last Updated:** 2025-01-29

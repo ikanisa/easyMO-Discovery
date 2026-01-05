@@ -1,63 +1,51 @@
-# Cloudflare Worker Local Development Environment Variables
-# Copy this file to .dev.vars (git-ignored) for local development
-# NEVER commit actual secrets to git
-#
-# Usage: wrangler dev (reads .dev.vars automatically)
-# For production: Use 'wrangler secret put' or Cloudflare Dashboard
+# Cloudflare Worker Environment Variables Example
+# Copy this file to .dev.vars for local development
+# DO NOT commit .dev.vars to git (it's in .gitignore)
 
 # ============================================
-# Required Secrets (set via wrangler secret)
+# Required Secrets
 # ============================================
 
-# OpenAI API Key
+# OpenAI API Key (Required)
 # Get from: https://platform.openai.com/api-keys
-OPENAI_API_KEY=sk-proj-YOUR_OPENAI_API_KEY_HERE
+OPENAI_API_KEY=sk-proj-...
 
-# Supabase Configuration
-# Get from: https://app.supabase.com/project/_/settings/api
-SUPABASE_URL=https://your-project-id.supabase.co
-SUPABASE_ANON_KEY=your-supabase-anon-key-here
+# Supabase Configuration (Required)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+# Service role key (optional, for admin operations)
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 
 # ============================================
 # Optional Secrets
 # ============================================
 
-# Supabase Service Role Key (for admin operations)
-# ⚠️ WARNING: Never expose this to client-side code
-SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key-here
+# Google Gemini API Key (Optional - alternative to OpenAI)
+GEMINI_API_KEY=AIzaSy...
 
-# Gemini API Key (for optional geocoding tools)
-# Get from: https://makersuite.google.com/app/apikey
-GEMINI_API_KEY=your-gemini-api-key-here
+# Google Maps API Key (Optional)
+GOOGLE_MAPS_API_KEY=AIzaSy...
 
-# Google Maps API Key (for ETA calculations)
-# Get from: https://console.cloud.google.com/apis/credentials
-GOOGLE_MAPS_API_KEY=your-google-maps-api-key-here
+# SerpAPI Key (Optional - for web search)
+SERPAPI_API_KEY=...
 
-# SerpAPI Key (for web search tools)
-# Get from: https://serpapi.com/dashboard
-SERPAPI_API_KEY=your-serpapi-key-here
+# OAuth Configuration (Optional - for ChatGPT Apps SDK)
+OAUTH_CLIENT_SECRET=...
 
-# OAuth Configuration (for ChatGPT Apps SDK)
-OAUTH_CLIENT_SECRET=your-oauth-client-secret-here
-
-# Cron Secret (for authenticating cron job requests)
-CRON_SECRET=generate-random-secret-here
+# Cron Job Authentication (Optional)
+CRON_SECRET=your-secret-token-here
 
 # ============================================
-# Optional Non-Secret Variables
+# Non-Secret Variables (can be in wrangler.toml)
 # ============================================
-# These can be set in wrangler.toml [vars] section or here
+# These are set in wrangler.toml [vars] section:
+# RATE_LIMIT_MAX_REQUESTS=100
+# RATE_LIMIT_WINDOW_SECONDS=60
 
-# Rate Limiting Configuration
-RATE_LIMIT_MAX_REQUESTS=100
-RATE_LIMIT_WINDOW_SECONDS=60
-
-# OAuth Configuration (non-secret parts)
-OAUTH_CLIENT_ID=your-oauth-client-id-here
-OAUTH_REDIRECT_URI=https://your-worker-url.workers.dev/auth/callback
-OAUTH_AUTHORIZATION_URL=https://oauth-provider.com/authorize
-OAUTH_TOKEN_URL=https://oauth-provider.com/token
-
-# Worker URL (self-referential, for OAuth redirects)
-WORKER_URL=https://your-worker-name.your-subdomain.workers.dev
+# ============================================
+# Notes
+# ============================================
+# - For local development: Copy to .dev.vars
+# - For production: Use 'wrangler secret put VARIABLE_NAME --env production'
+# - Never commit .dev.vars to git
+# - See docs/deploy/env-matrix.md for complete variable matrix

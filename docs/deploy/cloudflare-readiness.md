@@ -1,22 +1,26 @@
-# Cloudflare Deployment Readiness Audit
+# Cloudflare Production Deployment Readiness Audit
 
-**Date:** 2025-01-27  
+**Date:** 2025-01-29  
 **Auditor:** Senior Release Engineer  
-**Target:** Cloudflare Pages + Workers Deployment
+**Target:** Cloudflare Pages (Frontend) + Workers (Separate API)  
+**Deployment Shape:** **Option C - Pages + Workers (separate API)**
 
 ---
 
 ## Executive Summary
 
-This repository contains a **React + Vite PWA** frontend and a **Cloudflare Worker** backend. The frontend is already partially configured for Cloudflare Pages deployment. Key findings:
+This repository is **production-ready** for Cloudflare deployment with minor enhancements needed. The codebase follows best practices for a monorepo with separate frontend (PWA) and backend (Worker) services.
 
-- ✅ **Frontend app identified**: Vite + React SPA in `apps/pwa/`
-- ✅ **SPA routing configured**: `_redirects` file exists
-- ✅ **Security headers configured**: `_headers` file exists
-- ⚠️ **Worker configuration present**: Separate Worker in `worker/` directory
-- ⚠️ **Multiple env var sources**: Frontend and Worker env vars need coordination
-- ❌ **CI/CD missing**: No GitHub Actions workflow for Cloudflare deployment
-- ⚠️ **Build output mismatch**: Root `wrangler.toml` points to `apps/pwa/dist`, but build command may differ
+**Overall Status:** ✅ **READY** (with recommended enhancements)
+
+**Key Findings:**
+- ✅ Frontend: Vite + React SPA properly configured
+- ✅ SPA routing: `_redirects` file exists and correctly configured
+- ✅ Security headers: `_headers` file exists with comprehensive CSP
+- ✅ Worker: Separate Worker service with proper `wrangler.toml`
+- ✅ Environment variables: Well-documented and properly separated
+- ⚠️ CI/CD: Basic CI exists, needs Cloudflare deployment workflow
+- ⚠️ Build reproducibility: Lockfile committed, but Node version not pinned
 
 ---
 
@@ -27,43 +31,59 @@ This repository contains a **React + Vite PWA** frontend and a **Cloudflare Work
 **Location:** `apps/pwa/`
 
 **Framework:**
-- **Vite** + **React 18.2.0**
-- **TypeScript**
-- **PWA Support**: `vite-plugin-pwa` with injectManifest strategy
+- **Vite 6.4.1** + **React 18.2.0**
+- **TypeScript 5.8**
+- **PWA Support**: `vite-plugin-pwa` with `injectManifest` strategy
 - **Styling**: Tailwind CSS + PostCSS
+- **State Management**: Zustand + TanStack Query
+- **Routing**: State-based (query params), no React Router
 
 **Build Configuration:**
 ```typescript
 // apps/pwa/vite.config.ts
 - Build output directory: `dist/` (Vite default)
-- Service worker: `pwa/service-worker.ts` (custom implementation)
-- Manual chunking: Disabled (let Vite optimize automatically)
+- Service worker: `pwa/service-worker.ts` (custom Workbox implementation)
+- Manual chunking: Enabled (react-vendor, supabase-vendor, etc.)
+- Target: ES2022
+- Minify: esbuild
+- Source maps: Disabled in production
 ```
 
 **Package Scripts:**
 ```json
 {
   "build": "vite build",
+  "preview": "vite preview",
   "pages:build": "npm run build",
   "pages:deploy": "npm run build && npx wrangler pages deploy dist --project-name discovery"
 }
 ```
 
+**Status:** ✅ **Production-ready**
+
 ### 1.2 Build Output Directory
 
-**Current Configuration:**
+**Configuration:**
 - **Vite build output**: `apps/pwa/dist/`
-- **Root wrangler.toml**: Points to `pages_build_output_dir = "apps/pwa/dist"`
-- **cloudflare.json**: Points to `"publish": "apps/pwa/dist"`
+- **Cloudflare Pages publish directory**: `apps/pwa/dist`
+- **Static assets**: Copied from `apps/pwa/public/` to `dist/`
 
-**Status:** ✅ Consistent configuration
+**Files Copied to Output:**
+- `_redirects` → `dist/_redirects`
+- `_headers` → `dist/_headers`
+- `404.html` → `dist/404.html`
+- `offline.html` → `dist/offline.html`
+- `manifest.webmanifest` → `dist/manifest.webmanifest`
+- Icons, screenshots, etc.
 
-### 1.3 SPA Routing Requirements
+**Status:** ✅ **Correctly configured**
 
-**Current Routing Implementation:**
-- **No React Router**: Uses state-based navigation with `window.history`
-- Routes determined by query params (`?mode=discovery`) and internal state
-- URL structure: Base URL only (no deep linking to routes like `/discovery`)
+### 1.3 SPA Routing
+
+**Current Implementation:**
+- Uses state-based navigation with `window.history.pushState`
+- Routes determined by query params (`?mode=discovery`, `?mode=business`)
+- No deep linking to paths like `/discovery` (uses query params only)
 
 **Current `_redirects` Configuration:**
 ```apache
@@ -71,155 +91,112 @@ This repository contains a **React + Vite PWA** frontend and a **Cloudflare Work
 /*    /index.html   200
 ```
 
-**Status:** ✅ SPA fallback configured correctly
+**Status:** ✅ **Correctly configured for SPA fallback**
 
-**Recommendation:** 
-- Current implementation works but doesn't support deep linking
-- If deep linking is needed (e.g., `/discovery`, `/business`), implement React Router or enhance state-based routing
-- For now, the `_redirects` rule correctly handles all paths → `index.html`
+**Note:** Current routing doesn't support deep linking to paths (e.g., `/discovery`). If deep linking is needed, consider implementing React Router. For now, the redirect correctly handles all paths → `index.html`.
 
 ### 1.4 Static Assets & PWA
 
-**Static Assets Location:**
-- Icons: `apps/pwa/public/icons/`
+**Static Assets:**
+- Icons: `apps/pwa/public/icons/` (192px, 512px, maskable)
 - Manifest: `apps/pwa/public/manifest.webmanifest`
 - Offline fallback: `apps/pwa/public/offline.html`
 - Service worker: Generated at `apps/pwa/dist/service-worker.js`
 
-**Service Worker Strategy:**
-- **InjectManifest**: Custom service worker with offline queue support
+**Service Worker:**
+- **Strategy**: `injectManifest` (custom Workbox implementation)
 - **Scope**: Root (`/`)
-- **Cache Strategy**: Custom (see `pwa/service-worker.ts`)
+- **Cache Strategy**: Network-first with offline fallback
+- **Offline Queue**: IndexedDB-based mutation queue
 
-**Headers Configuration:**
-- `apps/pwa/public/_headers` exists with comprehensive security headers
-- CSP configured for Supabase, Cloudflare, and self
+**Status:** ✅ **Production-ready**
 
 ---
 
 ## 2. Backend Edge Code Analysis
 
-### 2.1 Cloudflare Workers
+### 2.1 Cloudflare Worker
 
-**Primary Worker:** `worker/`
+**Location:** `services/agent-runtime/`
 
-**Configuration:**
-```toml
-# worker/wrangler.toml
-name = "easymo-agent-worker"
-main = "src/index.ts"
-compatibility_date = "2024-12-01"
-compatibility_flags = ["nodejs_compat"]
-```
+**Worker Configuration:**
+- **Name**: `easymo-agent-worker`
+- **Main Entry**: `src/index.ts`
+- **Compatibility Date**: `2025-01-27`
+- **Compatibility Flags**: `nodejs_compat` (required for OpenAI SDK)
 
 **Runtime Assumptions:**
-- ✅ **Node.js Compatibility**: Uses `nodejs_compat` flag
-- ✅ **No native modules**: Pure JavaScript/TypeScript
-- ✅ **No file system**: Uses Workers KV (optional), no `fs` access
-- ✅ **Standard Web APIs**: `fetch`, `Request`, `Response`, `URL`
-- ⚠️ **OpenAI SDK**: Uses `openai` npm package (compatible with Workers)
-
-**Worker Features:**
-- OpenAI Agents SDK backend
-- Router agent for message routing
-- Specialized agents: mobility, marketplace, payments, support
-- MCP server support (`/mcp` endpoints)
-- Rate limiting via KV (optional)
-- Streaming SSE responses
-- OAuth endpoints for ChatGPT Apps SDK
+- ✅ Uses Workers runtime APIs (no Node.js file system)
+- ✅ Uses `nodejs_compat` for OpenAI SDK compatibility
+- ✅ No native modules
+- ✅ Uses Cloudflare KV for rate limiting (optional)
+- ✅ Uses Supabase client (browser-compatible)
 
 **API Endpoints:**
 - `POST /` - Chat endpoint (streaming and non-streaming)
-- `GET /mcp/*` - MCP server endpoints
-- `GET /app/metadata` - App metadata for ChatGPT Apps
+- `GET /mcp/*` - MCP server endpoints for ChatGPT Apps SDK
+- `GET /app/metadata` - App metadata
 - `GET /auth/authorize`, `/auth/callback` - OAuth endpoints
 - `GET /cron/update-vector-store` - Cron job endpoint
 
-**Additional Worker:** `services/agent-runtime/`
-- Similar configuration to `worker/`
-- Appears to be an alternative/duplicate implementation
-- **Recommendation:** Consolidate or document which one to use
+**Status:** ✅ **Production-ready**
 
 ### 2.2 Pages Functions
 
 **Status:** ❌ **No Pages Functions detected**
 
-**Files Found:**
-- `supabase/functions/*` - These are **Supabase Edge Functions**, not Cloudflare Pages Functions
-- No `functions/` directory at root or in `apps/pwa/`
-
-**Recommendation:** If server-side rendering or API proxying is needed, implement Pages Functions in `apps/pwa/functions/` (see deployment plan).
+**Recommendation:** Not needed. The Worker handles all backend logic. Pages Functions would only be needed for:
+- Server-side rendering (not applicable for SPA)
+- API proxying (not needed, Worker is separate)
+- Middleware (not needed, handled in Worker)
 
 ---
 
 ## 3. Environment Variables Matrix
 
-### 3.1 Frontend Environment Variables (Vite)
+### 3.1 Frontend Environment Variables (Public)
 
 **Location:** Set in Cloudflare Pages dashboard or `.env.local`  
-**Access Pattern:** `import.meta.env.VITE_*`
+**Access Pattern:** `import.meta.env.VITE_*`  
+**Build-time:** Embedded into JavaScript bundle
 
-| Variable | Required | Dev | Preview | Production | Notes |
-|----------|----------|-----|---------|------------|-------|
-| `VITE_SUPABASE_URL` | ✅ Yes | ✅ | ✅ | ✅ | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | ✅ Yes | ✅ | ✅ | ✅ | Supabase anonymous key (public) |
-| `VITE_WORKER_URL` | ⚠️ Conditional | ⚠️ | ⚠️ | ⚠️ | Worker URL if using worker agent (ENABLE_WORKER_AGENT=true) |
-| `VITE_GOOGLE_MAPS_API_KEY` | ❌ Optional | ❌ | ❌ | ❌ | For SmartLocationInput component |
-| `VITE_VAPID_PUBLIC_KEY` | ❌ Optional | ❌ | ❌ | ❌ | For push notifications |
-| `VITE_PUSH_ENDPOINT` | ❌ Optional | ❌ | ❌ | ❌ | Push notification endpoint |
-| `VITE_RUM_ENDPOINT` | ❌ Optional | ❌ | ❌ | ❌ | Real User Monitoring endpoint |
+| Variable | Required | Dev | Preview | Production | Description | Where Configured |
+|----------|----------|-----|---------|------------|-------------|------------------|
+| `VITE_SUPABASE_URL` | ✅ Yes | ✅ | ✅ | ✅ | Supabase project URL | Pages Dashboard / `.env.local` |
+| `VITE_SUPABASE_ANON_KEY` | ✅ Yes | ✅ | ✅ | ✅ | Supabase anonymous key (public) | Pages Dashboard / `.env.local` |
+| `VITE_WORKER_URL` | ⚠️ Conditional | ⚠️ | ⚠️ | ⚠️ | Worker URL (if `ENABLE_WORKER_AGENT=true`) | Pages Dashboard / `.env.local` |
+| `VITE_GOOGLE_MAPS_API_KEY` | ❌ Optional | ❌ | ❌ | ❌ | Google Maps API key | Pages Dashboard / `.env.local` |
+| `VITE_VAPID_PUBLIC_KEY` | ❌ Optional | ❌ | ❌ | ❌ | VAPID public key for push | Pages Dashboard / `.env.local` |
+| `VITE_PUSH_ENDPOINT` | ❌ Optional | ❌ | ❌ | ❌ | Push notification endpoint | Pages Dashboard / `.env.local` |
+| `VITE_RUM_ENDPOINT` | ❌ Optional | ❌ | ❌ | ❌ | Real User Monitoring endpoint | Pages Dashboard / `.env.local` |
+| `VITE_SENTRY_DSN` | ❌ Optional | ❌ | ❌ | ❌ | Sentry DSN for error tracking | Pages Dashboard / `.env.local` |
+| `VITE_LOG_ENDPOINT` | ❌ Optional | ❌ | ❌ | ❌ | Structured logging endpoint | Pages Dashboard / `.env.local` |
 
-**Files Using Env Vars:**
-- `apps/pwa/services/supabase.ts`: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`
-- `apps/pwa/services/agent.ts`: `VITE_WORKER_URL`
-- `apps/pwa/config.ts`: `VITE_WORKER_URL`
-- `apps/pwa/components/Location/SmartLocationInput.tsx`: `VITE_GOOGLE_MAPS_API_KEY`
-- `apps/pwa/services/push.ts`: `VITE_VAPID_PUBLIC_KEY`, `VITE_PUSH_ENDPOINT`
-- `apps/pwa/services/vitals.ts`: `VITE_RUM_ENDPOINT`
+**Security Note:** All `VITE_*` variables are public and embedded in the bundle. Never put secrets here.
 
-### 3.2 Worker Environment Variables
+### 3.2 Worker Environment Variables (Secrets)
 
-**Location:** Set via `wrangler secret` or Cloudflare Dashboard  
-**Access Pattern:** `env.VARIABLE_NAME` (via `Env` interface)
+**Location:** Set via `wrangler secret put` or Cloudflare Dashboard  
+**Access Pattern:** `env.VARIABLE_NAME` in Worker code  
+**Runtime:** Loaded at Worker execution time
 
-| Variable | Required | Type | Dev | Preview | Production | Notes |
-|----------|----------|------|-----|---------|------------|-------|
-| `OPENAI_API_KEY` | ✅ Yes | Secret | ✅ | ✅ | ✅ | OpenAI API key |
-| `SUPABASE_URL` | ✅ Yes | Secret | ✅ | ✅ | ✅ | Supabase project URL |
-| `SUPABASE_ANON_KEY` | ✅ Yes | Secret | ✅ | ✅ | ✅ | Supabase anonymous key |
-| `SUPABASE_SERVICE_ROLE_KEY` | ❌ Optional | Secret | ❌ | ❌ | ❌ | For admin operations |
-| `GEMINI_API_KEY` | ❌ Optional | Secret | ❌ | ❌ | ❌ | For optional geocoding tools |
-| `GOOGLE_MAPS_API_KEY` | ❌ Optional | Secret | ❌ | ❌ | ❌ | For ETA calculations |
-| `SERPAPI_API_KEY` | ❌ Optional | Secret | ❌ | ❌ | ❌ | For web search tools |
-| `RATE_LIMIT_MAX_REQUESTS` | ❌ Optional | Plain | ❌ | ❌ | ❌ | Default: 100 |
-| `RATE_LIMIT_WINDOW_SECONDS` | ❌ Optional | Plain | ❌ | ❌ | ❌ | Default: 60 |
-| `OAUTH_CLIENT_ID` | ❌ Optional | Secret | ❌ | ❌ | ❌ | For ChatGPT Apps OAuth |
-| `OAUTH_CLIENT_SECRET` | ❌ Optional | Secret | ❌ | ❌ | ❌ | For ChatGPT Apps OAuth |
-| `OAUTH_REDIRECT_URI` | ❌ Optional | Plain | ❌ | ❌ | ❌ | For ChatGPT Apps OAuth |
-| `OAUTH_AUTHORIZATION_URL` | ❌ Optional | Plain | ❌ | ❌ | ❌ | For ChatGPT Apps OAuth |
-| `OAUTH_TOKEN_URL` | ❌ Optional | Plain | ❌ | ❌ | ❌ | For ChatGPT Apps OAuth |
-| `WORKER_URL` | ❌ Optional | Plain | ❌ | ❌ | ❌ | Self-referential URL |
-| `CRON_SECRET` | ❌ Optional | Secret | ❌ | ❌ | ❌ | For cron job authentication |
+| Variable | Required | Type | Dev | Preview | Production | Description | Where Configured |
+|----------|----------|------|-----|---------|------------|-------------|------------------|
+| `OPENAI_API_KEY` | ✅ Yes | Secret | ✅ | ✅ | ✅ | OpenAI API key | `wrangler secret put` |
+| `SUPABASE_URL` | ✅ Yes | Secret | ✅ | ✅ | ✅ | Supabase project URL | `wrangler secret put` or `[vars]` |
+| `SUPABASE_ANON_KEY` | ✅ Yes | Secret | ✅ | ✅ | ✅ | Supabase anonymous key | `wrangler secret put` or `[vars]` |
+| `SUPABASE_SERVICE_ROLE_KEY` | ⚠️ Optional | Secret | ⚠️ | ⚠️ | ⚠️ | Service role key (admin) | `wrangler secret put` |
+| `GEMINI_API_KEY` | ❌ Optional | Secret | ❌ | ❌ | ❌ | Google Gemini API key | `wrangler secret put` |
+| `GOOGLE_MAPS_API_KEY` | ❌ Optional | Secret | ❌ | ❌ | ❌ | Google Maps API key | `wrangler secret put` |
+| `SERPAPI_API_KEY` | ❌ Optional | Secret | ❌ | ❌ | ❌ | SerpAPI key for search | `wrangler secret put` |
+| `OAUTH_CLIENT_SECRET` | ❌ Optional | Secret | ❌ | ❌ | ❌ | OAuth client secret | `wrangler secret put` |
+| `CRON_SECRET` | ❌ Optional | Secret | ❌ | ❌ | ❌ | Cron job authentication | `wrangler secret put` |
 
-**Worker Bindings (Optional):**
-- `KV`: KVNamespace for rate limiting (create via `wrangler kv:namespace create`)
-- `DB`: D1Database (if using D1)
-- `R2`: R2Bucket (if using R2 storage)
+**Non-Secret Worker Variables** (can be in `wrangler.toml`):
+- `RATE_LIMIT_MAX_REQUESTS` (default: 100)
+- `RATE_LIMIT_WINDOW_SECONDS` (default: 60)
 
-**Files Using Env Vars:**
-- `worker/src/index.ts`: All env vars via `Env` interface
-- `worker/src/types.ts`: Type definitions
-- `services/agent-runtime/src/types.ts`: Same type definitions
-
-### 3.3 Environment Variable Coordination
-
-**Critical Dependencies:**
-1. **Worker URL → Frontend**: If `ENABLE_WORKER_AGENT=true`, frontend needs `VITE_WORKER_URL` pointing to deployed Worker
-2. **Supabase**: Both frontend and Worker need Supabase credentials (frontend: anon key, Worker: anon key + optional service role)
-
-**Recommendation:**
-- Deploy Worker first, then set `VITE_WORKER_URL` in Pages environment variables
-- Use Cloudflare Workers dashboard to get Worker URL after deployment
+**Status:** ✅ **Well-documented and properly separated**
 
 ---
 
@@ -227,526 +204,341 @@ compatibility_flags = ["nodejs_compat"]
 
 ### 4.1 Pages Configuration
 
-#### 4.1.1 Root `wrangler.toml` (Pages Config)
+**Project Setup:**
+1. **Production Branch**: `main`
+2. **Root Directory**: `apps/pwa` (monorepo subfolder)
+3. **Build Command**: `pnpm run build`
+4. **Output Directory**: `dist`
+5. **Node Version**: 20 (set in Pages settings)
 
-**Current File:** `wrangler.toml` (root)
+**Configuration Method:**
+- Use Cloudflare Pages Dashboard: Settings → Builds & deployments
+- Or use `wrangler pages project create` for CLI-based setup
 
-**Required Changes:**
-```toml
-# Cloudflare Pages Configuration
-name = "easymo-discovery"
-compatibility_date = "2024-12-01"
-pages_build_output_dir = "apps/pwa/dist"
+**Environment Variables:**
+- Set in Pages Dashboard: Settings → Environment variables
+- Separate values for Production, Preview, and Development
 
-# Build configuration (optional - can set in dashboard)
-# [build]
-# command = "npm run build --workspace=apps/pwa"
-# [build.environment]
-# NODE_VERSION = "20"
-
-# Environment variables are set in Cloudflare Dashboard (Pages → Settings → Environment variables)
-# Required for frontend:
-# - VITE_SUPABASE_URL
-# - VITE_SUPABASE_ANON_KEY
-# Optional:
-# - VITE_WORKER_URL
-# - VITE_GOOGLE_MAPS_API_KEY
-# - VITE_VAPID_PUBLIC_KEY
-# - VITE_PUSH_ENDPOINT
-# - VITE_RUM_ENDPOINT
-```
-
-**Status:** ✅ Already configured correctly
-
-#### 4.1.2 `_redirects` File
-
-**Current File:** `apps/pwa/public/_redirects`
-
-**Current Content:**
-```apache
-/*    /index.html   200
-```
-
-**Status:** ✅ Correct SPA fallback
-
-**No Changes Required**
-
-#### 4.1.3 `_headers` File
-
-**Current File:** `apps/pwa/public/_headers`
-
-**Status:** ✅ Comprehensive security headers configured
-
-**No Changes Required** (verify CSP allows Cloudflare domains if needed)
-
-#### 4.1.4 404 Page
-
-**Current File:** `apps/pwa/public/offline.html` (exists)
-
-**Recommendation:**
-- Cloudflare Pages will use `index.html` for 404s if `_redirects` rule exists
-- Consider adding a custom `404.html` for better UX
-- Or ensure offline.html is copied to `dist/404.html` during build
-
-**Action Item:**
-```bash
-# Add to vite.config.ts build hooks:
-build: {
-  rollupOptions: { /* ... */ },
-  // Copy offline.html as 404.html
-  copyPublicDir: true, // Already default
-}
-# Or manually: cp apps/pwa/public/offline.html apps/pwa/public/404.html
-```
+**Status:** ⚠️ **Needs manual configuration in Cloudflare Dashboard**
 
 ### 4.2 Worker Configuration
 
-#### 4.2.1 Worker `wrangler.toml`
-
-**Current File:** `worker/wrangler.toml`
-
-**Required Changes:**
+**Current `wrangler.toml`:**
 ```toml
-# Cloudflare Worker Configuration for OpenAI Agents SDK
+# services/agent-runtime/wrangler.toml
 name = "easymo-agent-worker"
 main = "src/index.ts"
-compatibility_date = "2024-12-01"
+compatibility_date = "2025-01-27"
 compatibility_flags = ["nodejs_compat"]
-
-# KV namespace for rate limiting (optional but recommended)
-# Create with: wrangler kv:namespace create "RATE_LIMIT_KV" --preview false
-# Then add the namespace ID below
-# [[kv_namespaces]]
-# binding = "KV"
-# id = "YOUR_KV_NAMESPACE_ID"
-# preview_id = "YOUR_PREVIEW_KV_NAMESPACE_ID"
-
-# Environment variables are set via wrangler secret or Cloudflare Dashboard
-# Required Secrets:
-# - OPENAI_API_KEY
-# - SUPABASE_URL
-# - SUPABASE_ANON_KEY
-# Optional Secrets: (see full list in section 3.2)
-
-[env.production]
-name = "easymo-agent-worker"
-# Uncomment if using custom domain:
-# routes = [
-#   { pattern = "api.yourdomain.com", zone_name = "yourdomain.com" }
-# ]
-
-[env.preview]
-name = "easymo-agent-worker-preview"
 ```
 
-**Status:** ⚠️ Needs KV namespace configuration if rate limiting is used
-
-#### 4.2.2 Node.js Compatibility
-
-**Current:** ✅ `nodejs_compat` flag already set
-
-**Status:** ✅ Correctly configured
-
-### 4.3 CI/CD Configuration
-
-#### 4.3.1 GitHub Actions Workflow
-
-**Current:** ❌ **No GitHub Actions workflow for Cloudflare deployment**
-
-**Required File:** `.github/workflows/cloudflare-deploy.yml`
-
-**Implementation Plan:**
-```yaml
-name: Deploy to Cloudflare
-
-on:
-  push:
-    branches:
-      - main
-      - master
-  pull_request:
-    branches:
-      - main
-      - master
-
-jobs:
-  deploy-pages:
-    name: Deploy Pages
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      deployments: write
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-      
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Build frontend
-        run: npm run build --workspace=apps/pwa
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_WORKER_URL: ${{ secrets.VITE_WORKER_URL }}
-      
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: discovery
-          directory: apps/pwa/dist
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-
-  deploy-worker:
-    name: Deploy Worker
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: worker/package-lock.json
-      
-      - name: Install worker dependencies
-        working-directory: ./worker
-        run: npm ci
-      
-      - name: Deploy Worker
-        working-directory: ./worker
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: deploy
+**Deployment:**
+```bash
+cd services/agent-runtime
+wrangler deploy
+# Or for production:
+wrangler deploy --env production
 ```
 
-**GitHub Secrets Required:**
-- `CLOUDFLARE_API_TOKEN` - Cloudflare API token with Pages/Workers permissions
-- `CLOUDFLARE_ACCOUNT_ID` - Cloudflare Account ID
-- `VITE_SUPABASE_URL` - Supabase URL (for build-time)
-- `VITE_SUPABASE_ANON_KEY` - Supabase anon key (for build-time)
-- `VITE_WORKER_URL` - Worker URL (for build-time, set after first Worker deploy)
-
-**Worker Secrets:** Set via Cloudflare Dashboard or `wrangler secret` (not in GitHub Actions for security)
-
-### 4.4 Build Configuration
-
-#### 4.4.1 Cloudflare Pages Build Settings
-
-**Option 1: Dashboard Configuration (Recommended)**
-```
-Build command: npm run build --workspace=apps/pwa
-Build output directory: apps/pwa/dist
-Root directory: (leave empty or set to root)
-Node version: 20
+**Secrets Management:**
+```bash
+# Set secrets per environment
+wrangler secret put OPENAI_API_KEY --env production
+wrangler secret put SUPABASE_URL --env production
+# etc.
 ```
 
-**Option 2: `cloudflare.json` (Legacy)**
-**Current File:** `apps/pwa/cloudflare.json`
+**Status:** ✅ **Properly configured**
 
-**Status:** ⚠️ Can be used but dashboard settings take precedence
+### 4.3 Routing & Headers
 
-**Content:**
-```json
-{
-  "build": {
-    "command": "npm run build",
-    "cwd": "apps/pwa",
-    "watch": []
-  },
-  "deploy": {
-    "publish": "apps/pwa/dist"
-  }
-}
-```
+**SPA Routing:**
+- ✅ `_redirects` file exists: `apps/pwa/public/_redirects`
+- ✅ All routes → `index.html` (200 status)
+- ✅ Static assets preserved (Cloudflare serves files first)
 
-### 4.5 File Structure for Deployment
+**Security Headers:**
+- ✅ `_headers` file exists: `apps/pwa/public/_headers`
+- ✅ CSP configured (needs tuning per environment)
+- ✅ Caching rules configured
+- ✅ Security headers (X-Frame-Options, HSTS, etc.)
 
-**Required Files in `apps/pwa/public/` (copied to `dist/`):**
-- ✅ `_redirects` → `dist/_redirects`
-- ✅ `_headers` → `dist/_headers`
-- ✅ `manifest.webmanifest` → `dist/manifest.webmanifest`
-- ✅ `offline.html` → `dist/offline.html`
-- ✅ Icons and static assets
+**Status:** ✅ **Production-ready** (CSP may need tuning)
 
-**Vite Configuration:**
-- `publicDir: 'public'` (default) - ensures all files in `public/` are copied to `dist/`
+### 4.4 404 Handling
 
-**Status:** ✅ No changes needed (Vite handles this automatically)
+**Current Implementation:**
+- ✅ `404.html` exists: `apps/pwa/public/404.html`
+- ✅ SPA fallback via `_redirects` handles client-side routes
+- ✅ `404.html` serves for truly missing static files
+
+**Status:** ✅ **Properly configured**
 
 ---
 
-## 5. Deployment Checklist
+## 5. Build Reproducibility
 
-### 5.1 Pre-Deployment
+### 5.1 Lockfile
 
-- [ ] **Cloudflare Account Setup**
-  - [ ] Create Cloudflare account
-  - [ ] Create API token with `Account.Cloudflare Pages:Edit` and `Account.Cloudflare Workers:Edit` permissions
-  - [ ] Note Account ID from dashboard
+**Status:** ✅ **Lockfile committed**
+- `pnpm-lock.yaml` is committed to git
+- CI uses `--frozen-lockfile` flag
 
-- [ ] **Environment Variables - Frontend (Pages)**
-  - [ ] Set `VITE_SUPABASE_URL` in Cloudflare Pages dashboard (Production, Preview, Development)
-  - [ ] Set `VITE_SUPABASE_ANON_KEY` in Cloudflare Pages dashboard
-  - [ ] Set `VITE_WORKER_URL` (after Worker is deployed)
-  - [ ] Optionally set: `VITE_GOOGLE_MAPS_API_KEY`, `VITE_VAPID_PUBLIC_KEY`, `VITE_PUSH_ENDPOINT`, `VITE_RUM_ENDPOINT`
+### 5.2 Node Version
 
-- [ ] **Worker Setup**
-  - [ ] Navigate to `worker/` directory
-  - [ ] Install dependencies: `npm install`
-  - [ ] Set secrets via `wrangler secret put`:
-    - [ ] `OPENAI_API_KEY`
-    - [ ] `SUPABASE_URL`
-    - [ ] `SUPABASE_ANON_KEY`
-    - [ ] Optionally: `SUPABASE_SERVICE_ROLE_KEY`, `GEMINI_API_KEY`, `GOOGLE_MAPS_API_KEY`, etc.
-  - [ ] (Optional) Create KV namespace: `wrangler kv:namespace create "RATE_LIMIT_KV"`
-  - [ ] Update `worker/wrangler.toml` with KV namespace ID if created
-  - [ ] Deploy Worker: `npm run deploy`
-  - [ ] Note Worker URL from deployment output
-  - [ ] Update `VITE_WORKER_URL` in Pages environment variables
+**Status:** ⚠️ **Not pinned in repo**
 
-- [ ] **GitHub Actions Setup** (if using CI/CD)
-  - [ ] Add `CLOUDFLARE_API_TOKEN` to GitHub Secrets
-  - [ ] Add `CLOUDFLARE_ACCOUNT_ID` to GitHub Secrets
-  - [ ] Add build-time env vars to GitHub Secrets (if building in CI)
-  - [ ] Create `.github/workflows/cloudflare-deploy.yml`
+**Current:**
+- CI uses Node 20 (hardcoded in GitHub Actions)
+- No `.nvmrc` or `packageManager` field
 
-### 5.2 Deployment Steps
+**Recommendation:**
+- Add `.nvmrc` with `20` (or specific version)
+- Add `packageManager` field to `package.json`
+- Ensure Cloudflare Pages uses Node 20
 
-- [ ] **Deploy Worker First**
-  ```bash
-  cd worker
-  npm install
-  wrangler secret put OPENAI_API_KEY
-  wrangler secret put SUPABASE_URL
-  wrangler secret put SUPABASE_ANON_KEY
-  npm run deploy
-  ```
+### 5.3 Build Scripts
 
-- [ ] **Deploy Pages**
-  - Option A: Via Dashboard
-    - [ ] Go to Cloudflare Dashboard → Pages
-    - [ ] Create new project: "discovery"
-    - [ ] Connect GitHub repository (or upload manually)
-    - [ ] Set build settings:
-      - Build command: `npm run build --workspace=apps/pwa`
-      - Output directory: `apps/pwa/dist`
-      - Node version: 20
-    - [ ] Set environment variables
-    - [ ] Deploy
-
-  - Option B: Via CLI
-    ```bash
-    cd apps/pwa
-    npm run build
-    npx wrangler pages deploy dist --project-name discovery
-    ```
-
-- [ ] **Verify Deployment**
-  - [ ] Test frontend: Visit Pages URL
-  - [ ] Test Worker: `curl -X POST https://easymo-agent-worker.YOUR_SUBDOMAIN.workers.dev/`
-  - [ ] Verify environment variables are accessible
-  - [ ] Test SPA routing (navigate between views)
-  - [ ] Test service worker (offline functionality)
-  - [ ] Test Worker integration (if `ENABLE_WORKER_AGENT=true`)
-
-### 5.3 Post-Deployment
-
-- [ ] **Custom Domain** (if applicable)
-  - [ ] Add custom domain in Cloudflare Pages settings
-  - [ ] Configure DNS records
-  - [ ] Update `VITE_WORKER_URL` if Worker has custom domain
-  - [ ] Update Worker routes in `wrangler.toml` if needed
-
-- [ ] **Monitoring**
-  - [ ] Set up Cloudflare Analytics
-  - [ ] Configure error tracking (if using Sentry, update `SENTRY_DSN`)
-  - [ ] Monitor Worker usage and errors
-
-- [ ] **Documentation**
-  - [ ] Document deployed URLs
-  - [ ] Update README with deployment instructions
-  - [ ] Document environment variable setup process
+**Status:** ✅ **Authoritative scripts defined**
+- `pnpm run build` - Production build
+- `pnpm run preview` - Local preview
+- `pnpm run test:e2e` - E2E tests
+- `pnpm run security:check` - Security checks
 
 ---
 
-## 6. Risks & Mitigation
+## 6. CI/CD Pipeline
 
-### 6.1 High Priority Risks
+### 6.1 Current CI
 
-| Risk | Impact | Likelihood | Mitigation |
-|------|--------|------------|------------|
-| **Missing Environment Variables** | High | Medium | ✅ Comprehensive env var matrix above. Document in deployment checklist. |
-| **Worker URL Not Set** | Medium | Medium | Deploy Worker first, then set `VITE_WORKER_URL`. Use fallback in config if missing. |
-| **Build Output Mismatch** | High | Low | ✅ Verified: `wrangler.toml` and `cloudflare.json` both point to `apps/pwa/dist` |
-| **SPA Routing Broken** | Medium | Low | ✅ `_redirects` file exists and correctly configured |
-| **Service Worker Not Working** | Medium | Low | Test offline functionality. Ensure `service-worker.js` is in `dist/` |
-| **CORS Issues with Worker** | Medium | Medium | ✅ Worker already has CORS headers configured. Verify frontend origin matches. |
+**Location:** `.github/workflows/ci.yml`
 
-### 6.2 Medium Priority Risks
+**Current Jobs:**
+- ✅ Lint and typecheck
+- ✅ Security checks
+- ✅ Tests
+- ✅ E2E tests
+- ✅ Build verification
 
-| Risk | Impact | Likelihood | Mitigation |
-|------|--------|------------|------------|
-| **Node.js Compatibility Issues** | Low | Low | ✅ `nodejs_compat` flag set. No native modules detected. |
-| **Rate Limiting Not Configured** | Low | Medium | KV namespace optional. Document setup in checklist. |
-| **No CI/CD** | Low | High | ⚠️ No GitHub Actions workflow. Add workflow from section 4.3.1. |
-| **Duplicate Worker Configs** | Low | Low | ⚠️ Two workers exist (`worker/` and `services/agent-runtime/`). Document which to use. |
-| **Missing 404 Page** | Low | Low | Consider adding `404.html` for better UX. |
+**Status:** ✅ **Comprehensive CI checks**
 
-### 6.3 Low Priority Risks
+### 6.2 Deployment Workflow
 
-| Risk | Impact | Likelihood | Mitigation |
-|------|--------|------------|------------|
-| **CSP Too Restrictive** | Low | Low | Test CSP headers. Update `_headers` if Cloudflare domains needed. |
-| **Build Performance** | Low | Low | Monorepo build may be slow. Consider build caching. |
-| **Multiple Wrangler Configs** | Low | Low | Root `wrangler.toml` (Pages) vs `worker/wrangler.toml` (Worker). Document distinction. |
+**Status:** ❌ **Missing Cloudflare deployment workflow**
+
+**Current:**
+- Manual deployment via `wrangler pages deploy`
+- No automated deployment on merge to `main`
+
+**Recommendation:**
+- Add GitHub Actions workflow for Cloudflare Pages deployment
+- Use Wrangler Direct Upload for monorepo support
+- Enable preview deployments for PRs
 
 ---
 
-## 7. Exact File Changes Required
+## 7. Security Checklist
 
-### 7.1 Create GitHub Actions Workflow
+### 7.1 Headers
 
-**File:** `.github/workflows/cloudflare-deploy.yml` (NEW)
+**Status:** ✅ **Comprehensive security headers**
+- ✅ CSP configured (needs environment-specific tuning)
+- ✅ X-Frame-Options: SAMEORIGIN
+- ✅ X-Content-Type-Options: nosniff
+- ✅ Referrer-Policy: strict-origin-when-cross-origin
+- ✅ Permissions-Policy configured
+- ✅ HSTS enabled
 
-**Content:** See section 4.3.1
+### 7.2 Secrets Management
 
-### 7.2 Update Root `wrangler.toml`
+**Status:** ✅ **Properly separated**
+- ✅ Frontend secrets use `VITE_*` prefix (public)
+- ✅ Worker secrets use `wrangler secret put`
+- ✅ `.dev.vars` in `.gitignore`
+- ✅ `.env.local` in `.gitignore`
 
-**File:** `wrangler.toml` (root)
+### 7.3 CORS
 
-**Action:** Verify/build configuration is documented (already correct)
-
-**No changes needed** - already configured correctly
-
-### 7.3 Update Worker `wrangler.toml`
-
-**File:** `worker/wrangler.toml`
-
-**Action:** Add KV namespace configuration if rate limiting is used
-
-**Change:** Uncomment and configure KV namespace section (see section 4.2.1)
-
-### 7.4 Add 404 Page (Optional)
-
-**File:** `apps/pwa/public/404.html` (NEW)
-
-**Action:** Copy `offline.html` or create custom 404 page
-
-**OR:** Ensure `offline.html` is copied to `dist/404.html` during build
-
-### 7.5 Documentation Updates
-
-**Files to update:**
-- `README.md`: Add Cloudflare deployment section
-- `docs/DEPLOYMENT_GUIDE.md`: Update with Cloudflare-specific steps
+**Status:** ⚠️ **Needs verification**
+- Worker should have explicit CORS allowlist
+- Frontend should only call allowed origins
+- Verify CORS headers in Worker responses
 
 ---
 
-## 8. Testing Recommendations
+## 8. Performance & Caching
 
-### 8.1 Pre-Production Testing
+### 8.1 Asset Caching
 
-1. **Local Build Test**
-   ```bash
-   cd apps/pwa
-   npm run build
-   npm run preview  # Test locally
-   ```
+**Status:** ✅ **Properly configured**
+- ✅ Hashed assets: Long cache (immutable)
+- ✅ `index.html`: No cache
+- ✅ Service worker: No cache
+- ✅ Manifest: Short cache (1 hour)
 
-2. **Worker Local Test**
-   ```bash
-   cd worker
-   npm run dev  # Test on localhost:8787
-   ```
+### 8.2 Bundle Optimization
 
-3. **Environment Variable Validation**
-   - Create test script to validate all required env vars are set
-   - Test missing env var fallbacks
-
-4. **Integration Test**
-   - Deploy Worker to preview/staging
-   - Deploy Pages to preview branch
-   - Test end-to-end flow
-
-### 8.2 Production Testing
-
-1. **Smoke Tests**
-   - [ ] Frontend loads
-   - [ ] Service worker registers
-   - [ ] Worker responds to POST requests
-   - [ ] Environment variables accessible
-   - [ ] SPA routing works
-   - [ ] Offline functionality works
-
-2. **Functional Tests**
-   - [ ] Supabase connection works
-   - [ ] Worker agent integration (if enabled)
-   - [ ] Push notifications (if configured)
-   - [ ] Location services (if configured)
+**Status:** ✅ **Optimized**
+- ✅ Code splitting enabled
+- ✅ Vendor chunking configured
+- ✅ Route-level splitting
+- ✅ Target: ES2022 (modern browsers)
 
 ---
 
-## 9. Summary & Next Steps
+## 9. Observability
 
-### 9.1 Ready for Deployment? ✅ **YES** (with minor configuration)
+### 9.1 Error Monitoring
 
-**Blockers:** None  
-**Warnings:**
-- ⚠️ No CI/CD workflow (manual deployment works)
-- ⚠️ Worker needs secrets configured
-- ⚠️ Frontend needs environment variables set
+**Status:** ✅ **Configured**
+- ✅ Sentry integration (optional, via `VITE_SENTRY_DSN`)
+- ✅ Error boundary with logging
+- ✅ Structured logging service
 
-### 9.2 Immediate Actions
+### 9.2 Performance Monitoring
 
-1. **Set up Cloudflare account and get API token**
-2. **Configure Worker secrets** (see checklist 5.1)
-3. **Deploy Worker first** (to get URL)
-4. **Set frontend environment variables** in Pages dashboard
-5. **Deploy Pages** (via dashboard or CLI)
-6. **Test deployment** (see section 8)
-
-### 9.3 Recommended Follow-ups
-
-1. **Add CI/CD workflow** (section 4.3.1)
-2. **Create custom 404 page**
-3. **Set up monitoring and alerts**
-4. **Document which Worker to use** (`worker/` vs `services/agent-runtime/`)
-5. **Consider custom domain setup**
+**Status:** ✅ **Configured**
+- ✅ Web Vitals instrumentation
+- ✅ RUM endpoint support (optional)
+- ✅ Budget violation detection
 
 ---
 
-## Appendix A: File Reference
+## 10. Risks & Recommendations
 
-**Key Configuration Files:**
-- `apps/pwa/vite.config.ts` - Vite build config
-- `apps/pwa/package.json` - Frontend dependencies and scripts
-- `apps/pwa/public/_redirects` - SPA routing rules
-- `apps/pwa/public/_headers` - Security headers
-- `wrangler.toml` (root) - Pages configuration
-- `worker/wrangler.toml` - Worker configuration
-- `worker/package.json` - Worker dependencies
-- `worker/src/index.ts` - Worker entry point
+### 10.1 High Priority
 
-**Environment Variable Files:**
-- `apps/pwa/services/supabase.ts` - Supabase env vars
-- `apps/pwa/services/agent.ts` - Worker URL env var
-- `apps/pwa/config.ts` - Config with env vars
-- `worker/src/types.ts` - Worker env var types
+1. **CSP Tuning** ⚠️
+   - Current CSP may be too strict or too loose
+   - Test in preview environment before production
+   - Document CSP changes in `docs/deploy/security-headers.md`
+
+2. **Environment Variables** ⚠️
+   - Ensure all required variables are set in Cloudflare Dashboard
+   - Create `.env.example` files for documentation
+   - Verify Worker secrets are set via `wrangler secret list`
+
+3. **CI/CD Deployment** ⚠️
+   - Add automated deployment workflow
+   - Enable preview deployments for PRs
+   - Set up rollback procedure
+
+### 10.2 Medium Priority
+
+1. **Node Version Pinning**
+   - Add `.nvmrc` file
+   - Add `packageManager` field to `package.json`
+   - Verify Cloudflare Pages uses correct Node version
+
+2. **CORS Verification**
+   - Test CORS headers in Worker responses
+   - Verify frontend can call Worker from production domain
+   - Document allowed origins
+
+3. **Health Checks**
+   - Add `/healthz` endpoint to Worker (if needed)
+   - Set up synthetic monitoring
+   - Configure alerting
+
+### 10.3 Low Priority
+
+1. **Deep Linking**
+   - Consider implementing React Router if deep linking is needed
+   - Current query-param routing works but doesn't support `/discovery` paths
+
+2. **Custom Domain**
+   - Configure custom domain in Cloudflare Pages
+   - Set up DNS records
+   - Configure SSL/TLS
 
 ---
 
-**End of Audit Report**
+## 11. Deployment Checklist
 
+### Pre-Deployment
+
+- [ ] All environment variables set in Cloudflare Pages Dashboard
+- [ ] Worker secrets set via `wrangler secret put`
+- [ ] CSP tested in preview environment
+- [ ] CORS verified for production domains
+- [ ] Node version matches (20) in Pages settings
+- [ ] Build command verified: `pnpm run build`
+- [ ] Output directory verified: `dist`
+- [ ] Root directory set: `apps/pwa`
+
+### Deployment
+
+- [ ] Deploy Worker first: `wrangler deploy --env production`
+- [ ] Verify Worker URL is correct
+- [ ] Deploy Pages (via Dashboard or CI/CD)
+- [ ] Verify `_redirects` and `_headers` are in output
+- [ ] Test SPA routing (deep links)
+- [ ] Test offline functionality
+- [ ] Verify service worker registration
+
+### Post-Deployment
+
+- [ ] Smoke test: Fresh load + hard refresh
+- [ ] Test SPA deep links
+- [ ] Test auth flow
+- [ ] Test core CRUD actions
+- [ ] Verify PWA installation
+- [ ] Test offline behavior
+- [ ] Check security headers (via browser DevTools)
+- [ ] Verify CSP doesn't block resources
+- [ ] Monitor error rates (Sentry)
+- [ ] Check performance metrics (Web Vitals)
+
+---
+
+## 12. File Changes Required
+
+### Immediate (Before First Deployment)
+
+1. **Create `.env.example` files**
+   - `apps/pwa/.env.example` - Frontend variables
+   - `services/agent-runtime/.dev.vars.example` - Worker variables
+
+2. **Add Node version pinning**
+   - Create `.nvmrc` with `20`
+   - Add `packageManager` field to root `package.json`
+
+3. **Add CI/CD deployment workflow**
+   - `.github/workflows/deploy-cloudflare.yml`
+
+### Recommended (Post-Launch)
+
+1. **CSP tuning documentation**
+   - `docs/deploy/security-headers.md` (update with environment-specific CSP)
+
+2. **Deployment runbook**
+   - `docs/deploy/deployment-runbook.md`
+
+3. **Health check endpoint**
+   - Add `/healthz` to Worker (if needed)
+
+---
+
+## 13. Conclusion
+
+**Overall Status:** ✅ **PRODUCTION-READY**
+
+The codebase is well-structured and follows Cloudflare best practices. The main gaps are:
+1. Automated CI/CD deployment workflow
+2. Node version pinning
+3. Environment variable examples
+
+**Recommended Deployment Order:**
+1. Set up Cloudflare Pages project (Dashboard)
+2. Deploy Worker first (`wrangler deploy`)
+3. Configure Pages environment variables
+4. Deploy Pages (first deployment)
+5. Verify and test
+6. Set up automated CI/CD for future deployments
+
+**Estimated Time to Production:** 1-2 hours (mostly configuration)
+
+---
+
+**Last Updated:** 2025-01-29  
+**Next Review:** After first production deployment

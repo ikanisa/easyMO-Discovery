@@ -29,7 +29,9 @@
   
   # Content Security Policy
   # See docs/deploy/security-headers.md for tuning instructions
-  Content-Security-Policy: default-src 'self'; base-uri 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.workers.dev https://maps.googleapis.com; frame-src 'none'; object-src 'none'; worker-src 'self' blob:; manifest-src 'self'
+  # NOTE: 'unsafe-inline' and 'unsafe-eval' are required for Vite HMR in dev
+  # In production, consider removing 'unsafe-eval' if not needed
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.workers.dev https://maps.googleapis.com https://*.sentry.io; frame-src 'none'; object-src 'none'; worker-src 'self' blob:; manifest-src 'self'; upgrade-insecure-requests
 
 # ============================================
 # HTML Files - No Cache (Always Fresh)

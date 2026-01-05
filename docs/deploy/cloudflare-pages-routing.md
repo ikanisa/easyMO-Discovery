@@ -1,274 +1,193 @@
 # Cloudflare Pages SPA Routing Configuration
 
-This document explains how client-side routing works for the easyMO Discovery PWA on Cloudflare Pages and how to test it.
+**Last Updated:** 2025-01-29
+
+---
 
 ## Overview
 
-The application is a **React SPA (Single Page Application)** that uses **query parameters** for navigation (e.g., `/?mode=discovery`). All routes must serve `index.html` to enable client-side routing, while preserving access to actual static files (assets, icons, manifests, etc.).
+This document explains how SPA (Single Page Application) routing works for the easyMO Discovery PWA on Cloudflare Pages, and how to test deep linking.
 
-## How It Works
+---
 
-### 1. Routing Strategy
+## Current Routing Implementation
 
-The app uses **state-based navigation with query parameters**:
+### Architecture
+
+The PWA uses **state-based navigation** with query parameters rather than traditional path-based routing:
 
 - **Home**: `/` or `/?mode=home`
-- **Discovery**: `/?mode=discovery` or `/?mode=ride`
-- **Services**: `/?mode=services`
+- **Discovery**: `/?mode=discovery`
 - **Business**: `/?mode=business`
-- **MoMo Generator**: `/?mode=momo`
-- **QR Scanner**: `/?mode=scanner`
+- **Services**: `/?mode=services`
+- **Chat**: `/?mode=chat`
+- **Settings**: `/?mode=settings`
 
-The app reads `?mode=` from the URL query string and updates its internal state accordingly.
+**Note:** The app does not use React Router. Routes are determined by:
+1. Query parameters (`?mode=...`)
+2. Internal state management (Zustand)
+3. `window.history.pushState` for URL updates
 
-### 2. `_redirects` File
+---
 
-**Location:** `apps/pwa/public/_redirects`  
-**Deployed to:** `apps/pwa/dist/_redirects` (automatically copied by Vite)
+## `_redirects` Configuration
 
+**Location:** `apps/pwa/public/_redirects`
+
+**Current Configuration:**
 ```apache
-# SPA Fallback - All routes serve index.html for client-side routing
-# Cloudflare Pages automatically serves actual files (assets, icons, etc.) first,
-# so static assets are preserved. This redirect only applies to non-file paths.
-
 /*    /index.html   200
 ```
 
-**How it works:**
+**How It Works:**
+1. Cloudflare Pages serves static files first (assets, icons, etc.)
+2. If no matching file exists, the redirect rule applies
+3. All non-file paths serve `/index.html` with a 200 status code
+4. The React app loads and reads the URL to determine the route
 
-1. **Static files are served first**: Cloudflare Pages checks if the requested path matches a real file (e.g., `/assets/index.js`, `/icons/icon-192.png`, `/manifest.webmanifest`). If found, it serves the file directly.
+**Why 200 instead of 301/302:**
+- 200 status preserves the original URL in the browser
+- This enables proper client-side routing
+- Search engines can index the URLs
+- Browser history works correctly
 
-2. **Non-file paths redirect**: If no file exists, Cloudflare Pages checks the `_redirects` file. The rule `/*    /index.html   200` matches all paths and serves `index.html` with a 200 status code (not a redirect).
+---
 
-3. **Client-side routing takes over**: The React app loads, reads the URL query parameters, and renders the appropriate view.
-
-**Important:** The `200` status code means "serve this content for this path" rather than "redirect to this URL". This preserves the original URL in the browser, which is essential for deep linking.
-
-### 3. Static Asset Preservation
-
-The following static assets are automatically served (not caught by the redirect):
-
-- `/assets/*` - JavaScript bundles, CSS files
-- `/icons/*` - PWA icons (PNG, SVG)
-- `/manifest.webmanifest` - PWA manifest
-- `/service-worker.js` - Service worker script
-- `/offline.html` - Offline fallback page
-- `/404.html` - Custom 404 page (if requested directly)
-- `/*.svg`, `/*.png`, `/*.webp` - Image files
-
-These are preserved because Cloudflare Pages checks for actual files **before** evaluating redirect rules.
-
-### 4. 404 Handling
-
-**File:** `apps/pwa/public/404.html`
-
-Cloudflare Pages will serve `404.html` in two scenarios:
-
-1. **Direct request to `/404.html`**: Serves the file directly
-2. **Path not found AND no redirect matches**: However, since `/*    /index.html   200` matches all paths, this scenario rarely occurs
-
-In practice, the SPA fallback handles all non-file paths, so `404.html` is primarily useful for:
-- Direct access to `/404.html`
-- Edge cases where redirects might fail
-- Better UX if a specific invalid path is requested
-
-The `404.html` page auto-redirects to home after 3 seconds.
-
-## Testing
+## Testing Deep Links
 
 ### Local Testing
 
-#### 1. Build and Preview
+1. **Build the app:**
+   ```bash
+   cd apps/pwa
+   pnpm run build
+   ```
 
-```bash
-cd apps/pwa
-npm run build
-npm run preview
-```
+2. **Preview the build:**
+   ```bash
+   pnpm run preview
+   ```
 
-This starts a local preview server (typically at `http://localhost:4173`).
+3. **Test deep links:**
+   - Open `http://localhost:4173/?mode=discovery`
+   - Open `http://localhost:4173/?mode=business`
+   - Verify the app loads and shows the correct mode
 
-#### 2. Test Static Assets
+4. **Test with hard refresh:**
+   - Open a deep link
+   - Press `Cmd+Shift+R` (Mac) or `Ctrl+Shift+R` (Windows/Linux)
+   - Verify the app still loads correctly (no 404)
 
-```bash
-# These should serve actual files (not index.html):
-curl -I http://localhost:4173/manifest.webmanifest
-curl -I http://localhost:4173/icons/icon-192.png
-curl -I http://localhost:4173/assets/index-*.js  # Replace * with actual hash
-```
+### Production Testing
 
-Expected: `200 OK` with appropriate `Content-Type` headers.
+1. **Deploy to Cloudflare Pages**
+2. **Test deep links:**
+   - `https://your-domain.pages.dev/?mode=discovery`
+   - `https://your-domain.pages.dev/?mode=business`
+   - Verify each loads correctly
 
-#### 3. Test SPA Routes
+3. **Test with hard refresh:**
+   - Open a deep link
+   - Hard refresh the page
+   - Verify no 404 errors
 
-```bash
-# These should serve index.html:
-curl -I http://localhost:4173/
-curl -I http://localhost:4173/discovery
-curl -I http://localhost:4173/any/random/path
-```
+4. **Test from external link:**
+   - Share a deep link URL
+   - Open it in a new browser/incognito window
+   - Verify it loads correctly
 
-Expected: `200 OK` with `Content-Type: text/html` (the index.html file).
+---
 
-#### 4. Test Deep Links in Browser
+## 404 Handling
 
-Open the preview server in a browser:
+**Location:** `apps/pwa/public/404.html`
 
-```
-http://localhost:4173/?mode=discovery
-http://localhost:4173/?mode=business
-http://localhost:4173/?mode=momo
-http://localhost:4173/any/path/here?mode=scanner
-```
+**How It Works:**
+1. If a truly missing static file is requested (e.g., `/nonexistent.png`), Cloudflare Pages serves `404.html`
+2. For SPA routes (e.g., `/?mode=discovery`), the `_redirects` rule applies first, so `404.html` is never served
+3. The React app handles client-side 404s internally
 
-**Expected behavior:**
-- URL remains as typed (no redirect)
-- App loads and reads the `mode` query parameter
-- Appropriate view is rendered
-- Navigation works when clicking app buttons
+**Current Implementation:**
+- `404.html` exists and provides a user-friendly error page
+- SPA routes are handled by `_redirects` → `index.html`
+- Client-side 404s are handled by the React app
 
-#### 5. Test Direct File Access
+---
 
-In the browser, navigate directly to:
-```
-http://localhost:4173/icons/icon-192.png
-http://localhost:4173/manifest.webmanifest
-```
+## Future Enhancements
 
-**Expected:** Files are served directly (images display, JSON is shown).
+### If Deep Linking to Paths is Needed
 
-### Production Testing on Cloudflare Pages
+If you want to support paths like `/discovery` instead of `/?mode=discovery`, you would need to:
 
-#### 1. Deploy to Cloudflare Pages
+1. **Install React Router:**
+   ```bash
+   pnpm add react-router-dom
+   ```
 
-```bash
-# Build
-cd apps/pwa
-npm run build
+2. **Update `_redirects`:**
+   ```apache
+   # Keep existing rule - it already handles all paths
+   /*    /index.html   200
+   ```
 
-# Deploy
-npx wrangler pages deploy dist --project-name discovery
-```
+3. **Implement Router in App:**
+   ```typescript
+   import { BrowserRouter, Routes, Route } from 'react-router-dom';
+   
+   <BrowserRouter>
+     <Routes>
+       <Route path="/" element={<Home />} />
+       <Route path="/discovery" element={<Discovery />} />
+       <Route path="/business" element={<Business />} />
+     </Routes>
+   </BrowserRouter>
+   ```
 
-Or use the Cloudflare Dashboard to deploy from Git.
+**Note:** The current `_redirects` configuration already supports this - no changes needed to the redirect file.
 
-#### 2. Test on Production URL
-
-Replace `your-project.pages.dev` with your actual Cloudflare Pages URL:
-
-```bash
-# Test static assets
-curl -I https://your-project.pages.dev/manifest.webmanifest
-curl -I https://your-project.pages.dev/icons/icon-192.png
-
-# Test SPA routes
-curl -I https://your-project.pages.dev/
-curl -I https://your-project.pages.dev/discovery
-curl -I https://your-project.pages.dev/any/path
-```
-
-#### 3. Test Deep Links
-
-Open in browser:
-```
-https://your-project.pages.dev/?mode=discovery
-https://your-project.pages.dev/?mode=business
-https://your-project.pages.dev/some/path?mode=scanner
-```
-
-#### 4. Verify `_redirects` File
-
-Check that the `_redirects` file is in the deployed output:
-
-```bash
-# Download and inspect
-curl https://your-project.pages.dev/_redirects
-```
-
-**Expected:** You should see the redirect rules, or a 404 if Cloudflare doesn't serve the file directly (which is fine - the rules are still active).
-
-### Testing Checklist
-
-- [ ] Static assets (`/assets/*`, `/icons/*`, `/manifest.webmanifest`) serve correctly
-- [ ] Root path (`/`) serves `index.html`
-- [ ] Non-file paths (`/any/path`) serve `index.html`
-- [ ] Query parameters (`/?mode=discovery`) work and are preserved
-- [ ] Direct file access (e.g., `/icons/icon-192.png`) works
-- [ ] Deep links work in browser (URL preserved, app navigates)
-- [ ] `404.html` is accessible at `/404.html`
+---
 
 ## Troubleshooting
 
-### Static Assets Return 404
+### Issue: Deep links return 404
 
-**Problem:** Files like `/assets/index.js` return 404 instead of serving the file.
-
-**Solutions:**
-1. Check that files exist in `apps/pwa/dist/` after build
-2. Verify `publicDir: 'public'` in `vite.config.ts` (default, should be set)
-3. Ensure build completed successfully
-4. Check Cloudflare Pages build output directory is set to `apps/pwa/dist`
-
-### All Routes Serve index.html (Including Static Assets)
-
-**Problem:** Even static files like `/manifest.webmanifest` serve `index.html`.
+**Symptoms:** Opening `/?mode=discovery` directly returns 404
 
 **Solutions:**
-1. This shouldn't happen with Cloudflare Pages (it serves files first)
-2. If it does, check that files exist in `dist/` directory
-3. Verify build output directory in Cloudflare Pages settings
-4. Check `_redirects` file isn't overriding file serving (it shouldn't)
+1. Verify `_redirects` file exists in `apps/pwa/public/`
+2. Verify `_redirects` is copied to `dist/` during build
+3. Check Cloudflare Pages build output includes `_redirects`
+4. Verify redirect rule syntax: `/*    /index.html   200`
 
-### Deep Links Don't Work
+### Issue: Static assets return 404
 
-**Problem:** Navigating to `/?mode=discovery` doesn't show the discovery view.
-
-**Solutions:**
-1. Check browser console for JavaScript errors
-2. Verify the app reads query parameters (see `apps/pwa/App.tsx`)
-3. Test locally first to isolate deployment vs. code issues
-4. Check that `index.html` is being served (not a 404)
-
-### Query Parameters Are Stripped
-
-**Problem:** URL changes from `/?mode=discovery` to `/` automatically.
+**Symptoms:** Images, icons, or other static files return 404
 
 **Solutions:**
-1. Check `_redirects` uses status code `200`, not `301` or `302`
-2. Verify the app isn't calling `window.history.replaceState()` to strip params
-3. Check service worker isn't interfering
+1. Cloudflare Pages serves files before applying redirects
+2. Verify files exist in `apps/pwa/public/`
+3. Verify files are copied to `dist/` during build
+4. Check file paths in code match actual file locations
 
-## How to Add New Routes
+### Issue: Service worker not registering
 
-Currently, the app uses query parameters. To add a new route:
+**Symptoms:** Service worker fails to register on deep links
 
-1. **Update `App.tsx`** to handle the new `mode` value:
-   ```typescript
-   case 'newmode':
-     setMode(AppMode.NEW_MODE);
-     break;
-   ```
+**Solutions:**
+1. Verify service worker scope is `/` (root)
+2. Check service worker file exists at `dist/service-worker.js`
+3. Verify `_headers` doesn't block service worker registration
+4. Check browser console for service worker errors
 
-2. **Update `AppMode` enum** if adding a new mode
-
-3. **No changes needed to `_redirects`** - it already handles all paths
-
-If you want to migrate to path-based routing (e.g., `/discovery`, `/business`), consider:
-
-1. Installing React Router or similar
-2. Updating `_redirects` to handle path-based routes (already compatible)
-3. Updating all navigation logic to use paths instead of query params
-
-## Files Involved
-
-- **`apps/pwa/public/_redirects`** - Redirect rules (copied to `dist/_redirects`)
-- **`apps/pwa/public/404.html`** - Custom 404 page (optional)
-- **`apps/pwa/vite.config.ts`** - Vite config (ensures `public/` is copied to `dist/`)
-- **`apps/pwa/App.tsx`** - Main app component (handles query param routing)
+---
 
 ## References
 
-- [Cloudflare Pages Redirects Documentation](https://developers.cloudflare.com/pages/configuration/redirects/)
-- [Cloudflare Pages Headers Documentation](https://developers.cloudflare.com/pages/configuration/headers/)
-- [Vite Public Directory Documentation](https://vitejs.dev/guide/assets.html#the-public-directory)
+- [Cloudflare Pages Redirects](https://developers.cloudflare.com/pages/configuration/redirects/)
+- [Cloudflare Pages Headers](https://developers.cloudflare.com/pages/configuration/headers/)
+- [Vite Static Asset Handling](https://vitejs.dev/guide/assets.html)
 
+---
+
+**Last Updated:** 2025-01-29
