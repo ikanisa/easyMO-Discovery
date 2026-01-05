@@ -25,9 +25,23 @@ services/whatsapp-bridge/node_modules
 tmp_new
 supabase/.temp
 
-# Worker local env
-worker/.dev.vars
-services/agent-runtime/.dev.vars
+# Environment Variables - NEVER commit secrets
+# Frontend/client env files (Vite)
 .env
 .env.local
 .env.*.local
+.env.production
+.env.development
+.env.preview
+
+# Worker/Cloudflare env files
+**/.dev.vars
+**/.dev.vars.*
+worker/.dev.vars
+services/agent-runtime/.dev.vars
+
+# Keep example files
+!.env.example
+!.dev.vars.example
+!**/.env.example
+!**/.dev.vars.example

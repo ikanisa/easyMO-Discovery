@@ -1,41 +1,85 @@
 # Cloudflare Pages Headers Configuration
 # https://developers.cloudflare.com/pages/configuration/headers/
+#
+# IMPORTANT: This file only applies to static file responses.
+# If you use Pages Functions or _worker.js, set headers in your function code.
+# See: https://developers.cloudflare.com/pages/functions/
 
-# Global security headers for all routes
+# ============================================
+# Global Security Headers (All Routes)
+# ============================================
 /*
+  # Frame Protection
   X-Frame-Options: SAMEORIGIN
+  
+  # MIME Type Sniffing Protection
   X-Content-Type-Options: nosniff
+  
+  # XSS Protection (legacy but still useful)
   X-XSS-Protection: 1; mode=block
+  
+  # Referrer Policy
   Referrer-Policy: strict-origin-when-cross-origin
-  Permissions-Policy: geolocation=(self), camera=(self), microphone=()
-  Cache-Control: no-cache
+  
+  # Permissions Policy (formerly Feature-Policy)
+  Permissions-Policy: geolocation=(self), camera=(self), microphone=(), payment=(self)
+  
+  # HSTS (HTTP Strict Transport Security)
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
-  Content-Security-Policy: default-src 'self'; base-uri 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.cloudflare.com https://*.workers.dev; frame-src 'none'; object-src 'none'; worker-src 'self' blob:; manifest-src 'self'
+  
+  # Content Security Policy
+  # See docs/deploy/security-headers.md for tuning instructions
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://maps.googleapis.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.workers.dev https://maps.googleapis.com; frame-src 'none'; object-src 'none'; worker-src 'self' blob:; manifest-src 'self'
 
-# Service Worker - Never cache
+# ============================================
+# HTML Files - No Cache (Always Fresh)
+# ============================================
+/index.html
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0
+  Pragma: no-cache
+
+# ============================================
+# Service Worker - Never Cache
+# ============================================
 /service-worker.js
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0
 
-# PWA Manifest - Short cache
+# ============================================
+# PWA Manifest - Short Cache
+# ============================================
 /manifest.webmanifest
   Cache-Control: public, max-age=3600
 
-# Offline fallback - Never cache
+# ============================================
+# Offline & Error Pages - Never Cache
+# ============================================
 /offline.html
   Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0
 
-# Static assets - Long cache (Vite adds hash to filenames)
+/404.html
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0
+
+# ============================================
+# Static Assets - Long Cache (Hashed Filenames)
+# ============================================
+# Vite adds content hashes to filenames, so these can be cached indefinitely
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 
-# Icons and images
-/*.svg
-  Cache-Control: public, max-age=86400
-/*.png
-  Cache-Control: public, max-age=86400
-/*.webp
-  Cache-Control: public, max-age=86400
+# ============================================
+# Icons and Images - Medium Cache
+# ============================================
 /icons/*
   Cache-Control: public, max-age=86400
+
 /screenshots/*
+  Cache-Control: public, max-age=86400
+
+/*.svg
+  Cache-Control: public, max-age=86400
+
+/*.png
+  Cache-Control: public, max-age=86400
+
+/*.webp
   Cache-Control: public, max-age=86400

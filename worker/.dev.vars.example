@@ -61,3 +61,4 @@ OAUTH_TOKEN_URL=https://oauth-provider.com/token
 
 # Worker URL (self-referential, for OAuth redirects)
 WORKER_URL=https://your-worker-name.your-subdomain.workers.dev
+

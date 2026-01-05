@@ -2,5 +2,9 @@
 # https://developers.cloudflare.com/pages/configuration/redirects/
 
 # SPA Fallback - All routes serve index.html for client-side routing
-# This handles React Router/client-side navigation
+# Cloudflare Pages automatically serves actual files (assets, icons, etc.) first,
+# so static assets are preserved. This redirect only applies to non-file paths.
+# This enables deep linking and client-side routing for the React SPA.
+
+# Root and all paths serve index.html (SPA fallback)
 /*    /index.html   200
