@@ -5,7 +5,7 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ICONS } from '../../constants';
+import { ICONS } from '../../../constants';
 import { LocationService } from '../../services/location';
 import { toast } from 'sonner';
 

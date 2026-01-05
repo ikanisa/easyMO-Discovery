@@ -5,7 +5,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AppMode } from '@easymo/shared/types';
-import { ICONS } from '../../constants';
+import { ICONS } from '../../../constants';
 
 interface DrawerProps {
   isOpen: boolean;

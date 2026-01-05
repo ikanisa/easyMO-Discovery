@@ -6,7 +6,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Message, ChatSession as ChatSessionType } from '@easymo/shared/types';
-import { ICONS } from '../../constants';
+import { ICONS } from '../../../constants';
 import MessageBubble from '../Chat/MessageBubble';
 import QuickActionChip, { QuickAction } from './QuickActionChip';
 import MobilityMatchCard from './MobilityMatchCard';
