@@ -14,7 +14,31 @@ const REQUIRED_VARS = [
     'VITE_SUPABASE_ANON_KEY',
 ];
 
+// Simple .env parser since we might not have dotenv available in this context
+import fs from 'fs';
+import path from 'path';
+
+function loadEnv() {
+    const envPath = path.resolve(process.cwd(), '.env');
+    if (fs.existsSync(envPath)) {
+        console.log(`📄 Loading environment from ${envPath}`);
+        const content = fs.readFileSync(envPath, 'utf-8');
+        content.split('\n').forEach(line => {
+            const match = line.match(/^([^=]+)=(.*)$/);
+            if (match) {
+                const key = match[1].trim();
+                const value = match[2].trim();
+                if (!process.env[key]) {
+                    process.env[key] = value;
+                }
+            }
+        });
+    }
+}
+
+
 function main() {
+    loadEnv();
     console.log('\n🔍 Verifying required public environment variables...\n');
 
     const results = REQUIRED_VARS.map((varName) => {
