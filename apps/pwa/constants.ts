@@ -8,79 +8,130 @@ export { ROLES, VEHICLE_TYPES, AGENT_TYPES, DEFAULT_LOCATION, DEFAULT_RADIUS_KM 
 
 // Import lucide-react icons for PWA usage
 import {
+  // Navigation & Layout
   Home,
-  Bike,
-  Car,
-  Store,
   Settings,
   Grid,
-  XCircle,
-  X,
+  Menu,
+
+  // Transport
+  Bike,
+  Car,
+  Truck,
+  Bus,
+  CarTaxiFront,
+
+  // Business & Buildings
+  Store,
+  Building,
+  Briefcase,
+
+  // Actions
   Check,
+  X,
   Copy,
   Share2,
+  Send,
+  Mic,
+  ScanLine,
+  Filter,
+  Search,
+  Trash2,
+  PlusCircle,
+  RefreshCcw,
+  RotateCcw,
+
+  // Communication
   Phone,
+  MessageCircle,
+  Bell,
+  Radio,
+  Headphones,
+
+  // Location/Time
   MapPin,
   Clock,
+  Map,
+  Navigation,
+  Globe,
+  Calendar,
+
+  // Commerce
   Tag,
   DollarSign,
+  CreditCard,
+  QrCode,
+
+  // Info & Status
   Info,
+  AlertTriangle,
+  ExternalLink,
+  ShieldCheck,
+  Star,
+
+  // Navigation arrows
   ChevronDown,
   ChevronRight,
   ChevronUp,
   ArrowRight,
   ArrowLeft,
-  Send,
-  Mic,
-  QrCode,
-  CreditCard,
+
+  // Users
   User,
   Users,
-  MessageCircle,
-  ScanLine,
-  Building,
-  RefreshCcw,
-  AlertTriangle,
-  ExternalLink,
-  // Additional icons used throughout the app
-  Sparkles,
+
+  // Files & Media
   File,
-  Map,
   Camera,
   Paperclip,
-  Radio,
-  Filter,
-  Navigation,
-  Truck,
-  Bus,
-  CarTaxiFront,
+
+  // Real Estate
+  Bath,
+  Bed,
+
+  // Categories
+  Utensils,
+  GraduationCap,
+  Scale,
+
+  // Theme
+  Moon,
+  Sun,
+
+  // Misc
+  Sparkles,
   MoreHorizontal,
+  XCircle,
 } from 'lucide-react';
 
 /**
  * ICONS object containing lucide-react icon components
  * Used throughout the PWA for consistent iconography
+ * 
+ * Note: Some icons have aliases to match the naming used in components
  */
 export const ICONS = {
-  // Navigation
+  // Navigation & Layout
   Home,
   Settings,
   Grid,
+  Menu,
 
   // Transport
   Bike,
   Car,
 
   // Vehicle variants (used in Discovery)
-  Moto: Bike,       // Motorcycle
+  Moto: Bike,         // Motorcycle
   Taxi: CarTaxiFront, // Taxi/Cab
-  Sedan: Car,       // Standard car
-  Pickup: Truck,    // Pickup truck
-  Bus,              // Bus
+  Sedan: Car,         // Standard car
+  Pickup: Truck,      // Pickup truck
+  Bus,                // Bus
 
-  // Business
+  // Business & Buildings
   Store,
   Building,
+  Briefcase,
 
   // Actions
   Check,
@@ -91,29 +142,41 @@ export const ICONS = {
   Microphone: Mic,
   Scan: ScanLine,
   Filter,
+  Search,
+  Trash: Trash2,
+  PlusCircle,
+  RefreshCcw,
+  Repeat: RotateCcw,
 
   // Communication
   Phone,
   Chat: MessageCircle,
   WhatsApp: MessageCircle, // Using MessageCircle as WhatsApp placeholder
   Broadcast: Radio,        // For broadcasting feature
+  Bell,
+  Support: Headphones,     // Customer support
 
   // Location/Time
   MapPin,
   Clock,
   Map,
   Navigation,
+  Globe,
+  Calendar,
 
   // Commerce
   Tag,
   DollarSign,
   CreditCard,
   QrCode,
+  QRCode: QrCode, // Alias for different casing in code
 
-  // Info
+  // Info & Status
   Info,
   AlertTriangle,
   ExternalLink,
+  ShieldCheck,
+  Star,
 
   // Navigation arrows
   ChevronDown,
@@ -131,9 +194,20 @@ export const ICONS = {
   Camera,
   PaperClip: Paperclip,
 
+  // Real Estate
+  Bath,
+  Bed,
+
+  // Categories
+  Utensils,
+  School: GraduationCap,
+  Scale,
+
+  // Theme
+  Moon,
+  Sun,
+
   // Misc
-  RefreshCcw,
   Sparkles,
   MoreHorizontal,
 } as const;
-
