@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "node ../../scripts/verify-public-env.mjs && vite build && node ../../scripts/generate-env.mjs",
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
@@ -52,4 +52,3 @@
     "@rollup/rollup-linux-x64-gnu": "^4.54.0"
   }
 }
-

@@ -41,6 +41,13 @@
   Pragma: no-cache
 
 # ============================================
+# Runtime Environment Config - Never Cache
+# ============================================
+/env.js
+  Cache-Control: no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0
+  Pragma: no-cache
+
+# ============================================
 # Service Worker - Never Cache
 # ============================================
 /service-worker.js

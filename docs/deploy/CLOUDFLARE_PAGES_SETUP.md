@@ -10,11 +10,17 @@
 
 **In Cloudflare Pages Dashboard → Settings → Builds & deployments:**
 
-1. **Root directory:** (leave empty or set to `/`)
+1. **Framework preset:** **None** ✅
+   - ⚠️ **Important:** Do NOT select "Vite" or any other preset
+   - Framework presets are designed for single-app repositories
+   - This is a **monorepo** with custom build commands
+   - "None" gives you full control over the build process
+
+2. **Root directory:** (leave empty or `/`)
    - Cloudflare Pages will build from the repository root
    - The monorepo structure requires building from root
 
-2. **Build command:** 
+3. **Build command:** 
    ```bash
    corepack enable && pnpm install --frozen-lockfile && pnpm run build --workspace=apps/pwa
    ```
@@ -24,9 +30,38 @@
    npm install -g pnpm@8 && pnpm install --frozen-lockfile && pnpm run build --workspace=apps/pwa
    ```
 
-3. **Build output directory:** `apps/pwa/dist`
+4. **Build output directory:** `apps/pwa/dist`
 
-4. **Node version:** `20` (set in Environment variables or use `.nvmrc`)
+5. **Node version:** `20` (set in Environment variables or use `.nvmrc`)
+
+---
+
+## Why "None" for Framework Preset?
+
+### Framework Presets vs. Monorepo
+
+**Framework presets (Vite, Next.js, etc.) are designed for:**
+- Single-app repositories
+- Standard project structures
+- Auto-detected build commands
+
+**This project is a monorepo, which requires:**
+- Custom build commands (`pnpm run build --workspace=apps/pwa`)
+- Building from repository root
+- Workspace dependency resolution
+
+**If you select "Vite" preset:**
+- ❌ Cloudflare will try to auto-detect build settings
+- ❌ It won't understand the monorepo structure
+- ❌ Build command will be wrong (won't use `--workspace` flag)
+- ❌ Workspace dependencies won't be installed
+- ❌ Build will fail
+
+**With "None" preset:**
+- ✅ Full control over build command
+- ✅ Can use custom pnpm workspace commands
+- ✅ Works correctly with monorepo structure
+- ✅ Environment variables work as expected
 
 ---
 
@@ -55,6 +90,20 @@
 - All `VITE_*` variables are embedded at **build time**
 - They must be set in the **Production** environment for production builds
 - Set them in **Preview** environment for preview deployments
+
+---
+
+## Complete Configuration Summary
+
+**Your Cloudflare Pages settings should be:**
+
+```
+Framework preset: None
+Root directory: / (or leave empty)
+Build command: corepack enable && pnpm install --frozen-lockfile && pnpm run build --workspace=apps/pwa
+Build output directory: apps/pwa/dist
+Node version: 20 (via .nvmrc or environment variable)
+```
 
 ---
 
@@ -142,8 +191,8 @@ Build output directory 'apps/pwa/dist' not found
 **Project name:** `discovery`
 
 **Build configuration:**
-- **Framework preset:** None (or Vite if available)
-- **Root directory:** (leave empty)
+- **Framework preset:** **None** ✅ (DO NOT select Vite)
+- **Root directory:** (leave empty or `/`)
 - **Build command:** 
   ```bash
   corepack enable && pnpm install --frozen-lockfile && pnpm run build --workspace=apps/pwa
@@ -261,4 +310,3 @@ echo "VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY"
 ---
 
 **Last Updated:** 2025-01-29
-

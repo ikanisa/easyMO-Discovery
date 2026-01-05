@@ -1,24 +1,38 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { SUPABASE_URL, SUPABASE_ANON_KEY, isPublicEnvValid } from '../src/config/publicEnv';
 
-// Environment variables (set in Cloudflare Pages dashboard or .env.local for dev)
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+/**
+ * Check if Supabase is properly configured
+ */
+export const isSupabaseConfigured = isPublicEnvValid();
 
-export const isSupabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
-
-// Runtime validation - warn if credentials are missing
+// Log warning if not configured (helpful for debugging)
 if (!isSupabaseConfigured) {
-  console.error('Missing Supabase credentials. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.');
+  console.warn(
+    '[Supabase] Missing configuration. Ensure VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY are set.',
+    '\nCheck window.__APP_ENV__ and import.meta.env for values.'
+  );
 }
 
-export const supabase = createClient(SUPABASE_URL || '', SUPABASE_ANON_KEY || '', {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
+/**
+ * Supabase client instance
+ * Note: createClient requires valid strings, so we pass empty strings if not configured.
+ * The app should check isSupabaseConfigured before making Supabase calls.
+ */
+export const supabase: SupabaseClient = createClient(
+  SUPABASE_URL || '',
+  SUPABASE_ANON_KEY || '',
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+    },
   }
-});
+);
 
-// Network Helper
+/**
+ * Network Helper for online/offline detection
+ */
 export const NetworkService = {
   isOnline: (): boolean => {
     return typeof navigator !== 'undefined' ? navigator.onLine : true;
@@ -33,5 +47,5 @@ export const NetworkService = {
 
   removeListener: (callback: (online: boolean) => void) => {
     // Basic cleanup placeholder (actual removeEventListener requires ref equality)
-  }
+  },
 };

@@ -7,12 +7,14 @@ import { registerSW } from 'virtual:pwa-register';
 import './index.css';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
+import ConfigurationMissing from './components/ConfigurationMissing';
 import { ThemeProvider } from './context/ThemeContext';
 import { DataSaverProvider } from './src/context/DataSaverContext';
 import { MonitoringService } from './services/monitoring';
 import { LoggingService } from './services/logging';
 import { initVitals } from './services/vitals';
 import { initRoutePrefetching } from './utils/prefetch';
+import { validatePublicEnv } from './src/config/publicEnv';
 
 // Initialize Monitoring
 MonitoringService.init();
@@ -59,20 +61,34 @@ window.addEventListener('unhandledrejection', (event) => {
   console.error('Unhandled promise rejection:', event.reason);
 });
 
+// Check for missing environment variables BEFORE rendering the app
+const missingEnvVars = validatePublicEnv();
+
 const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider>
-        <DataSaverProvider>
-          <ErrorBoundary>
-            <App />
-          </ErrorBoundary>
-        </DataSaverProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
-  </React.StrictMode>
-);
+
+// If env vars are missing, show configuration error screen instead of crashing
+if (missingEnvVars.length > 0) {
+  console.error('[Config] Missing required environment variables:', missingEnvVars);
+  root.render(
+    <React.StrictMode>
+      <ConfigurationMissing missingVars={missingEnvVars} />
+    </React.StrictMode>
+  );
+} else {
+  root.render(
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <DataSaverProvider>
+            <ErrorBoundary>
+              <App />
+            </ErrorBoundary>
+          </DataSaverProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </React.StrictMode>
+  );
+}
 
 if ('serviceWorker' in navigator && import.meta.env.DEV) {
   // Ensure dev sessions are not affected by stale service workers or caches.
