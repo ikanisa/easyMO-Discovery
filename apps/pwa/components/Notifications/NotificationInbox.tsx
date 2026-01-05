@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { NotificationInbox, NotificationMessage } from '../../services/notifications';
-import { ICONS } from '@easymo/shared/constants';
+import { ICONS } from '../../constants';
 import Button from '../Button';
 
 interface NotificationInboxProps {

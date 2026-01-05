@@ -4,7 +4,7 @@
 
 import React, { useState } from 'react';
 import ToolCard from './ToolCard';
-import { ICONS } from '@easymo/shared/constants';
+import { ICONS } from '../../../constants';
 import { toast } from 'sonner';
 
 export interface PaymentQRData {

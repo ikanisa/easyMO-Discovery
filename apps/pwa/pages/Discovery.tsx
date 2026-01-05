@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ICONS } from '@easymo/shared/constants';
+import { ICONS } from '../constants';
 import { PresenceUser, VehicleType, Role, Location } from '@easymo/shared/types';
 import NearbyListCard from '../components/Discovery/NearbyListCard';
 import ScheduleModal from '../components/Scheduling/ScheduleModal';

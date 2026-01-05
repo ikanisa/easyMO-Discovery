@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Button from '../components/Button';
-import { ICONS } from '@easymo/shared/constants';
+import { ICONS } from '../constants';
 import { sendCategoryRequest } from '../services/requestLogger';
 
 interface BusinessProps {

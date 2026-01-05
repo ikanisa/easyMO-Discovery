@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Message, ChatSession as ChatSessionType, BusinessListing, BusinessResultsPayload, PropertyResultsPayload, LegalResultsPayload } from '@easymo/shared/types';
-import { ICONS } from '@easymo/shared/constants';
+import { ICONS } from '../constants';
 import MessageBubble from '../components/Chat/MessageBubble';
 import { GeminiService } from '../services/gemini';
 import { AgentService, mapSessionTypeToAgentType, type StreamingChunk } from '../services/agent';

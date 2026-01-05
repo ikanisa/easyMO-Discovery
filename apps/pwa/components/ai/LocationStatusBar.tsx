@@ -4,7 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { ICONS } from '@easymo/shared/constants';
+import { ICONS } from '../../constants';
 import { LocationService } from '../../services/location';
 
 interface LocationStatusBarProps {

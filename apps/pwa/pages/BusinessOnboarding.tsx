@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { ICONS } from '@easymo/shared/constants';
+import { ICONS } from '../constants';
 import { Role, VehicleType, Message } from '@easymo/shared/types';
 import Button from '../components/Button';
 import MessageBubble from '../components/Chat/MessageBubble';

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ICONS } from '@easymo/shared/constants';
+import { ICONS } from '../constants';
 import Button from './Button';
 
 // Interface for the non-standard BeforeInstallPromptEvent

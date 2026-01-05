@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { ICONS } from '@easymo/shared/constants';
+import { ICONS } from '../constants';
 import { AppMode } from '@easymo/shared/types';
 import { supabase } from '../services/supabase';
 import { getBroadcastHistory } from '../services/whatsapp';

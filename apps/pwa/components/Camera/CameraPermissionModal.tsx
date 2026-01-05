@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import Button from '../Button';
-import { ICONS } from '@easymo/shared/constants';
+import { ICONS } from '../../constants';
 import { requestCameraPermission } from '../../services/camera';
 
 interface CameraPermissionModalProps {

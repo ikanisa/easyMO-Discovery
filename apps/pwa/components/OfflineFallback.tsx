@@ -2,7 +2,7 @@
 import React from 'react';
 import { AppMode } from '@easymo/shared/types';
 import Button from './Button';
-import { ICONS } from '@easymo/shared/constants';
+import { ICONS } from '../constants';
 
 interface OfflineFallbackProps {
   mode?: AppMode;

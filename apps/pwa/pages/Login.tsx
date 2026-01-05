@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ICONS } from '@easymo/shared/constants';
+import { ICONS } from '../constants';
 import Button from '../components/Button';
 import { ALL_COUNTRIES } from '../data/allCountries';
 import { useTheme } from '../context/ThemeContext';

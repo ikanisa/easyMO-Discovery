@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ICONS } from '@easymo/shared/constants';
+import { ICONS } from '../constants';
 import { AgentMemory } from '@easymo/shared/types';
 import { supabase } from '../services/supabase';
 import { PushService } from '../services/push';

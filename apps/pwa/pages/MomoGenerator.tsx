@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
-import { ICONS } from '@easymo/shared/constants';
+import { ICONS } from '../constants';
 import { COUNTRIES } from '../data/mobileMoney';
 import Button from '../components/Button';
 

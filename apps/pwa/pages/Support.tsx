@@ -1,6 +1,6 @@
 import React from 'react';
 import Button from '../components/Button';
-import { ICONS } from '@easymo/shared/constants';
+import { ICONS } from '../constants';
 
 interface SupportProps {
   onStartChat: () => void;

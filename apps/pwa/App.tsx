@@ -5,7 +5,7 @@ import { Toaster, toast } from 'sonner';
 import Layout from './components/Layout';
 import LoadingScreen from './components/LoadingScreen';
 import { AppMode, ChatSession as ChatSessionType, Role, PresenceUser } from '@easymo/shared/types';
-import { ICONS } from '@easymo/shared/constants';
+import { ICONS } from './constants';
 import { useTheme } from './context/ThemeContext';
 import { sendCategoryRequest } from './services/requestLogger';
 import InstallPrompt from './components/InstallPrompt';

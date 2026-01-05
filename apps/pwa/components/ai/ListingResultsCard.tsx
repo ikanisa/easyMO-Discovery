@@ -4,7 +4,7 @@
 
 import React from 'react';
 import ToolCard from './ToolCard';
-import { ICONS } from '@easymo/shared/constants';
+import { ICONS } from '../../constants';
 
 export interface ListingResult {
   id: string;

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ICONS } from '@easymo/shared/constants';
+import { ICONS } from '../constants';
 import { AppMode } from '@easymo/shared/types';
 import Drawer from './ai/Drawer';
 

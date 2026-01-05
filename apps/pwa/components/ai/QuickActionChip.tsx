@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ICONS } from '@easymo/shared/constants';
+import { ICONS } from '../../constants';
 
 export interface QuickAction {
   id: string;

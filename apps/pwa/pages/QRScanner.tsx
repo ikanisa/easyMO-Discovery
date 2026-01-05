@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { ICONS } from '@easymo/shared/constants';
+import { ICONS } from '../constants';
 import CameraPermissionModal from '../components/Camera/CameraPermissionModal';
 import { checkCameraPermission } from '../services/camera';
 
