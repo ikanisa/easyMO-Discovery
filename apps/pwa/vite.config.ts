@@ -46,37 +46,31 @@ export default defineConfig(({ mode }) => {
     // These are safe to use for non-sensitive config (e.g., VITE_SUPABASE_URL)
     build: {
       // Route-level code splitting with vendor chunking
+      // Conservative chunking to avoid circular dependency and initialization order issues
       rollupOptions: {
         output: {
           manualChunks(id) {
-            // Vendor chunks for better caching
+            // Only chunk large, stable dependencies that are unlikely to have circular deps
             if (id.includes('node_modules')) {
-              // React core (small, frequently updated)
-              if (id.includes('react') || id.includes('react-dom')) {
+              // React core and scheduler (must stay together)
+              if (id.includes('react') || id.includes('react-dom') || id.includes('scheduler')) {
                 return 'react-vendor';
               }
-              // UI libraries (larger, less frequently updated)
-              if (id.includes('framer-motion')) {
-                return 'motion-vendor';
-              }
-              // Data fetching
-              if (id.includes('@tanstack/react-query')) {
-                return 'query-vendor';
-              }
-              // Supabase (large, stable)
+              // Supabase (large, stable, self-contained)
               if (id.includes('@supabase')) {
                 return 'supabase-vendor';
+              }
+              // QR/Scanner (large, only needed on specific pages, can be lazy-loaded)
+              if (id.includes('html5-qrcode') || id.includes('qrcode')) {
+                return 'qrcode-vendor';
               }
               // AI/ML libraries (large, can be lazy-loaded)
               if (id.includes('@google/genai')) {
                 return 'genai-vendor';
               }
-              // QR/Scanner (large, only needed on specific pages)
-              if (id.includes('html5-qrcode') || id.includes('qrcode')) {
-                return 'qrcode-vendor';
-              }
-              // Everything else
-              return 'vendor';
+              // For everything else, let Vite handle chunking automatically
+              // This prevents circular dependency issues from manual chunking
+              // Vite will still create vendor chunks automatically based on size and dependencies
             }
           },
         },
