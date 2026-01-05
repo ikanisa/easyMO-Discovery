@@ -15,10 +15,10 @@
 3. Connect GitHub repository
 4. Configure:
    - **Production branch**: `main`
-   - **Root directory**: `apps/pwa`
-   - **Build command**: `pnpm run build`
-   - **Output directory**: `dist`
-   - **Node version**: `20`
+   - **Root directory**: (leave empty - build from repo root)
+   - **Build command**: `corepack enable && pnpm install --frozen-lockfile && pnpm run build --workspace=apps/pwa`
+   - **Output directory**: `apps/pwa/dist`
+   - **Node version**: `20` (set via environment variable or .nvmrc)
 
 ### 2. Set Environment Variables
 
