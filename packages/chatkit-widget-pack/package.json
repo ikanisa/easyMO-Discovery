@@ -1,0 +1,25 @@
+{
+  "name": "@easymo/chatkit-widget-pack",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./actions": "./src/actions.ts",
+    "./primitives": "./src/primitives.ts",
+    "./mobility": "./src/mobility.ts",
+    "./marketplace": "./src/marketplace.ts",
+    "./broadcast": "./src/broadcast.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "~5.8.2"
+  }
+}
+

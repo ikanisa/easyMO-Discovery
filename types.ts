@@ -54,15 +54,42 @@ export interface PaginationMeta {
 export interface BusinessListing {
   id: string;
   name: string;
-  category: string;
-  distance: string; // e.g., "0.8 km"
+  category: string; // e.g., 'pharmacy', 'restaurant'
+  description?: string;
+
+  // Location
+  city?: string;
+  country?: string;
+  address?: string; // "area" or full address
+  location?: string; // PostGIS Point string or lat/lng object if parsed
+  distance?: string; // e.g., "0.8 km"
   approx_distance_km?: number; // Numeric for sorting/logic
+
+  // Contact
+  phone: string;
+  website?: string;
+  email?: string;
+  owner_whatsapp?: string;
+
+  // Status & Metadata
   isOpen?: boolean; // true = Open, false = Closed, undefined = Unknown
+  operating_hours?: string;
+  rating?: number;
+  review_count?: number;
+  tags?: string[];
+
+  // App Specific
   confidence: 'High' | 'Medium' | 'Low';
   snippet?: string; // "why_recommended"
-  address?: string; // "area"
-  phoneNumber?: string;
   whatsappDraft?: string;
+}
+
+export interface Business extends BusinessListing {
+  user_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  external_id?: string;
+  is_active: boolean;
 }
 
 export interface SearchFilters {
@@ -163,22 +190,22 @@ export interface Message {
   sender: 'user' | 'system' | 'ai' | 'peer';
   text: string;
   timestamp: number;
-  
+
   // For AI rich responses
   groundingLinks?: { title: string; uri: string }[];
-  
+
   // New structured data for Buy & Sell Agent
   businessPayload?: BusinessResultsPayload;
-  
+
   // NEW: Confirmed matches from broadcast
   verifiedPayload?: VerifiedBusinessPayload;
 
   // New structured data for Real Estate Agent
   propertyPayload?: PropertyResultsPayload;
-  
+
   // New structured data for Legal Agent
   legalPayload?: LegalResultsPayload;
-  
+
   // Rich Media
   image?: {
     previewUrl: string;
@@ -194,7 +221,7 @@ export interface Message {
     lng: number;
     label?: string;
   };
-  
+
   isThinking?: boolean;
 }
 
@@ -205,7 +232,7 @@ export interface ChatSession {
   type: 'mobility' | 'support' | 'business' | 'real_estate' | 'legal';
   messages: Message[];
   lastUpdated: number;
-  
+
   // Agent State
   isDemoMode?: boolean;
   initialInput?: string;

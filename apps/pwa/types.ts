@@ -52,15 +52,42 @@ export interface PaginationMeta {
 export interface BusinessListing {
   id: string;
   name: string;
-  category: string;
-  distance: string; // e.g., "0.8 km"
-  approx_distance_km?: number;
-  isOpen?: boolean;
+  category: string; // e.g., 'pharmacy', 'restaurant'
+  description?: string;
+
+  // Location
+  city?: string;
+  country?: string;
+  address?: string; // "area" or full address
+  location?: string; // PostGIS Point string or lat/lng object if parsed
+  distance?: string; // e.g., "0.8 km"
+  approx_distance_km?: number; // Numeric for sorting/logic
+
+  // Contact
+  phone: string;
+  website?: string;
+  email?: string;
+  owner_whatsapp?: string;
+
+  // Status & Metadata
+  isOpen?: boolean; // true = Open, false = Closed, undefined = Unknown
+  operating_hours?: string;
+  rating?: number;
+  review_count?: number;
+  tags?: string[];
+
+  // App Specific
   confidence: 'High' | 'Medium' | 'Low';
-  snippet?: string;
-  address?: string;
-  phoneNumber?: string;
+  snippet?: string; // "why_recommended"
   whatsappDraft?: string;
+}
+
+export interface Business extends BusinessListing {
+  user_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  external_id?: string;
+  is_active: boolean;
 }
 
 export interface SearchFilters {

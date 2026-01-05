@@ -332,6 +332,10 @@ Cloudflare Worker (services/agent-runtime)
 ## Documentation
 
 - [Quick Deploy Guide](./docs/QUICK_DEPLOY.md) - ⚡ Fast deployment reference
+- [ChatKit Widgets Implementation](./docs/CHATKIT_WIDGETS_IMPLEMENTATION.md) - Widget pack and agent integration
+- [Next Steps Guide](./docs/NEXT_STEPS_COMPLETE.md) - Complete setup instructions
+- [Migration Instructions](./docs/MIGRATION_INSTRUCTIONS.md) - Database migration guide
+- [WhatsApp Setup](./docs/WHATSAPP_SETUP.md) - WhatsApp Business API configuration
 - [Deployment Guide](./docs/DEPLOYMENT.md) - Detailed deployment instructions
 - [Deployment Checklist](./docs/DEPLOYMENT_CHECKLIST.md) - Step-by-step checklist
 - [Migration Guide](./docs/MIGRATION_TO_OPENAI.md) - Complete migration specification

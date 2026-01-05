@@ -68,6 +68,23 @@ async function handleNonStreamingResponse(
 
     const finalMessage = secondResponse.choices[0]?.message;
     
+    // Check if any tool result should generate a widget
+    const { generateWidgetFromToolResult } = await import('./utils/widgets');
+    let widget = null;
+    
+    // Try to generate widget from the last tool result (most relevant)
+    if (toolResults.length > 0) {
+      const lastToolResult = toolResults[toolResults.length - 1];
+      const lastToolCall = message.tool_calls?.find(tc => tc.id === lastToolResult.tool_call_id);
+      if (lastToolCall) {
+        widget = generateWidgetFromToolResult(
+          lastToolCall.function.name,
+          lastToolResult.content,
+          { user_id, user_location, conversation_id }
+        );
+      }
+    }
+    
     return new Response(
       JSON.stringify({
         message: finalMessage?.content || '',
@@ -75,6 +92,7 @@ async function handleNonStreamingResponse(
         conversation_id,
         tool_calls: message.tool_calls,
         tool_results: toolResults,
+        ...(widget ? { widget } : {}),
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

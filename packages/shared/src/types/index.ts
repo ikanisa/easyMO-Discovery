@@ -305,6 +305,8 @@ export interface AgentResponse {
     content: string;
   }>;
   conversation_id?: string;
+  // ChatKit widget support
+  widget?: any; // ChatKit widget object
 }
 
 export interface StreamingChunk {
