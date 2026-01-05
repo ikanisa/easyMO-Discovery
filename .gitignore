@@ -24,3 +24,6 @@ dist-ssr
 services/whatsapp-bridge/node_modules
 tmp_new
 supabase/.temp
+
+# Worker local env
+worker/.dev.vars

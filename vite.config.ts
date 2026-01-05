@@ -26,12 +26,10 @@ export default defineConfig(({ mode }) => {
         },
       }),
     ],
-    define: {
-      'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-      // Note: Vite automatically exposes VITE_* env vars via import.meta.env
-      // These explicit defines are for backwards compatibility with process.env usage
-    },
+    // SECURITY FIX: Removed API key defines to prevent client-side exposure
+    // All Gemini calls must go through Supabase Edge Functions (secure backend)
+    // Note: Vite automatically exposes VITE_* env vars via import.meta.env
+    // These are safe to use for non-sensitive config (e.g., VITE_SUPABASE_URL)
     build: {
       rollupOptions: {
         output: {

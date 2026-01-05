@@ -16,6 +16,7 @@ import OfflineBanner from './components/OfflineBanner';
 import { hapticFeedback } from './utils/ui';
 import { OfflineQueue } from './services/offlineQueue';
 import { flushQueuedRequests } from './services/api';
+import { RolesService } from './services/roles';
 
 // Lazy Load Pages
 const Discovery = React.lazy(() => import('./pages/Discovery'));
@@ -26,6 +27,7 @@ const MomoGenerator = React.lazy(() => import('./pages/MomoGenerator'));
 const QRScanner = React.lazy(() => import('./pages/QRScanner'));
 const Settings = React.lazy(() => import('./pages/Settings'));
 const BusinessOnboarding = React.lazy(() => import('./pages/BusinessOnboarding'));
+const ChatHome = React.lazy(() => import('./components/Chat/ChatHome'));
 
 const HomeWidget = ({ icon: Icon, label, subLabel, onClick, gradient, delay = 0 }: any) => (
   <motion.button
@@ -68,7 +70,6 @@ const App: React.FC = () => {
   const [mode, setMode] = useState<AppMode>(AppMode.HOME);
   const [userRole, setUserRole] = useState<Role | null>(null);
   const [activeChat, setActiveChat] = useState<ChatSessionType | null>(null);
-  const [homeSearchQuery, setHomeSearchQuery] = useState('');
   const [showPermissionModal, setShowPermissionModal] = useState(false);
 
   useEffect(() => {
@@ -133,12 +134,16 @@ const App: React.FC = () => {
                 user_id: user.id,
                 display_name: user.email || `Guest ${user.id.slice(0, 4)}`,
                 phone_number: user.phone || `Anon-${user.id.slice(0, 6)}`,
-                default_role: 'passenger',
+                default_role: 'passenger', // Keep for backward compatibility
               },
               { onConflict: 'user_id' }
             );
           if (profileError) {
             console.warn('Profile sync warning', profileError.message);
+          } else {
+            // Initialize default passenger role in user_roles table
+            // This is idempotent - won't create duplicate if already exists
+            await RolesService.initializeDefaultRole(user.id);
           }
         }
 
@@ -214,13 +219,7 @@ const App: React.FC = () => {
     });
   };
 
-  const handleHomeSearch = () => {
-    if (!homeSearchQuery.trim()) return;
-    hapticFeedback('medium');
-    sendCategoryRequest(homeSearchQuery);
-    startChat('business', undefined, false, homeSearchQuery);
-    setHomeSearchQuery('');
-  };
+  // Removed handleHomeSearch - ChatHome handles search directly
 
   const renderContent = () => {
     return (
@@ -234,46 +233,34 @@ const App: React.FC = () => {
                 className="h-full"
             >
                 {(() => {
-                    if (mode === AppMode.HOME && !userRole) {
+                    if (mode === AppMode.HOME) {
                         return (
-                          <div className="flex flex-col min-h-full overflow-y-auto no-scrollbar pb-24 relative bg-slate-50 dark:bg-[#0f172a]">
-                            <div className="relative pt-12 pb-6 px-6">
-                               <div className="absolute top-6 right-6">
-                                 <button onClick={() => { hapticFeedback('light'); toggleTheme(); }} className="p-2.5 rounded-full bg-white/50 dark:bg-black/20 backdrop-blur-md border border-slate-200 dark:border-white/10 shadow-sm">
-                                   {theme === 'dark' ? <ICONS.Sun className="w-5 h-5" /> : <ICONS.Moon className="w-5 h-5" />}
-                                 </button>
-                               </div>
-                               <div className="text-center mb-8">
-                                 <h1 className="text-5xl font-black tracking-tighter bg-clip-text text-transparent bg-gradient-to-br from-blue-600 to-purple-600 mb-3">easyMO</h1>
-                                 <p className="text-slate-500 dark:text-slate-400 font-medium text-sm tracking-wide">Your Everyday Companion</p>
-                               </div>
-                               <div className="relative group w-full max-w-md mx-auto">
-                                  <input 
-                                     type="search" 
-                                     value={homeSearchQuery}
-                                     onChange={(e) => setHomeSearchQuery(e.target.value)}
-                                     onKeyDown={(e) => e.key === 'Enter' && handleHomeSearch()}
-                                     placeholder="Find products, services, or places..."
-                                     inputMode="search"
-                                     enterKeyHint="search"
-                                     className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-3xl pl-6 pr-14 py-4.5 text-sm font-bold text-slate-900 dark:text-white shadow-xl"
-                                  />
-                                  <button onClick={handleHomeSearch} className="absolute right-2 top-2 p-2.5 bg-blue-600 text-white rounded-2xl">
-                                     <ICONS.Search className="w-5 h-5" />
-                                  </button>
-                               </div>
-                            </div>
-                            <div className="space-y-4">
-                              <SectionRow title="Mobility">
-                                 <HomeWidget icon={ICONS.Bike} label="Find Ride" subLabel="Moto & Cab" gradient="from-indigo-500 to-blue-500" onClick={() => { setUserRole('passenger'); setMode(AppMode.DISCOVERY); }} delay={0} />
-                                 <HomeWidget icon={ICONS.Car} label="Driver Mode" subLabel="Earn Money" gradient="from-pink-500 to-rose-500" onClick={() => { setUserRole('driver'); setMode(AppMode.DISCOVERY); }} delay={100} />
-                              </SectionRow>
-                              <SectionRow title="Tools">
-                                 <HomeWidget icon={ICONS.QrCode} label="MoMo QR" subLabel="Receive Pay" gradient="from-emerald-500 to-teal-400" onClick={() => setMode(AppMode.MOMO_GENERATOR)} delay={200} />
-                                 <HomeWidget icon={ICONS.Scan} label="Scanner" subLabel="Pay & Link" gradient="from-orange-500 to-amber-500" onClick={() => setMode(AppMode.SCANNER)} delay={300} />
-                              </SectionRow>
-                            </div>
-                          </div>
+                          <Suspense fallback={<LoadingScreen />}>
+                            <ChatHome
+                              onStartChat={(type, query) => startChat(type, undefined, false, query)}
+                              onNavigate={(m) => {
+                                const modeMap: Record<string, AppMode> = {
+                                  'discovery': AppMode.DISCOVERY,
+                                  'business': AppMode.BUSINESS,
+                                  'services': AppMode.SERVICES,
+                                  'momo_generator': AppMode.MOMO_GENERATOR,
+                                  'scanner': AppMode.SCANNER,
+                                };
+                                const targetMode = modeMap[m] || AppMode.HOME;
+                                setMode(targetMode);
+                                if (targetMode === AppMode.DISCOVERY && !userRole) {
+                                  setUserRole('passenger');
+                                }
+                              }}
+                              currentRole={userRole}
+                              onRoleChange={(role) => {
+                                setUserRole(role);
+                                if (role === 'driver' || role === 'passenger') {
+                                  setMode(AppMode.DISCOVERY);
+                                }
+                              }}
+                            />
+                          </Suspense>
                         );
                     }
                     switch (mode) {
@@ -314,7 +301,12 @@ const App: React.FC = () => {
         }}
       />
       {showPermissionModal && <PermissionModal onGranted={() => setShowPermissionModal(false)} />}
-      <Layout currentMode={mode} onNavigate={(m) => { hapticFeedback('light'); setMode(m); if (m === AppMode.HOME) setUserRole(null); }}>
+      <Layout currentMode={mode} onNavigate={(m) => { 
+        hapticFeedback('light'); 
+        setMode(m); 
+        // Keep role when returning to home (user can toggle via ChatHome)
+        // setUserRole(null); // Removed - allow role persistence
+      }}>
         {renderContent()}
       </Layout>
       <InstallPrompt />

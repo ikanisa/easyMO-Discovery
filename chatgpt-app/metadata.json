@@ -1,0 +1,51 @@
+{
+  "name": "easyMO Discovery",
+  "version": "1.0.0",
+  "description": "AI-powered mobility, marketplace, and payments platform for East Africa",
+  "author": "easyMO",
+  "mcp_server_url": "https://easymo-agent.your-subdomain.workers.dev/mcp",
+  "ui_component_url": "https://easymo.your-subdomain.pages.dev/chatgpt-app/ui-bundle.js",
+  "capabilities": {
+    "tools": [
+      "publish_presence",
+      "find_matches",
+      "search_offers",
+      "generate_momo_qr",
+      "parse_qr",
+      "geocode",
+      "estimate_eta"
+    ],
+    "resources": [
+      "easymo://presence",
+      "easymo://trip_intents",
+      "easymo://marketplace_listings"
+    ]
+  },
+  "categories": [
+    "mobility",
+    "marketplace",
+    "payments"
+  ],
+  "privacy_policy_url": "https://easymo.your-subdomain.pages.dev/privacy-policy",
+  "support_url": "https://easymo.your-subdomain.pages.dev/support",
+  "data_collection": {
+    "required": [
+      "user_id",
+      "location (with permission)",
+      "role (passenger/driver/vendor)"
+    ],
+    "optional": [
+      "phone_number",
+      "vehicle_type",
+      "business_listings"
+    ],
+    "minimization": "We only collect data necessary for core functionality. Location is only used for matching and is not stored beyond active sessions. Phone numbers are only used for contacting matched users/businesses."
+  },
+  "audience": "13+",
+  "geographic_focus": [
+    "Rwanda",
+    "Kenya",
+    "East Africa"
+  ]
+}
+

@@ -2,10 +2,9 @@
 import { Message, BusinessResultsPayload, PropertyResultsPayload, LegalResultsPayload } from '../types';
 import { normalizePhoneNumber } from '../utils/phone';
 import { callBackend } from './api';
-import { GoogleGenAI } from "@google/genai";
 import { MemoryService } from './memory';
 
-// --- SECURITY FIX: No Client-Side API Keys ---
+// --- SECURITY FIX: Removed client-side Gemini import - all calls go through Edge Functions ---
 
 /**
  * Proxies the prompt to the Google Apps Script Backend.
@@ -30,79 +29,26 @@ const askGemini = async (
       };
   }
 
-  // 1. Try Backend (Secure)
-  if (typeof prompt === 'string') {
-    try {
-      const response = await callBackend({
-        action: "secure_gemini",
-        prompt: prompt,
-        tools: tools,
-        toolConfig: toolConfig 
-      });
-      
-      if (response.status === 'success' && response.text) {
-          return response.text;
-      }
-      
-      console.warn("Backend Gemini Failed, falling back to client-side:", response.message || response.error);
-    } catch (e) {
-      console.error("Secure Gemini Net Error, falling back:", e);
-    }
-  }
-
-  // 2. Fallback to Direct Client Call (Development/Prototype Mode ONLY)
-  // SECURITY: This fallback exposes the API key in the client bundle.
-  // It should ONLY be used during local development when Edge Functions are unavailable.
-  const isDevelopment = typeof window !== 'undefined' && 
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-  
-  if (!isDevelopment) {
-    console.error("Backend Gemini unavailable and client fallback disabled in production.");
-    return "I'm having trouble connecting. Please try again in a moment.";
-  }
-
+  // SECURITY FIX: Removed client-side fallback to prevent API key exposure
+  // All Gemini calls must go through Supabase Edge Functions (secure backend)
+  // If backend is unavailable, return error message instead of falling back to client
   try {
-      console.warn("⚠️ Using Direct Gemini Client (Dev Fallback - NOT FOR PRODUCTION)");
-      const apiKey =
-        (import.meta as any).env?.GEMINI_API_KEY ||
-        (import.meta as any).env?.VITE_GEMINI_API_KEY ||
-        (typeof process !== 'undefined' ? (process as any).env?.API_KEY : undefined);
-
-      if (!apiKey) {
-        return "Gemini API key is missing in dev mode. Set GEMINI_API_KEY to enable local fallback.";
-      }
-
-      // Fix: Create instance just-in-time as per guidelines to ensure current key usage.
-      const clientAI = new GoogleGenAI({ apiKey });
-      
-      // Fix: Select model based on task. Maps grounding requires 2.5 series.
-      // General text tasks use gemini-3-flash-preview.
-      const isMaps = tools?.some((t: any) => t.googleMaps);
-      const model = isMaps ? 'gemini-2.5-flash' : 'gemini-3-flash-preview';
-      
-      const config: any = {};
-      if (tools) config.tools = tools;
-      if (toolConfig) config.toolConfig = toolConfig;
-
-      let contents: any;
-      // Fix: For multi-part prompts (arrays), wrap them in an object with a parts array, omitting the unnecessary role field.
-      if (Array.isArray(prompt)) {
-          contents = { parts: prompt };
-      } else {
-          contents = prompt;
-      }
-
-      // Fix: Use ai.models.generateContent to query the model with name and contents directly.
-      const result = await clientAI.models.generateContent({
-          model: model,
-          contents: contents,
-          config: config
-      });
-      // Fix: Correctly access the generated text using the .text property directly.
-      return result.text || "No response generated.";
-  } catch (clientError: any) {
-      console.error("Direct Gemini Client Error:", clientError);
-      return "I am having trouble connecting to the brain (Both Secure & Direct channels failed).";
+    const response = await callBackend({
+      action: "secure_gemini",
+      prompt: prompt,
+      tools: tools,
+      toolConfig: toolConfig 
+    });
+    
+    if (response.status === 'success' && response.text) {
+      return response.text;
+    }
+    
+    console.error("Backend Gemini Failed:", response.message || response.error);
+    return "I'm having trouble connecting to the AI service. Please try again in a moment.";
+  } catch (e) {
+    console.error("Secure Gemini Error:", e);
+    return "I'm having trouble connecting to the AI service. Please check your internet connection and try again.";
   }
 };
 
