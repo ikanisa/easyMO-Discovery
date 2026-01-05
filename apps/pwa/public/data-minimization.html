@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Data Minimization Statement - easyMO Discovery</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      color: #333;
+    }
+    h1 { color: #2563eb; }
+    h2 { margin-top: 30px; color: #1e40af; }
+    .highlight { background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <h1>Data Minimization Statement</h1>
+  <p class="last-updated">Last Updated: January 29, 2025</p>
+
+  <div class="highlight">
+    <strong>Our Commitment:</strong> easyMO Discovery collects and stores only the minimum 
+    data necessary to provide our services. We automatically delete data when it's no longer needed.
+  </div>
+
+  <h2>1. Location Data</h2>
+  <h3>Precision</h3>
+  <ul>
+    <li><strong>Stored:</strong> Exact coordinates (for matching calculations)</li>
+    <li><strong>Shared:</strong> Rounded to ~100m precision (0.001 degrees ≈ 111m)</li>
+    <li><strong>Displayed:</strong> Area descriptions or approximate locations</li>
+  </ul>
+
+  <h3>Time-To-Live (TTL)</h3>
+  <ul>
+    <li><strong>Presence Data:</strong> Expires after 15 minutes</li>
+    <li><strong>Ride Intents:</strong> Expire after 10-15 minutes</li>
+    <li><strong>Automatic Cleanup:</strong> Presence deleted after 24 hours, intents after 7 days</li>
+  </ul>
+
+  <h2>2. Update Throttling</h2>
+  <p>
+    To prevent data collection abuse:
+  </p>
+  <ul>
+    <li>Presence updates are throttled to minimum 10-second intervals</li>
+    <li>Faster updates are automatically ignored</li>
+    <li>Rate limiting: Max 5 ride intents per 10 minutes per user</li>
+  </ul>
+
+  <h2>3. Contact Information</h2>
+  <ul>
+    <li>Phone numbers are <strong>never</strong> shared without explicit user consent</li>
+    <li>Contact information is masked by default (shows last 4 digits only)</li>
+    <li>Full contact details require explicit "reveal contact" action</li>
+  </ul>
+
+  <h2>4. Automatic Deletion</h2>
+  <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+    <thead>
+      <tr style="background: #f3f4f6;">
+        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Data Type</th>
+        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">TTL</th>
+        <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Cleanup</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td style="padding: 10px; border: 1px solid #ddd;">Presence (active)</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">15 minutes</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">Marked offline</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px; border: 1px solid #ddd;">Presence (expired)</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">24 hours</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">Deleted</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px; border: 1px solid #ddd;">Ride Intents (active)</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">10-15 minutes</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">Marked cancelled</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px; border: 1px solid #ddd;">Ride Intents (cancelled)</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">7 days</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">Deleted</td>
+      </tr>
+      <tr>
+        <td style="padding: 10px; border: 1px solid #ddd;">Rate Limits</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">1 hour</td>
+        <td style="padding: 10px; border: 1px solid #ddd;">Deleted</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>5. No Persistent Tracking</h2>
+  <ul>
+    <li>We do not track users across sessions</li>
+    <li>No cookies or persistent identifiers</li>
+    <li>Request IDs are generated per-request and not stored long-term</li>
+  </ul>
+
+  <h2>6. Data Sharing</h2>
+  <p>
+    We share only:
+  </p>
+  <ul>
+    <li><strong>Approximate location</strong> (100m precision) with nearby users for matching</li>
+    <li><strong>Contact information</strong> only with explicit user consent</li>
+    <li><strong>No exact coordinates</strong> are ever broadcast publicly</li>
+  </ul>
+
+  <h2>7. Compliance</h2>
+  <p>
+    Our data minimization practices align with:
+  </p>
+  <ul>
+    <li>GDPR principles (data minimization, purpose limitation)</li>
+    <li>Best practices for location-based services</li>
+    <li>ChatGPT Apps SDK privacy requirements</li>
+  </ul>
+
+  <h2>8. Questions</h2>
+  <p>
+    For questions about data minimization, contact: privacy@easymo.discovery
+  </p>
+</body>
+</html>
+

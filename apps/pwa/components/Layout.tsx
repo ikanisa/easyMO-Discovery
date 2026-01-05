@@ -1,6 +1,7 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ICONS } from '@easymo/shared/constants';
 import { AppMode } from '@easymo/shared/types';
+import Drawer from './ai/Drawer';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,6 +11,7 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, currentMode, onNavigate }) => {
   const mainRef = useRef<HTMLElement | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     const node = mainRef.current;
@@ -30,6 +32,35 @@ const Layout: React.FC<LayoutProps> = ({ children, currentMode, onNavigate }) =>
 
   return (
     <div className="flex flex-col h-full relative">
+      {/* Header with Drawer Toggle */}
+      <header className="
+        shrink-0
+        px-4 py-3
+        bg-white dark:bg-slate-900
+        border-b border-slate-200 dark:border-slate-700
+        flex items-center justify-between
+      ">
+        <button
+          onClick={() => setDrawerOpen(true)}
+          className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+          aria-label="Open menu"
+        >
+          <ICONS.Menu className="w-6 h-6 text-slate-600 dark:text-slate-400" />
+        </button>
+        <h1 className="text-lg font-bold text-slate-900 dark:text-white">
+          easyMO
+        </h1>
+        <div className="w-10" /> {/* Spacer for centering */}
+      </header>
+
+      {/* Drawer */}
+      <Drawer
+        isOpen={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        currentMode={currentMode}
+        onNavigate={onNavigate}
+      />
+
       {/* Content Area - Scrollable with Safe Area padding at bottom */}
       <main
         ref={mainRef}

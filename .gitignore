@@ -27,3 +27,7 @@ supabase/.temp
 
 # Worker local env
 worker/.dev.vars
+services/agent-runtime/.dev.vars
+.env
+.env.local
+.env.*.local

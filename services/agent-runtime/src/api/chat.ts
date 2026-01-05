@@ -5,7 +5,7 @@
 
 import OpenAI from 'openai';
 import type { Env } from '../types';
-import { Logger, generateRequestId } from '../utils/logging';
+import { Logger, generateTraceId, generateRequestId } from '../utils/logging';
 import { Tracer } from '../utils/tracing';
 import { RateLimiter } from '../utils/rateLimit';
 import { createErrorResponse, WorkerError, ErrorCode, wrapOpenAIError, withTimeout } from '../utils/errors';
@@ -23,7 +23,7 @@ export async function handleChatRequest(
   env: Env
 ): Promise<Response> {
   const startTime = Date.now();
-  const requestId = generateRequestId();
+  const traceId = generateTraceId();
   const url = new URL(request.url);
 
   // CORS headers
@@ -31,7 +31,8 @@ export async function handleChatRequest(
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-    'X-Request-ID': requestId,
+    'X-Request-ID': traceId,
+    'X-Trace-ID': traceId,
   };
 
   // Handle CORS preflight
@@ -41,11 +42,11 @@ export async function handleChatRequest(
 
   // Only allow POST
   if (request.method !== 'POST') {
-    const logger = new Logger(requestId);
+    const logger = new Logger(traceId);
     logger.warn('Method not allowed', { method: request.method, path: url.pathname });
     
     return new Response(
-      JSON.stringify({ error: 'Method not allowed. Use POST for chat requests.', request_id: requestId }),
+      JSON.stringify({ error: 'Method not allowed. Use POST for chat requests.', trace_id: traceId, request_id: traceId }),
       { status: 405, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
@@ -62,9 +63,16 @@ export async function handleChatRequest(
     const validatedBody = agentRequestSchema.parse(body);
     let { messages, agent_type, user_id, user_location, conversation_id, stream = false } = validatedBody;
 
-    // Initialize logger and tracer
-    const logger = new Logger(requestId, user_id);
-    const tracer = new Tracer(requestId, user_id, agent_type);
+    // Initialize logger with Supabase integration if configured
+    const supabaseLogConfig = env.SUPABASE_URL && env.SUPABASE_SERVICE_ROLE_KEY ? {
+      url: env.SUPABASE_URL,
+      serviceRoleKey: env.SUPABASE_SERVICE_ROLE_KEY,
+      enabled: true,
+      tableName: 'request_logs',
+    } : undefined;
+    
+    const logger = new Logger(traceId, user_id, supabaseLogConfig);
+    const tracer = new Tracer(traceId, user_id, agent_type);
 
     logger.request(request.method, url.pathname, agent_type, {
       stream,
@@ -94,7 +102,8 @@ export async function handleChatRequest(
         JSON.stringify({
           error: 'Rate limit exceeded',
           code: ErrorCode.RATE_LIMIT_EXCEEDED,
-          request_id: requestId,
+          trace_id: traceId,
+          request_id: traceId, // Backward compatibility
           retry_after: rateLimitResult.retryAfter,
         }),
         {
@@ -180,7 +189,7 @@ export async function handleChatRequest(
         user_location,
         finalConversationId,
         corsHeaders,
-        requestId,
+        traceId,
         logger,
         tracer,
         rateLimiter.getHeaders(rateLimitResult),
@@ -207,7 +216,7 @@ export async function handleChatRequest(
     );
 
   } catch (error: any) {
-    const logger = new Logger(requestId);
+    const logger = new Logger(traceId);
     const duration = Date.now() - startTime;
     
     logger.error('Chat request error', error, {
@@ -248,8 +257,9 @@ async function handleNonStreamingResponse(
   rateLimitHeaders?: Record<string, string>
 ): Promise<Response> {
   const startTime = Date.now();
-  const loggerInstance = logger || new Logger(requestId || generateRequestId(), user_id);
-  const tracerInstance = tracer || new Tracer(requestId || generateRequestId(), user_id, agentType);
+    const traceIdForFunction = traceId || generateTraceId();
+    const loggerInstance = logger || new Logger(traceIdForFunction, user_id);
+    const tracerInstance = tracer || new Tracer(traceIdForFunction, user_id, agentType);
 
   try {
     const systemMessage: ChatMessage = {
@@ -421,7 +431,8 @@ async function handleNonStreamingResponse(
           conversation_id: finalConversationId,
           tool_calls: message.tool_calls,
           tool_results: toolResults,
-          request_id: requestId,
+          trace_id: traceId,
+          request_id: traceId, // Backward compatibility
         }),
         {
           headers: {
@@ -508,8 +519,9 @@ async function handleStreamingResponse(
 ): Promise<Response> {
   // Note: conversation_id is already finalConversationId from caller
   const startTime = Date.now();
-  const loggerInstance = logger || new Logger(requestId || generateRequestId(), user_id);
-  const tracerInstance = tracer || new Tracer(requestId || generateRequestId(), user_id, agentType);
+    const traceIdForFunction = traceId || generateTraceId();
+    const loggerInstance = logger || new Logger(traceIdForFunction, user_id);
+    const tracerInstance = tracer || new Tracer(traceIdForFunction, user_id, agentType);
 
   const systemMessage: ChatMessage = {
     role: 'system',
@@ -770,7 +782,8 @@ async function handleStreamingResponse(
               type: 'done', 
               agent_type: agentType, 
               conversation_id, 
-              request_id: requestId,
+              trace_id: traceId,
+          request_id: traceId, // Backward compatibility
               structured_output: structuredOutput,
             })}\n\n`)
           );
@@ -831,7 +844,8 @@ async function handleStreamingResponse(
             type: 'done', 
             agent_type: agentType, 
             conversation_id, 
-            request_id: requestId,
+            trace_id: traceId,
+          request_id: traceId, // Backward compatibility
             structured_output: structuredOutput,
           })}\n\n`)
         );

@@ -35,30 +35,33 @@ export async function setPresence(
   const { user_id, role, lat, lng, is_online, meta } = args;
   
   try {
-    // Enforce TTL
-    const ttl = enforcePresenceTTL(meta?.ttl);
+    // Enforce TTL (max 15 minutes, default 15 minutes)
+    // Note: Updates faster than 10s are automatically throttled in database
+    const ttl = enforcePresenceTTL(meta?.ttl || 900); // Default 15 minutes
     
-    // Use RPC function for secure presence updates
+    // Use RPC function for secure presence updates with rate limiting
     const { data: result, error: rpcError } = await supabase.rpc('create_or_refresh_presence', {
       p_user_id: user_id,
       p_role: role,
       p_lat: lat,
       p_lng: lng,
       p_is_online: is_online,
-      p_ttl_seconds: ttl,
+      p_ttl_seconds: ttl, // Will be capped at 15min in function
       p_meta: meta || {},
     });
     
-    if (rpcError || !result) {
-      throw new Error(rpcError?.message || 'RPC call returned no result');
+    if (rpcError) {
+      throw new Error(rpcError.message || 'RPC call failed');
     }
     
+    // Result is the user_id (even if update was throttled)
     return JSON.stringify({
       success: true,
       message: `Presence set as ${role}${is_online ? ' (online)' : ' (offline)'}`,
       location: sanitizeLocationForDisplay({ lat, lng }),
       is_online,
       expires_in: ttl,
+      note: 'Updates faster than 10 seconds are automatically throttled',
     });
   } catch (error: any) {
     return JSON.stringify({
@@ -89,28 +92,42 @@ export async function createRideIntentRobust(
   const { user_id, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, notes } = args;
   
   try {
-    const ttl = enforceIntentTTL(1800); // 30 minutes default
+    // Use safe RPC function with rate limiting and TTL enforcement
+    const { data: intentId, error: rpcError } = await supabase.rpc('create_ride_intent_safe', {
+      p_passenger_id: user_id,
+      p_pickup_lat: pickup_lat,
+      p_pickup_lng: pickup_lng,
+      p_pickup_address: null, // Can be enhanced to geocode
+      p_dropoff_lat: dropoff_lat || null,
+      p_dropoff_lng: dropoff_lng || null,
+      p_dropoff_address: null,
+      p_notes: notes || null,
+      p_ttl_seconds: 900, // 15 minutes (enforced 10-15 min range)
+    });
     
-    // Create ride intent
-    const { data: intent, error } = await supabase
+    if (rpcError || !intentId) {
+      // Check if it's a rate limit error
+      if (rpcError?.message?.includes('Rate limit exceeded')) {
+        throw new Error('Too many ride requests. Please wait a few minutes before creating another.');
+      }
+      throw new Error(rpcError?.message || 'Failed to create ride intent');
+    }
+    
+    // Fetch the created intent to get full details
+    const { data: intent, error: fetchError } = await supabase
       .from('ride_intents')
-      .insert({
-        passenger_id: user_id,
-        pickup_lat,
-        pickup_lng,
-        pickup_location: `POINT(${pickup_lng} ${pickup_lat})`,
-        dropoff_lat: dropoff_lat || null,
-        dropoff_lng: dropoff_lng || null,
-        dropoff_location: dropoff_lat && dropoff_lng ? `POINT(${dropoff_lng} ${dropoff_lat})` : null,
-        notes: notes || null,
-        status: 'pending',
-        expires_at: new Date(Date.now() + ttl * 1000).toISOString(),
-      })
-      .select('id, status, expires_at')
+      .select('id, status, expires_at, created_at')
+      .eq('id', intentId)
       .single();
     
-    if (error || !intent) {
-      throw new Error(`Failed to create ride intent: ${error?.message || 'Unknown error'}`);
+    if (fetchError || !intent) {
+      // Intent was created but we can't fetch it, return what we have
+      return JSON.stringify({
+        success: true,
+        intent_id: intentId,
+        status: 'pending',
+        message: 'Ride intent created. Finding nearby drivers...',
+      });
     }
     
     return JSON.stringify({
@@ -239,13 +256,14 @@ export async function findDriverMatches(
 }
 
 /**
- * Find passenger requests for a driver
+ * Find passenger requests for a driver (with throttling)
  */
 const findPassengerRequestsSchema = z.object({
+  driver_id: z.string().uuid(),
   driver_lat: z.number(),
   driver_lng: z.number(),
-  radius_km: z.number().default(5),
-  limit: z.number().default(10),
+  radius_km: z.number().default(10),
+  limit: z.number().default(20),
 });
 
 export async function findPassengerRequests(
@@ -254,22 +272,24 @@ export async function findPassengerRequests(
 ): Promise<string> {
   const supabase = createSupabaseClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
   
-  const { driver_lat, driver_lng, radius_km, limit } = args;
+  const { driver_id, driver_lat, driver_lng, radius_km, limit } = args;
   
   try {
-    // Find nearby ride intents (pending status)
-    const radiusMeters = radius_km * 1000;
+    // Use throttled RPC function with rate limiting
+    const { data: intents, error: rpcError } = await supabase.rpc('get_nearby_ride_intents', {
+      p_driver_id: driver_id,
+      p_lat: driver_lat,
+      p_lng: driver_lng,
+      p_radius_m: radius_km * 1000, // Convert km to meters
+      p_limit: limit,
+    });
     
-    // Query ride intents within radius
-    const { data: intents, error } = await supabase
-      .from('ride_intents')
-      .select('id, pickup_lat, pickup_lng, dropoff_lat, dropoff_lng, notes, created_at, expires_at')
-      .eq('status', 'pending')
-      .gte('expires_at', new Date().toISOString())
-      .limit(limit);
-    
-    if (error) {
-      throw error;
+    if (rpcError) {
+      // Check if it's a rate limit error
+      if (rpcError.message?.includes('Rate limit exceeded')) {
+        throw new Error('Too many match queries. Please wait before querying again.');
+      }
+      throw rpcError;
     }
     
     if (!intents || intents.length === 0) {
@@ -277,38 +297,26 @@ export async function findPassengerRequests(
         success: true,
         requests: [],
         count: 0,
+        message: 'No nearby ride requests found',
       });
     }
     
-    // Filter by distance and format (sanitize locations)
-    const requests = intents
-      .map((intent: any) => {
-        // Calculate distance (simplified - in production use PostGIS)
-        const distance = calculateDistance(
-          { lat: driver_lat, lng: driver_lng },
-          { lat: intent.pickup_lat, lng: intent.pickup_lng }
-        );
-        
-        if (distance > radius_km) {
-          return null;
-        }
-        
-        return {
-          intent_id: intent.id,
-          pickup: {
-            location: sanitizeLocationForDisplay({ lat: intent.pickup_lat, lng: intent.pickup_lng }),
-          },
-          dropoff: intent.dropoff_lat && intent.dropoff_lng ? {
-            location: sanitizeLocationForDisplay({ lat: intent.dropoff_lat, lng: intent.dropoff_lng }),
-          } : null,
-          distance_km: distance.toFixed(2),
-          notes: intent.notes,
-          created_at: intent.created_at,
-        };
-      })
-      .filter((r: any) => r !== null)
-      .sort((a: any, b: any) => parseFloat(a.distance_km) - parseFloat(b.distance_km))
-      .slice(0, limit);
+    // Format results (sanitize locations)
+    const requests = intents.map((intent: any) => ({
+      intent_id: intent.intent_id,
+      pickup: {
+        location: sanitizeLocationForDisplay({ lat: intent.pickup_lat, lng: intent.pickup_lng }),
+        address: intent.pickup_address,
+      },
+      dropoff: intent.dropoff_lat ? {
+        location: sanitizeLocationForDisplay({ lat: intent.dropoff_lat, lng: intent.dropoff_lng }),
+        address: intent.dropoff_address,
+      } : undefined,
+      distance_km: (intent.distance_m / 1000).toFixed(2),
+      notes: intent.notes,
+      created_at: intent.created_at,
+      expires_at: intent.expires_at,
+    }));
     
     return JSON.stringify({
       success: true,

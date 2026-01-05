@@ -126,10 +126,11 @@ export const findDriverMatchesSchema = z.object({
 });
 
 export const findPassengerRequestsSchema = z.object({
+  driver_id: z.string().uuid(),
   driver_lat: z.number(),
   driver_lng: z.number(),
-  radius_km: z.number().default(5),
-  limit: z.number().default(10),
+  radius_km: z.number().default(10),
+  limit: z.number().default(20),
 });
 
 export const revealContactSchema = z.object({

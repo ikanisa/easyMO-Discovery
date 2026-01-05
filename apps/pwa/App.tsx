@@ -28,6 +28,7 @@ const QRScanner = React.lazy(() => import('./pages/QRScanner'));
 const Settings = React.lazy(() => import('./pages/Settings'));
 const BusinessOnboarding = React.lazy(() => import('./pages/BusinessOnboarding'));
 const ChatHome = React.lazy(() => import('./components/Chat/ChatHome'));
+const ChatShell = React.lazy(() => import('./components/ai/ChatShell'));
 
 const HomeWidget = ({ icon: Icon, label, subLabel, onClick, gradient, delay = 0 }: any) => (
   <motion.button
@@ -236,28 +237,20 @@ const App: React.FC = () => {
                     if (mode === AppMode.HOME) {
                         return (
                           <Suspense fallback={<LoadingScreen />}>
-                            <ChatHome
-                              onStartChat={(type, query) => startChat(type, undefined, false, query)}
-                              onNavigate={(m) => {
+                            <ChatShell
+                              userId={isAuthenticated ? (supabase?.auth?.user?.()?.id || undefined) : undefined}
+                              onNavigate={(view) => {
                                 const modeMap: Record<string, AppMode> = {
                                   'discovery': AppMode.DISCOVERY,
                                   'business': AppMode.BUSINESS,
                                   'services': AppMode.SERVICES,
-                                  'momo_generator': AppMode.MOMO_GENERATOR,
+                                  'momo': AppMode.MOMO_GENERATOR,
                                   'scanner': AppMode.SCANNER,
+                                  'onboarding': AppMode.ONBOARDING,
+                                  'settings': AppMode.SETTINGS,
                                 };
-                                const targetMode = modeMap[m] || AppMode.HOME;
+                                const targetMode = modeMap[view] || AppMode.HOME;
                                 setMode(targetMode);
-                                if (targetMode === AppMode.DISCOVERY && !userRole) {
-                                  setUserRole('passenger');
-                                }
-                              }}
-                              currentRole={userRole}
-                              onRoleChange={(role) => {
-                                setUserRole(role);
-                                if (role === 'driver' || role === 'passenger') {
-                                  setMode(AppMode.DISCOVERY);
-                                }
                               }}
                             />
                           </Suspense>

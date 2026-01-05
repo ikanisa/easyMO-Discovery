@@ -48,31 +48,35 @@ export function hasLocationConsent(messages: any[]): boolean {
 }
 
 /**
- * Enforce minimum TTL for presence (1 hour minimum)
+ * Enforce TTL for presence (max 15 minutes)
+ * Updates are automatically throttled to minimum 10s interval in database
  */
 export function enforcePresenceTTL(requestedTTL?: number): number {
-  const MIN_TTL = 3600; // 1 hour
-  const MAX_TTL = 86400; // 24 hours
+  const DEFAULT_TTL = 900; // 15 minutes
+  const MAX_TTL = 900; // 15 minutes max
   
-  if (!requestedTTL || requestedTTL < MIN_TTL) {
-    return MIN_TTL;
+  if (!requestedTTL || requestedTTL <= 0) {
+    return DEFAULT_TTL;
   }
   
   return Math.min(requestedTTL, MAX_TTL);
 }
 
 /**
- * Enforce minimum TTL for ride intents (30 minutes minimum)
+ * Enforce TTL for ride intents (10-15 minutes)
+ * Ride intents expire after 10-15 minutes for safety
  */
 export function enforceIntentTTL(requestedTTL?: number): number {
-  const MIN_TTL = 1800; // 30 minutes
-  const MAX_TTL = 7200; // 2 hours
+  const DEFAULT_TTL = 900; // 15 minutes
+  const MIN_TTL = 600; // 10 minutes minimum
+  const MAX_TTL = 900; // 15 minutes maximum
   
-  if (!requestedTTL || requestedTTL < MIN_TTL) {
-    return MIN_TTL;
+  if (!requestedTTL || requestedTTL <= 0) {
+    return DEFAULT_TTL;
   }
   
-  return Math.min(requestedTTL, MAX_TTL);
+  // Clamp between 10 minutes (600s) and 15 minutes (900s)
+  return Math.max(MIN_TTL, Math.min(requestedTTL, MAX_TTL));
 }
 
 /**

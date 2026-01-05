@@ -6,20 +6,33 @@ main = "src/index.ts"
 compatibility_date = "2024-12-01"
 compatibility_flags = ["nodejs_compat"]
 
+# KV namespace for rate limiting (optional but recommended)
+# Create with: wrangler kv:namespace create "RATE_LIMIT_KV"
+# Then add the namespace ID below
+# [[kv_namespaces]]
+# binding = "KV"
+# id = "YOUR_KV_NAMESPACE_ID"
+# preview_id = "YOUR_PREVIEW_KV_NAMESPACE_ID"
+
 # Environment variables are set in Cloudflare Dashboard or via wrangler secret
-# Required:
-# - OPENAI_API_KEY
-# - SUPABASE_URL
-# - SUPABASE_ANON_KEY (or service role key for tool access)
-# Optional:
-# - GEMINI_API_KEY (for optional Gemini tools)
-# - GOOGLE_MAPS_API_KEY (for optional Google Maps tools)
+# Required Secrets:
+# - OPENAI_API_KEY (OpenAI API key)
+# - SUPABASE_URL (Supabase project URL)
+# - SUPABASE_ANON_KEY (Supabase anonymous key)
+# Optional Secrets:
+# - SUPABASE_SERVICE_ROLE_KEY (Service role key for logging)
+# - GEMINI_API_KEY (Gemini API key for optional tools)
+# - GOOGLE_MAPS_API_KEY (Google Maps API key for optional tools)
+# Optional Environment Variables (not encrypted):
+# - RATE_LIMIT_MAX_REQUESTS (default: 100)
+# - RATE_LIMIT_WINDOW_SECONDS (default: 60)
 
 [env.production]
 name = "easymo-agent-worker"
-routes = [
-  { pattern = "api.yourapp.com", zone_name = "yourapp.com" }
-]
+# Uncomment and configure if using custom domain:
+# routes = [
+#   { pattern = "api.yourdomain.com", zone_name = "yourdomain.com" }
+# ]
 
 [env.development]
 name = "easymo-agent-worker-dev"

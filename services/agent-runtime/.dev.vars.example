@@ -1,0 +1,18 @@
+# Local Development Environment Variables
+# Copy this file to .dev.vars (git-ignored) for local development
+# NEVER commit actual secrets to git
+
+# Required
+OPENAI_API_KEY=sk-proj-YOUR_OPENAI_API_KEY_HERE
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-supabase-anon-key-here
+
+# Optional
+SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key-here
+GEMINI_API_KEY=your-gemini-api-key-here
+GOOGLE_MAPS_API_KEY=your-google-maps-api-key-here
+
+# Optional: Rate limiting config
+# RATE_LIMIT_MAX_REQUESTS=100
+# RATE_LIMIT_WINDOW_SECONDS=60
+

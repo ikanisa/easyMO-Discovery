@@ -7,6 +7,10 @@ import PropertyResultsMessage from '../RealEstate/PropertyResultsMessage';
 import LegalResultsMessage from '../Legal/LegalResultsMessage';
 import VerifiedBusinessList from '../Business/VerifiedBusinessList';
 import { BusinessContact } from '../../services/whatsapp';
+import MobilityMatchCard from '../ai/MobilityMatchCard';
+import ListingResultsCard from '../ai/ListingResultsCard';
+import PaymentQRCard from '../ai/PaymentQRCard';
+import ScannerResultCard from '../ai/ScannerResultCard';
 
 interface MessageBubbleProps {
   message: Message;
@@ -177,6 +181,83 @@ const MessageBubble: React.FC<MessageBubbleProps> = ({ message, onReply, onBroad
                payload={message.legalPayload!} 
                onLoadMore={(page) => onReply?.(`Show page ${page} of results`)}
              />
+          </div>
+        )}
+
+        {/* 9. AI-First Tool Cards */}
+        {message.mobilityPayload?.matches && message.mobilityPayload.matches.length > 0 && (
+          <div className="w-full mt-2 space-y-2">
+            {message.mobilityPayload.matches.map((match: any, index: number) => (
+              <MobilityMatchCard
+                key={`mobility-${index}`}
+                match={match}
+                onRequestRide={(id) => onReply?.(`Request ride from ${id}`)}
+                onAccept={(id) => onReply?.(`Accept ride request ${id}`)}
+                onViewDetails={(id) => onReply?.(`View details for ${id}`)}
+              />
+            ))}
+          </div>
+        )}
+
+        {message.mobilityPayload?.requests && message.mobilityPayload.requests.length > 0 && (
+          <div className="w-full mt-2 space-y-2">
+            {message.mobilityPayload.requests.map((request: any, index: number) => (
+              <MobilityMatchCard
+                key={`request-${index}`}
+                match={{
+                  id: request.intent_id,
+                  user_id: '',
+                  role: 'passenger',
+                  distance_km: request.distance_km,
+                }}
+                onAccept={(id) => onReply?.(`Accept ride request ${id}`)}
+                onViewDetails={(id) => onReply?.(`View details for ${id}`)}
+              />
+            ))}
+          </div>
+        )}
+
+        {message.businessPayload?.listings && message.businessPayload.listings.length > 0 && (
+          <div className="w-full mt-2 space-y-2">
+            {message.businessPayload.listings.slice(0, 3).map((listing: any, index: number) => (
+              <ListingResultsCard
+                key={`listing-${index}`}
+                listing={{
+                  id: listing.id || String(index),
+                  title: listing.name || listing.title,
+                  description: listing.snippet,
+                  category: listing.category,
+                  price: listing.price,
+                  currency: 'RWF',
+                  distance_km: listing.distance || listing.distance_km,
+                }}
+                onViewDetails={(id) => onReply?.(`View business ${id}`)}
+                onContact={(id) => onReply?.(`Contact business ${id}`)}
+              />
+            ))}
+          </div>
+        )}
+
+        {message.paymentPayload?.qr_data_url && (
+          <div className="w-full mt-2">
+            <PaymentQRCard
+              qrData={message.paymentPayload}
+              onShare={(data) => {
+                // Share handled by card
+              }}
+            />
+          </div>
+        )}
+
+        {message.scannerPayload?.parsed && (
+          <div className="w-full mt-2">
+            <ScannerResultCard
+              result={message.scannerPayload}
+              onPay={(result) => onReply?.('Process payment')}
+              onCopy={(result) => {
+                // Copy handled by card
+              }}
+            />
           </div>
         )}
       </div>

@@ -5,26 +5,23 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   build: {
-    lib: {
-      entry: path.resolve(__dirname, 'src/index.tsx'),
-      name: 'ChatGPTUI',
-      fileName: 'chatgpt-ui',
-      formats: ['es'],
-    },
+    outDir: 'dist',
     rollupOptions: {
-      external: ['react', 'react-dom'],
       output: {
-        globals: {
-          react: 'React',
-          'react-dom': 'ReactDOM',
-        },
+        entryFileNames: 'assets/[name].js',
+        chunkFileNames: 'assets/[name].js',
+        assetFileNames: 'assets/[name].[ext]',
       },
     },
   },
   resolve: {
     alias: {
+      '@': path.resolve(__dirname, './src'),
       '@easymo/shared': path.resolve(__dirname, '../../packages/shared/src'),
     },
   },
+  server: {
+    port: 3001,
+    host: '0.0.0.0',
+  },
 });
-

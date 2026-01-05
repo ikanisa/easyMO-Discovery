@@ -13,7 +13,8 @@ export interface TraceSpan {
 }
 
 export interface TraceContext {
-  requestId: string;
+  traceId: string;
+  requestId?: string; // Backward compatibility
   userId?: string;
   agentType?: string;
   spans: TraceSpan[];
@@ -23,9 +24,10 @@ export interface TraceContext {
 export class Tracer {
   private context: TraceContext;
 
-  constructor(requestId: string, userId?: string, agentType?: string) {
+  constructor(traceId: string, userId?: string, agentType?: string) {
     this.context = {
-      requestId,
+      traceId,
+      requestId: traceId, // Backward compatibility
       userId,
       agentType,
       spans: [],

@@ -1,13 +1,66 @@
 /**
  * MCP Server for ChatGPT Apps SDK
  * Exposes Worker tools as MCP (Model Context Protocol) resources and tools
+ * Provides proper tool execution routing and structured outputs
  */
 
 import type { Env } from './types';
+import { executeToolCall } from './utils/tools';
+import { mobilityRobustTools } from './tools/mobility-robust';
+import { marketplaceRobustTools } from './tools/marketplace-robust';
+import { paymentsRobustTools } from './tools/payments-robust';
+import { geoRobustTools } from './tools/geo-robust';
+import { Logger, generateTraceId } from './utils/logging';
+
+// Combine all tools
+const allTools = [
+  ...mobilityRobustTools,
+  ...marketplaceRobustTools,
+  ...paymentsRobustTools,
+  ...geoRobustTools,
+];
+
+/**
+ * Convert OpenAI function tool format to MCP tool format
+ */
+function convertToolToMCP(tool: any) {
+  return {
+    name: tool.function.name,
+    description: tool.function.description,
+    inputSchema: {
+      type: 'object',
+      ...tool.function.parameters,
+    },
+    // Safe annotations for ChatGPT Apps SDK
+    annotations: {
+      requiresLocation: tool.function.name.includes('presence') || 
+                       tool.function.name.includes('match') ||
+                       tool.function.name.includes('intent') ||
+                       tool.function.name.includes('geocode'),
+      requiresAuth: true,
+      category: getToolCategory(tool.function.name),
+    },
+  };
+}
+
+function getToolCategory(toolName: string): string {
+  if (toolName.includes('presence') || toolName.includes('match') || toolName.includes('intent')) {
+    return 'mobility';
+  }
+  if (toolName.includes('listing') || toolName.includes('vendor') || toolName.includes('search')) {
+    return 'marketplace';
+  }
+  if (toolName.includes('momo') || toolName.includes('qr') || toolName.includes('payment')) {
+    return 'payments';
+  }
+  if (toolName.includes('geocode') || toolName.includes('eta')) {
+    return 'geo';
+  }
+  return 'general';
+}
 
 /**
  * MCP Server endpoint handler
- * Formats Worker tools and resources for ChatGPT Apps SDK
  */
 export async function handleMCPServer(
   request: Request,
@@ -15,12 +68,15 @@ export async function handleMCPServer(
 ): Promise<Response> {
   const url = new URL(request.url);
   const path = url.pathname;
+  const traceId = generateTraceId();
+  const logger = new Logger(traceId);
 
   // CORS headers
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-ID, X-User-Location',
+    'X-Trace-ID': traceId,
   };
 
   // Handle CORS preflight
@@ -55,192 +111,121 @@ export async function handleMCPServer(
 
   // List tools
   if (path === '/mcp/tools' && request.method === 'GET') {
-    const tools = [
-      {
-        name: 'publish_presence',
-        description: 'Publish user presence (location and role) for mobility matching. Drivers use this to go online.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            user_id: { type: 'string', description: 'User UUID' },
-            role: {
-              type: 'string',
-              enum: ['passenger', 'driver', 'vendor'],
-              description: 'User role',
-            },
-            location: {
-              type: 'object',
-              properties: {
-                lat: { type: 'number' },
-                lng: { type: 'number' },
-              },
-              required: ['lat', 'lng'],
-            },
-            vehicle_type: {
-              type: 'string',
-              enum: ['moto', 'cab', 'liffan', 'truck', 'other', 'shop'],
-            },
-          },
-          required: ['user_id', 'role', 'location'],
-        },
-      },
-      {
-        name: 'find_matches',
-        description:
-          'Find nearby drivers or passengers for mobility matching. Passengers find drivers, drivers find passengers.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            user_id: { type: 'string', description: 'User UUID' },
-            role: {
-              type: 'string',
-              enum: ['passenger', 'driver'],
-              description: 'User role (passengers find drivers, drivers find passengers)',
-            },
-            location: {
-              type: 'object',
-              properties: {
-                lat: { type: 'number' },
-                lng: { type: 'number' },
-              },
-              required: ['lat', 'lng'],
-            },
-            radius_km: { type: 'number', default: 5 },
-            vehicle_type: {
-              type: 'string',
-              enum: ['moto', 'cab', 'liffan', 'truck', 'other'],
-            },
-          },
-          required: ['user_id', 'role', 'location'],
-        },
-      },
-      {
-        name: 'search_offers',
-        description:
-          'Search marketplace for products/services. Uses Gemini + Google Maps to find businesses with phone numbers.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            query: { type: 'string', description: 'Search query' },
-            location: {
-              type: 'object',
-              properties: {
-                lat: { type: 'number' },
-                lng: { type: 'number' },
-              },
-            },
-            filters: {
-              type: 'object',
-              properties: {
-                category: { type: 'string' },
-                radius_km: { type: 'number', default: 5 },
-                price_min: { type: 'number' },
-                price_max: { type: 'number' },
-              },
-            },
-          },
-          required: ['query'],
-        },
-      },
-      {
-        name: 'generate_momo_qr',
-        description: 'Generate Mobile Money QR code (USSD format). Supports Rwanda, Kenya, and other countries.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            country_id: { type: 'string', default: 'rw' },
-            tx_type: { type: 'string', enum: ['send', 'pay'], default: 'pay' },
-            phone_number: { type: 'string' },
-            amount: { type: 'string' },
-            merchant_code: { type: 'string' },
-          },
-        },
-      },
-      {
-        name: 'parse_qr',
-        description: 'Parse QR code (tel: URI format for USSD codes).',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            qr_data: { type: 'string', description: 'QR code text or base64 image' },
-          },
-          required: ['qr_data'],
-        },
-      },
-      {
-        name: 'geocode',
-        description: 'Geocode a location query (e.g., "Kigali, Rwanda") to coordinates. Uses Gemini/Google Maps if available.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            query: { type: 'string', description: 'Location query (address or place name)' },
-            user_location: {
-              type: 'object',
-              properties: {
-                lat: { type: 'number' },
-                lng: { type: 'number' },
-              },
-            },
-          },
-          required: ['query'],
-        },
-      },
-      {
-        name: 'estimate_eta',
-        description: 'Estimate travel time between two locations. Uses Google Maps Distance Matrix API if available.',
-        inputSchema: {
-          type: 'object',
-          properties: {
-            origin: {
-              type: 'object',
-              properties: {
-                lat: { type: 'number' },
-                lng: { type: 'number' },
-              },
-              required: ['lat', 'lng'],
-            },
-            destination: {
-              type: 'object',
-              properties: {
-                lat: { type: 'number' },
-                lng: { type: 'number' },
-              },
-              required: ['lat', 'lng'],
-            },
-            mode: {
-              type: 'string',
-              enum: ['driving', 'walking', 'transit'],
-              default: 'driving',
-            },
-          },
-          required: ['origin', 'destination'],
-        },
-      },
-    ];
+    const mcpTools = allTools.map(convertToolToMCP);
 
-    return new Response(JSON.stringify({ tools }), {
+    logger.info('MCP tools listed', { tool_count: mcpTools.length });
+
+    return new Response(JSON.stringify({ tools: mcpTools }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 
-  // Call tool (proxy to Worker main endpoint)
+  // Call tool
   if (path === '/mcp/tools/call' && request.method === 'POST') {
     try {
       const body = await request.json();
       const { name, arguments: args } = body;
 
-      // Forward to Worker main endpoint
-      // Note: This is a simplified version - full implementation would route to specific tools
+      // Extract user context from headers (ChatGPT Apps SDK provides these)
+      const userId = request.headers.get('X-User-ID') || undefined;
+      const userLocationHeader = request.headers.get('X-User-Location');
+      let userLocation: { lat: number; lng: number } | undefined;
+      
+      if (userLocationHeader) {
+        try {
+          userLocation = JSON.parse(userLocationHeader);
+        } catch {
+          // Ignore parse errors
+        }
+      }
+
+      const clientIP = request.headers.get('CF-Connecting-IP') || 
+                       request.headers.get('X-Forwarded-For')?.split(',')[0] || 
+                       'unknown';
+
+      logger.info('MCP tool call', {
+        tool_name: name,
+        user_id: userId,
+        has_location: !!userLocation,
+      });
+
+      // Find the tool
+      const tool = allTools.find(t => t.function.name === name);
+      if (!tool) {
+        return new Response(
+          JSON.stringify({
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  error: `Tool ${name} not found`,
+                  available_tools: allTools.map(t => t.function.name),
+                }),
+              },
+            ],
+          }),
+          {
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
+      }
+
+      // Execute tool via the tool execution layer
+      const toolCall = {
+        id: `mcp-${traceId}`,
+        type: 'function' as const,
+        function: {
+          name,
+          arguments: JSON.stringify(args),
+        },
+      };
+
+      // Determine agent type from tool category
+      let agentType: 'mobility' | 'marketplace' | 'payments' | 'support' = 'support';
+      const category = getToolCategory(name);
+      if (category === 'mobility') agentType = 'mobility';
+      else if (category === 'marketplace') agentType = 'marketplace';
+      else if (category === 'payments') agentType = 'payments';
+
+      const result = await executeToolCall(
+        toolCall,
+        agentType,
+        env,
+        {
+          user_id: userId,
+          user_location: userLocation,
+          user_ip: clientIP,
+        }
+      );
+
+      // Parse result and format for MCP
+      let resultData: any;
+      try {
+        resultData = JSON.parse(result);
+      } catch {
+        resultData = { text: result };
+      }
+
+      // Format as structured output for ChatGPT rendering
+      const structuredOutput = {
+        success: resultData.success !== false,
+        ...resultData,
+        tool_name: name,
+        trace_id: traceId,
+      };
+
+      logger.info('MCP tool executed', {
+        tool_name: name,
+        success: structuredOutput.success,
+      });
+
       return new Response(
         JSON.stringify({
           content: [
             {
               type: 'text',
-              text: JSON.stringify({
-                error: 'Tool execution should go through main Worker endpoint',
-                tool: name,
-                args,
-              }),
+              text: JSON.stringify(structuredOutput),
             },
           ],
         }),
@@ -249,17 +234,25 @@ export async function handleMCPServer(
         }
       );
     } catch (error: any) {
+      logger.error('MCP tool call error', error, {
+        path,
+        method: request.method,
+      });
+
       return new Response(
         JSON.stringify({
           content: [
             {
               type: 'text',
-              text: JSON.stringify({ error: error.message }),
+              text: JSON.stringify({
+                error: error.message || 'Tool execution failed',
+                trace_id: traceId,
+              }),
             },
           ],
         }),
         {
-          status: 400,
+          status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       );
@@ -272,19 +265,19 @@ export async function handleMCPServer(
       {
         uri: 'easymo://presence',
         name: 'User Presence',
-        description: 'Current user presence data (location, role, vehicle type)',
+        description: 'Current user presence data (location, role, vehicle type). Coordinates are sanitized to ~100m precision.',
         mimeType: 'application/json',
       },
       {
         uri: 'easymo://trip_intents',
         name: 'Trip Intents',
-        description: 'Active trip intents (passenger/driver matching)',
+        description: 'Active trip intents (passenger/driver matching). Expires after 10-15 minutes.',
         mimeType: 'application/json',
       },
       {
         uri: 'easymo://marketplace_listings',
         name: 'Marketplace Listings',
-        description: 'Active marketplace listings',
+        description: 'Active marketplace listings with location data.',
         mimeType: 'application/json',
       },
     ];
@@ -297,13 +290,18 @@ export async function handleMCPServer(
   // Read resource
   if (path.startsWith('/mcp/resources/') && request.method === 'GET') {
     // Placeholder - full implementation would fetch from Supabase
+    const resourceUri = path.replace('/mcp/resources/', 'easymo://');
+    
     return new Response(
       JSON.stringify({
         contents: [
           {
-            uri: path.replace('/mcp/resources/', 'easymo://'),
+            uri: resourceUri,
             mimeType: 'application/json',
-            text: JSON.stringify({ message: 'Resource data would be fetched from Supabase' }),
+            text: JSON.stringify({
+              message: 'Resource data would be fetched from Supabase',
+              note: 'This is a placeholder. Full implementation would query Supabase with proper RLS.',
+            }),
           },
         ],
       }),
@@ -314,9 +312,8 @@ export async function handleMCPServer(
   }
 
   // Default: 404
-  return new Response(JSON.stringify({ error: 'Not found' }), {
+  return new Response(JSON.stringify({ error: 'Not found', trace_id: traceId }), {
     status: 404,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 }
-

@@ -7,7 +7,8 @@ export interface LogEntry {
   timestamp: string;
   level: 'info' | 'warn' | 'error' | 'debug';
   message: string;
-  request_id?: string;
+  trace_id: string; // Renamed from request_id for consistency
+  request_id?: string; // Keep for backward compatibility
   user_id?: string;
   agent_type?: string;
   tool_name?: string;
@@ -20,21 +21,49 @@ export interface LogEntry {
   metadata?: Record<string, any>;
 }
 
-export class Logger {
-  private requestId: string;
-  private userId?: string;
+export interface SupabaseLogConfig {
+  url: string;
+  serviceRoleKey: string;
+  enabled: boolean;
+  tableName?: string; // Default: 'request_logs'
+}
 
-  constructor(requestId: string, userId?: string) {
-    this.requestId = requestId;
+export class Logger {
+  private traceId: string;
+  private userId?: string;
+  private supabaseConfig?: SupabaseLogConfig;
+  private supabaseClient?: any;
+
+  constructor(traceId: string, userId?: string, supabaseConfig?: SupabaseLogConfig) {
+    this.traceId = traceId;
     this.userId = userId;
+    this.supabaseConfig = supabaseConfig;
+    
+    // Initialize Supabase client if config provided
+    if (supabaseConfig?.enabled && supabaseConfig.url && supabaseConfig.serviceRoleKey) {
+      try {
+        // Dynamic import to avoid bundling issues
+        import('@supabase/supabase-js').then(({ createClient }) => {
+          this.supabaseClient = createClient(
+            supabaseConfig.url,
+            supabaseConfig.serviceRoleKey
+          );
+        }).catch(() => {
+          // Supabase not available, continue with console logging only
+        });
+      } catch {
+        // Ignore import errors
+      }
+    }
   }
 
-  private log(level: LogEntry['level'], message: string, metadata?: Record<string, any>, error?: Error) {
+  private async log(level: LogEntry['level'], message: string, metadata?: Record<string, any>, error?: Error) {
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level,
       message,
-      request_id: this.requestId,
+      trace_id: this.traceId,
+      request_id: this.traceId, // Backward compatibility
       ...(this.userId && { user_id: this.userId }),
       ...(metadata || {}),
       ...(error && {
@@ -64,7 +93,40 @@ export class Logger {
         console.log(logMessage);
     }
 
+    // Send to Supabase if configured (fire and forget)
+    if (this.supabaseConfig?.enabled && this.supabaseClient) {
+      this.sendToSupabase(entry).catch(() => {
+        // Ignore Supabase errors - logging should never fail the request
+      });
+    }
+
     return entry;
+  }
+
+  private async sendToSupabase(entry: LogEntry): Promise<void> {
+    if (!this.supabaseClient || !this.supabaseConfig) return;
+
+    const tableName = this.supabaseConfig.tableName || 'request_logs';
+    
+    try {
+      await this.supabaseClient
+        .from(tableName)
+        .insert({
+          trace_id: entry.trace_id,
+          user_id: entry.user_id || null,
+          level: entry.level,
+          message: entry.message,
+          agent_type: entry.agent_type || null,
+          tool_name: entry.tool_name || null,
+          duration_ms: entry.duration_ms || null,
+          error: entry.error || null,
+          metadata: entry.metadata || {},
+          created_at: entry.timestamp,
+        });
+    } catch (err) {
+      // Silently fail - don't break request flow
+      console.debug('Failed to send log to Supabase:', err);
+    }
   }
 
   info(message: string, metadata?: Record<string, any>) {
@@ -127,9 +189,17 @@ export class Logger {
 }
 
 /**
- * Generate a unique request ID
+ * Generate a unique trace ID (replaces request_id for consistency)
+ */
+export function generateTraceId(): string {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+}
+
+/**
+ * Generate a unique request ID (backward compatibility)
+ * @deprecated Use generateTraceId() instead
  */
 export function generateRequestId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  return generateTraceId();
 }
 

@@ -5,6 +5,7 @@
 
 import { handleMCPServer } from './mcp-server';
 import { handleChatRequest } from './api/chat';
+import type { Env } from './types';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {

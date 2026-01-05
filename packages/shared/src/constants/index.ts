@@ -2,7 +2,8 @@
  * Shared constants for easyMO Discovery
  */
 
-export const ICONS = {
+// Icon emojis (for fallback)
+export const ICON_EMOJIS = {
   mobility: '🚗',
   marketplace: '🛍️',
   payments: '💳',
@@ -11,6 +12,10 @@ export const ICONS = {
   realEstate: '🏠',
   business: '🏪',
 } as const;
+
+// Note: ICONS object is defined in apps/pwa/constants.ts as React components
+// This is just for type compatibility
+export const ICONS = ICON_EMOJIS as any;
 
 export const ROLES = {
   PASSENGER: 'passenger',

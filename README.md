@@ -42,6 +42,43 @@ npm run pages:deploy
 npm run worker:deploy
 ```
 
+## Deployment
+
+For complete deployment instructions, see **[docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md)**
+
+**Quick Deploy Commands:**
+
+```bash
+# 1. Deploy Worker (Agent Runtime + MCP)
+cd services/agent-runtime
+npm install
+wrangler login  # First time only
+wrangler secret put OPENAI_API_KEY
+wrangler secret put SUPABASE_URL
+wrangler secret put SUPABASE_ANON_KEY
+npm run deploy
+
+# 2. Deploy PWA to Cloudflare Pages
+cd apps/pwa
+npm install
+npm run build
+npx wrangler pages deploy dist --project-name discovery
+
+# 3. Deploy Supabase Migrations
+supabase login
+supabase link --project-ref YOUR_PROJECT_REF
+supabase db push
+
+# 4. Deploy Supabase Edge Functions
+supabase functions deploy cleanup-presence
+supabase functions deploy cleanup-ride-intents
+supabase functions deploy cleanup-rate-limits
+```
+
+**Required Environment Variables:**
+
+See [docs/DEPLOYMENT_GUIDE.md#step-1-environment-variables](docs/DEPLOYMENT_GUIDE.md#step-1-environment-variables) for complete list.
+
 ## Development Commands
 
 ### PWA (apps/pwa)

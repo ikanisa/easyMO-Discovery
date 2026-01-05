@@ -73,9 +73,17 @@ const SmartLocationInput: React.FC<SmartLocationInputProps> = ({
          setMapError("Invalid API Key or Billing Issue. Switching to Text Mode.");
       };
 
+      // SECURITY: Google Maps API key must be provided via VITE_ env var (client-safe)
+      // Server-side API keys should NEVER be exposed to client
+      const mapsApiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+      if (!mapsApiKey) {
+        reject(new Error('Google Maps API key not configured. Please set VITE_GOOGLE_MAPS_API_KEY.'));
+        return;
+      }
+
       const script = document.createElement('script');
       script.id = 'google-maps-script';
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.API_KEY}&libraries=places,marker,geometry&loading=async`;
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsApiKey}&libraries=places,marker,geometry&loading=async`;
       script.async = true;
       script.defer = true;
       script.onload = () => resolve();

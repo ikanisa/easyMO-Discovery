@@ -54,7 +54,7 @@ export class WorkerError extends Error {
  */
 export function createErrorResponse(
   error: Error | WorkerError,
-  requestId?: string
+  traceId?: string
 ): { status: number; body: any; headers: Record<string, string> } {
   let workerError: WorkerError;
 
@@ -73,7 +73,7 @@ export function createErrorResponse(
   const body = {
     error: workerError.message,
     code: workerError.code,
-    ...(requestId && { request_id: requestId }),
+    ...(traceId && { trace_id: traceId, request_id: traceId }), // Backward compatibility
     ...(workerError.metadata && { metadata: workerError.metadata }),
   };
 

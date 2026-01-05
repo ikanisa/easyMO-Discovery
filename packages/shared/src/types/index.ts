@@ -75,6 +75,51 @@ export interface Message {
   // New structured data for Legal Agent
   legalPayload?: LegalResultsPayload;
 
+  // AI-First: Tool result payloads
+  mobilityPayload?: {
+    matches?: Array<{
+      id: string;
+      user_id: string;
+      role: 'driver' | 'passenger';
+      display_name?: string;
+      vehicle_type?: 'moto' | 'cab' | 'liffan' | 'truck' | 'other';
+      distance_km?: string;
+      distance_m?: number;
+      is_online?: boolean;
+      last_seen_at?: string;
+      location?: { lat: number; lng: number };
+    }>;
+    requests?: Array<{
+      intent_id: string;
+      pickup: { location: { lat: number; lng: number } };
+      dropoff?: { location: { lat: number; lng: number } };
+      distance_km: string;
+      notes?: string;
+      created_at: string;
+    }>;
+  };
+  paymentPayload?: {
+    ussd_code?: string;
+    qr_value?: string;
+    qr_data_url?: string;
+    amount?: number;
+    currency?: string;
+    reference?: string;
+    country?: string;
+  };
+  scannerPayload?: {
+    type: 'ussd' | 'json' | 'text';
+    code?: string;
+    parsed?: {
+      tx_type?: 'send' | 'pay' | 'unknown';
+      amount?: number;
+      phone?: string;
+      merchant?: string;
+      currency?: string;
+      raw?: string;
+    };
+  };
+
   // Rich Media
   image?: {
     previewUrl: string;
