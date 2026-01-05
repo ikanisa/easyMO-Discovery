@@ -26,7 +26,31 @@ const queryClient = new QueryClient({
 });
 
 const rootElement = document.getElementById('root');
-if (!rootElement) throw new Error("Root not found");
+if (!rootElement) {
+  console.error('Root element not found');
+  document.body.innerHTML = '<div style="padding: 20px; color: red; font-family: system-ui;">Error: Root element not found. Check if index.html has &lt;div id="root"&gt;&lt;/div&gt;</div>';
+  throw new Error("Root not found");
+}
+
+// Add error handler for uncaught errors
+window.addEventListener('error', (event) => {
+  console.error('Uncaught error:', event.error);
+  if (rootElement && !rootElement.innerHTML.includes('Error')) {
+    rootElement.innerHTML = `
+      <div style="padding: 20px; color: red; font-family: system-ui;">
+        <h1>Application Error</h1>
+        <p><strong>${event.error?.message || 'Unknown error'}</strong></p>
+        <p>Check browser console (F12) for details</p>
+        <p>If this persists, check environment variables in Cloudflare Pages settings</p>
+      </div>
+    `;
+  }
+});
+
+// Add unhandled promise rejection handler
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled promise rejection:', event.reason);
+});
 
 const root = ReactDOM.createRoot(rootElement);
 root.render(
