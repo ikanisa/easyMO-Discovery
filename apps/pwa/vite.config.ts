@@ -31,20 +31,12 @@ export default defineConfig(({ mode }) => {
     // Note: Vite automatically exposes VITE_* env vars via import.meta.env
     // These are safe to use for non-sensitive config (e.g., VITE_SUPABASE_URL)
     build: {
+      // Disable manual chunking to prevent initialization order issues
+      // Let Vite handle chunking automatically
       rollupOptions: {
         output: {
-          manualChunks(id) {
-            // Skip manual chunking for problematic dependencies
-            // Let Vite handle chunking automatically to avoid initialization issues
-            if (!id.includes('node_modules')) return;
-            
-            // Only chunk large, stable dependencies
-            if (id.includes('react') && !id.includes('react-dom')) return 'react-vendor';
-            if (id.includes('react-dom')) return 'react-dom-vendor';
-            
-            // Keep other dependencies together to avoid circular dependency issues
-            return 'vendor';
-          },
+          // Remove manual chunking - let Vite optimize automatically
+          // This prevents "Cannot access before initialization" errors
         },
       },
     },
