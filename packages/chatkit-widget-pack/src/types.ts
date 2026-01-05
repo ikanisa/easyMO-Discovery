@@ -26,6 +26,8 @@ export namespace Widgets {
     | Button
     | Form
     | Input
+    | Textarea
+    | Select
     | Card
     | ListView;
 
@@ -106,12 +108,51 @@ export namespace Widgets {
     gap?: number;
   };
 
+  export type ValidationRule = {
+    required?: boolean;
+    pattern?: string;
+    minLength?: number;
+    maxLength?: number;
+    message?: string;
+    validator?: (value: any) => boolean | string;
+  };
+
   export type Input = {
     type: "Input";
     name: string;
     placeholder?: string;
+    label?: string;
     required?: boolean;
     inputType?: "text" | "number" | "email" | "tel" | "password";
+    validation?: ValidationRule;
+    defaultValue?: string;
+  };
+
+  export type Textarea = {
+    type: "Textarea";
+    name: string;
+    placeholder?: string;
+    label?: string;
+    required?: boolean;
+    validation?: ValidationRule;
+    rows?: number;
+    defaultValue?: string;
+  };
+
+  export type SelectOption = {
+    label: string;
+    value: string;
+  };
+
+  export type Select = {
+    type: "Select";
+    name: string;
+    label?: string;
+    placeholder?: string;
+    required?: boolean;
+    options: SelectOption[];
+    validation?: ValidationRule;
+    defaultValue?: string;
   };
 
   export type Card = {
@@ -120,6 +161,12 @@ export namespace Widgets {
     padding?: number;
     border?: number;
     radius?: "sm" | "md" | "lg";
+    metadata?: {
+      realtime_channel?: string;
+      realtime_table?: string;
+      realtime_filter?: string;
+      [key: string]: any;
+    };
   };
 
   export type ListView = {

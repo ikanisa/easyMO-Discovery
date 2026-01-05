@@ -15,6 +15,7 @@ import { publishPresenceSchema, findMatchesSchema, createRideIntentSchema } from
 // Re-export presence tools
 export { publishPresence, findMatches } from './presence';
 export { presenceTools } from './presence';
+import { presenceTools } from './presence';
 
 /**
  * Create ride intent

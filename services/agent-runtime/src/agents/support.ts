@@ -4,6 +4,8 @@
 
 import OpenAI from 'openai';
 import type { Env, ChatMessage } from '../types';
+import { webSearchTools } from '../tools/web-search';
+import { handoffTools } from '../tools/handoff';
 
 const SUPPORT_SYSTEM_PROMPT = `You are the Support Agent for easyMO, the discovery app for mobility, marketplace, and payments in Rwanda.
 
@@ -27,13 +29,14 @@ You help users understand how to use the app:
 - Answer questions about app features
 - Provide helpful guidance
 - Be concise and friendly
+- Use web_search to find real-time information when needed (weather, events, news, etc.)
 
 If the user's question is about a specific feature (rides, marketplace, payments), you can suggest they try that feature directly.`;
 
 export const supportAgent = {
   name: 'support' as const,
   systemPrompt: SUPPORT_SYSTEM_PROMPT,
-  tools: [], // Support agent typically doesn't use tools
+  tools: [...webSearchTools, ...handoffTools], // Support agent can use web search and handoff
   
   async executeTool(
     toolName: string,

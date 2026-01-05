@@ -10,6 +10,7 @@ import { paymentsAgent } from '../agents/payments';
 import { supportAgent } from '../agents/support';
 import { validateLocationConsent, enforcePresenceTTL, enforceIntentTTL } from './policy';
 import { saveToolTrace } from './persistence';
+import { executeHandoff } from '../tools/handoff';
 
 export function getAgentByType(agentType: AgentType) {
   switch (agentType) {
@@ -77,6 +78,20 @@ export async function executeToolCall(
       }
       
       return errorResult;
+    }
+
+    // Special handling for handoff tool (requires conversation_id)
+    if (toolCall.function.name === 'handoff_to_agent') {
+      if (!conversation_id) {
+        throw new Error('Handoff requires conversation_id');
+      }
+      const toolResult = await executeHandoff(
+        args,
+        env,
+        conversation_id,
+        agentType
+      );
+      return toolResult;
     }
 
     // Policy enforcement: Enforce TTL for presence and intents

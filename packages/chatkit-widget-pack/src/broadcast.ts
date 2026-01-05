@@ -90,6 +90,21 @@ export function BroadcastTargetsPreviewCard(targets: BroadcastTarget[], previewP
   ], { padding: 12 });
 }
 
+export function BroadcastProgressCardRealtime(
+  campaignId: string,
+  initialStats: BroadcastStats,
+  targets: BroadcastTarget[]
+): Widgets.Card {
+  return {
+    ...BroadcastProgressCard(initialStats, targets),
+    metadata: {
+      realtime_channel: `broadcast-${campaignId}`,
+      realtime_table: 'broadcast_targets',
+      realtime_filter: `campaign_id=eq.${campaignId}`,
+    },
+  };
+}
+
 export function BroadcastProgressCard(stats: BroadcastStats, targets: BroadcastTarget[]): Widgets.Card {
   return card([
     title("Broadcast progress", { size: "md" }),

@@ -7,6 +7,8 @@ import type { Env, ChatMessage } from '../types';
 import { paymentTools, generateMomoQR, parseQR } from '../tools/payments';
 import { paymentsEnhancedTools, saveReceipt, getPaymentStatus } from '../tools/payments-enhanced';
 import { paymentsRobustTools, generateMomoQRRobust, parseQRRobust } from '../tools/payments-robust';
+import { webSearchTools } from '../tools/web-search';
+import { handoffTools } from '../tools/handoff';
 
 const PAYMENTS_SYSTEM_PROMPT = `You are the Payments Agent for easyMO, helping users generate Mobile Money (MoMo) payment QR codes and manage payments.
 
@@ -22,6 +24,8 @@ const PAYMENTS_SYSTEM_PROMPT = `You are the Payments Agent for easyMO, helping u
 2. **parse_qr** - Parse QR code data
 3. **save_receipt** - Save a payment receipt (records payment completion)
 4. **get_payment_status** - Get status of a payment request
+5. **web_search** - Search the web for real-time information (payment methods, exchange rates, etc.)
+6. **handoff_to_agent** - Transfer conversation to another agent if the user's request is better handled elsewhere
 
 **Response Format:**
 - Return structured JSON from tools (for UI cards)
@@ -33,7 +37,7 @@ Be clear about payment amounts, currencies, and country-specific formats. Always
 export const paymentsAgent = {
   name: 'payments' as const,
   systemPrompt: PAYMENTS_SYSTEM_PROMPT,
-  tools: [...paymentTools, ...paymentsEnhancedTools, ...paymentsRobustTools],
+  tools: [...paymentTools, ...paymentsEnhancedTools, ...paymentsRobustTools, ...webSearchTools, ...handoffTools],
   
   async executeTool(
     toolName: string,
@@ -43,19 +47,13 @@ export const paymentsAgent = {
     userIP?: string
   ): Promise<string> {
     switch (toolName) {
-      // Legacy tools
-      case 'generate_momo_qr':
-        return await generateMomoQR(args, env);
-      case 'parse_qr':
-        return await parseQR(args, env);
-      
       // Enhanced tools
       case 'save_receipt':
         return await saveReceipt(args, env);
       case 'get_payment_status':
         return await getPaymentStatus(args, env);
       
-      // Robust tools
+      // Robust tools (preferred - use these instead of legacy)
       case 'generate_momo_qr':
         return await generateMomoQRRobust(args, env);
       case 'parse_qr':

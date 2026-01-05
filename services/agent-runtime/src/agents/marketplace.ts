@@ -9,6 +9,8 @@ import { marketplaceEnhancedTools, onboardVendor, rankListings } from '../tools/
 import { marketplaceRobustTools, searchListings, createListingRobust, vendorOnboardingStatus } from '../tools/marketplace-robust';
 import { geocodingTools, geocode } from '../tools/geocoding';
 import { geoRobustTools, geocodeRobust } from '../tools/geo-robust';
+import { webSearchTools } from '../tools/web-search';
+import { handoffTools } from '../tools/handoff';
 
 const MARKETPLACE_SYSTEM_PROMPT = `You are the Marketplace Agent (Bob) for easyMO, helping users find businesses, products, and services in Rwanda.
 
@@ -30,6 +32,8 @@ const MARKETPLACE_SYSTEM_PROMPT = `You are the Marketplace Agent (Bob) for easyM
 3. **rank_listings** - Rank marketplace listings by relevance (distance, query match, price)
 4. **create_listing** - Create a marketplace listing
 5. **geocode** - Resolve location queries to coordinates (requires location consent)
+6. **web_search** - Search the web for real-time information (business hours, events, news, etc.)
+7. **handoff_to_agent** - Transfer conversation to another agent if the user's request is better handled elsewhere
 
 **Response Format:**
 - Return structured JSON from tools (for UI cards)
@@ -41,7 +45,7 @@ Be helpful and location-aware. Always provide clear, actionable results.`;
 export const marketplaceAgent = {
   name: 'marketplace' as const,
   systemPrompt: MARKETPLACE_SYSTEM_PROMPT,
-  tools: [...marketplaceTools, ...marketplaceEnhancedTools, ...marketplaceRobustTools, ...geocodingTools, ...geoRobustTools],
+  tools: [...marketplaceTools, ...marketplaceEnhancedTools, ...marketplaceRobustTools, ...geocodingTools, ...geoRobustTools, ...webSearchTools, ...handoffTools],
   
   async executeTool(
     toolName: string,
@@ -54,9 +58,11 @@ export const marketplaceAgent = {
       // Legacy tools
       case 'search_offers':
         return await searchOffers(args, env);
-      case 'create_listing':
-        return await createListing(args, env);
       case 'geocode':
+        // Use robust version if text format, otherwise legacy
+        if (args.text !== undefined) {
+          return await geocodeRobust(args, env, userId, userIP);
+        }
         return await geocode(args, env);
       
       // Enhanced tools
@@ -65,15 +71,14 @@ export const marketplaceAgent = {
       case 'rank_listings':
         return await rankListings(args, env);
       
-      // Robust tools
+      // Robust tools (preferred)
       case 'search_listings':
         return await searchListings(args, env);
       case 'create_listing':
+        // Always use robust version
         return await createListingRobust(args, env);
       case 'vendor_onboarding_status':
         return await vendorOnboardingStatus(args, env);
-      case 'geocode':
-        return await geocodeRobust(args, env, userId, userIP);
       
       default:
         return JSON.stringify({ error: `Unknown tool: ${toolName}` });

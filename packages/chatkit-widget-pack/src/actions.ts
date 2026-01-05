@@ -17,6 +17,7 @@ export const Actions = {
   MARKET_SEARCH_SUBMIT: "easymo.v1.market.search_submit",
   LISTING_OPEN: "easymo.v1.market.listing_open",
   LISTING_CONTACT: "easymo.v1.market.listing_contact",
+  BUSINESS_ONBOARD_SUBMIT: "easymo.v1.business.onboard_submit",
 
   // WhatsApp broadcast
   BROADCAST_PREVIEW: "easymo.v1.broadcast.preview",

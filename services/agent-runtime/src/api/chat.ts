@@ -14,6 +14,10 @@ import { getAgentByType, executeToolCall } from '../utils/tools';
 import type { ChatMessage, AgentType } from '@easymo/shared/types';
 import { agentRequestSchema } from '@easymo/shared/schemas';
 import { getOrCreateConversation, saveMessage, loadConversationHistory } from '../utils/persistence';
+import { createFileSearchTool } from '../tools/file-search';
+import { executeToolCallsParallel } from '../utils/parallel-tools';
+import { getAllAgentMemories, buildMemoryContext } from '../utils/memory';
+import { requiresMultiAgent, executeMultiAgentQuery } from '../agents/orchestrator';
 
 /**
  * Handle chat requests (streaming and non-streaming)
@@ -174,14 +178,79 @@ export async function handleChatRequest(
       }
     }
 
+    // Check if query requires multiple agents
+    const userMessage = messages[messages.length - 1]?.content || '';
+    const needsMultiAgent = requiresMultiAgent(userMessage);
+    
+    if (needsMultiAgent && agentType === 'router') {
+      // Handle multi-agent query
+      logger.info('Multi-agent query detected', { query: userMessage });
+      
+      const multiAgentResult = await executeMultiAgentQuery(
+        userMessage,
+        user_location,
+        user_id,
+        finalConversationId,
+        env
+      );
+      
+      // Save synthesized response
+      if (user_id && finalConversationId) {
+        await saveMessage({
+          conversation_id: finalConversationId,
+          role: 'assistant',
+          content: multiAgentResult.synthesized_response,
+        }, env);
+      }
+      
+      return new Response(
+        JSON.stringify({
+          message: multiAgentResult.synthesized_response,
+          agent_type: 'multi-agent',
+          results: multiAgentResult.results,
+          execution_time_ms: multiAgentResult.execution_time_ms,
+          request_id: traceId,
+        }),
+        {
+          headers: {
+            ...corsHeaders,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+    }
+    
     // Get agent configuration
     const agent = getAgentByType(agentType);
+    
+    // Add file search tool for marketplace agent (if vector store is set up)
+    let agentTools = agent.tools;
+    if (agentType === 'marketplace') {
+      const fileSearchTool = await createFileSearchTool(env);
+      if (fileSearchTool) {
+        agentTools = [...agent.tools, fileSearchTool];
+      }
+    }
 
+    // Get agent memories and build context
+    let memoryContext = '';
+    if (user_id) {
+      const memories = await getAllAgentMemories(user_id, agentType, env);
+      memoryContext = buildMemoryContext(memories);
+    }
+    
+    // Create agent with dynamic tools and memory context
+    const agentWithTools = { 
+      ...agent, 
+      tools: agentTools,
+      systemPrompt: memoryContext ? `${agent.systemPrompt}${memoryContext}` : agent.systemPrompt,
+    };
+    
     // Handle streaming
     if (stream) {
       return handleStreamingResponse(
         messages,
-        agent,
+        agentWithTools,
         agentType,
         openai,
         env,
@@ -200,7 +269,7 @@ export async function handleChatRequest(
     // Handle non-streaming response
     return await handleNonStreamingResponse(
       messages,
-      agent,
+      agentWithTools,
       agentType,
       openai,
       env,
@@ -323,50 +392,41 @@ async function handleNonStreamingResponse(
         tool_count: message.tool_calls.length,
       });
 
-      const toolResults = await Promise.all(
-        message.tool_calls.map(async (toolCall: any) => {
-          const toolName = toolCall.function.name;
-          const toolStartTime = Date.now();
-          
-          try {
-            loggerInstance.toolCall(toolName, JSON.parse(toolCall.function.arguments || '{}'));
-            
-            const result = await tracerInstance.trace(`tool_${toolName}`, async () => {
-              return await executeToolCall(toolCall, agentType, env, {
-                conversation_id: finalConversationId,
-                messages: conversationMessages,
-                user_location,
-                user_id,
-                user_ip: clientIP,
-              });
-            });
-
-            const toolDuration = Date.now() - toolStartTime;
-            loggerInstance.toolResult(toolName, true, toolDuration);
-
-            return {
-              role: 'tool' as const,
-              tool_call_id: toolCall.id,
-              name: toolCall.function.name,
-              content: result,
-            };
-          } catch (error: any) {
-            const toolDuration = Date.now() - toolStartTime;
-            loggerInstance.toolResult(toolName, false, toolDuration, error);
-            
-            // Return error as tool result (let OpenAI handle it)
-            return {
-              role: 'tool' as const,
-              tool_call_id: toolCall.id,
-              name: toolCall.function.name,
-              content: JSON.stringify({
-                error: error.message || 'Tool execution failed',
-                code: error.code || ErrorCode.TOOL_ERROR,
-              }),
-            };
+      // Execute tools in parallel where possible
+      const toolResults = await tracerInstance.trace('tool_execution_parallel', async () => {
+        const parallelResults = await executeToolCallsParallel(
+          message.tool_calls as any,
+          agentType,
+          env,
+          {
+            conversation_id: finalConversationId,
+            messages: conversationMessages,
+            user_location,
+            user_id,
+            user_ip: clientIP,
           }
-        })
-      );
+        );
+        
+        // Convert to OpenAI tool result format
+        return parallelResults.map((tr) => {
+          const toolCall = message.tool_calls.find((tc: any) => tc.id === tr.tool_call_id);
+          const toolName = toolCall?.function.name || 'unknown';
+          
+          // Log result
+          if (tr.success) {
+            loggerInstance.toolResult(toolName, true, tr.latency_ms);
+          } else {
+            loggerInstance.toolResult(toolName, false, tr.latency_ms);
+          }
+          
+          return {
+            role: 'tool' as const,
+            tool_call_id: tr.tool_call_id,
+            name: toolName,
+            content: tr.result,
+          };
+        });
+      });
 
       tracerInstance.endSpan(toolSpan, undefined, {
         tool_count: toolResults.length,
@@ -620,72 +680,57 @@ async function handleStreamingResponse(
             tool_count: toolCalls.length,
           });
 
-          const toolResults = await Promise.all(
-            toolCalls.map(async (toolCall: any) => {
-              const toolName = toolCall.function.name;
-              const toolStartTime = Date.now();
-              
-              try {
-                loggerInstance.toolCall(toolName, JSON.parse(toolCall.function.arguments || '{}'));
-                
-                const result = await tracerInstance.trace(`tool_${toolName}`, async () => {
-                  return await executeToolCall(toolCall, agentType, env, {
-                    conversation_id,
-                    messages: conversationMessages,
-                    user_location,
-                    user_id,
-                    user_ip: clientIP || 'unknown',
-                  });
-                });
-
-                const toolDuration = Date.now() - toolStartTime;
-                loggerInstance.toolResult(toolName, true, toolDuration);
-                
-                controller.enqueue(
-                  encoder.encode(
-                    `data: ${JSON.stringify({
-                      type: 'tool_result',
-                      tool_call: toolCall,
-                      content: result,
-                    })}\n\n`
-                  )
-                );
-
-                return {
-                  role: 'tool' as const,
-                  tool_call_id: toolCall.id,
-                  name: toolCall.function.name,
-                  content: result,
-                };
-              } catch (error: any) {
-                const toolDuration = Date.now() - toolStartTime;
-                loggerInstance.toolResult(toolName, false, toolDuration, error);
-                
-                // Send error as tool result
-                const errorResult = JSON.stringify({
-                  error: error.message || 'Tool execution failed',
-                  code: (error as any).code || ErrorCode.TOOL_ERROR,
-                });
-                
-                controller.enqueue(
-                  encoder.encode(
-                    `data: ${JSON.stringify({
-                      type: 'tool_result',
-                      tool_call: toolCall,
-                      content: errorResult,
-                    })}\n\n`
-                  )
-                );
-
-                return {
-                  role: 'tool' as const,
-                  tool_call_id: toolCall.id,
-                  name: toolCall.function.name,
-                  content: errorResult,
-                };
+          // Execute tools in parallel where possible
+          const toolResults = await tracerInstance.trace('tool_execution_parallel_streaming', async () => {
+            const parallelResults = await executeToolCallsParallel(
+              toolCalls as any,
+              agentType,
+              env,
+              {
+                conversation_id,
+                messages: conversationMessages,
+                user_location,
+                user_id,
+                user_ip: clientIP || 'unknown',
               }
-            })
-          );
+            );
+            
+            // Send tool results as they complete (for streaming)
+            parallelResults.forEach((tr) => {
+              const toolCall = toolCalls.find((tc: any) => tc.id === tr.tool_call_id);
+              if (toolCall) {
+                controller.enqueue(
+                  encoder.encode(
+                    `data: ${JSON.stringify({
+                      type: 'tool_result',
+                      tool_call: toolCall,
+                      content: tr.result,
+                    })}\n\n`
+                  )
+                );
+              }
+            });
+            
+            // Convert to OpenAI tool result format
+            return parallelResults.map((tr) => {
+              const toolCall = toolCalls.find((tc: any) => tc.id === tr.tool_call_id);
+              const toolName = toolCall?.function.name || 'unknown';
+              
+              // Log result
+              if (tr.success) {
+                loggerInstance.toolResult(toolName, true, tr.latency_ms);
+              } else {
+                loggerInstance.toolResult(toolName, false, tr.latency_ms);
+              }
+              
+              return {
+                role: 'tool' as const,
+                tool_call_id: tr.tool_call_id,
+                name: toolName,
+                content: tr.result,
+              };
+            });
+          });
 
           tracerInstance.endSpan(toolSpan, undefined, {
             tool_count: toolResults.length,
@@ -800,6 +845,7 @@ async function handleStreamingResponse(
               loggerInstance.warn('Failed to save assistant message', error);
             }
           }
+        }
 
         // Save assistant message
         if (user_id && conversation_id) {
@@ -845,7 +891,7 @@ async function handleStreamingResponse(
             agent_type: agentType, 
             conversation_id, 
             trace_id: traceId,
-          request_id: traceId, // Backward compatibility
+            request_id: traceId, // Backward compatibility
             structured_output: structuredOutput,
           })}\n\n`)
         );

@@ -1,6 +1,6 @@
 import type { Widgets } from "./types";
 import { Actions } from "./actions";
-import { action, card, title, text, caption, spacer, divider, row, button, form, input, markdown } from "./primitives";
+import { action, card, title, text, caption, spacer, divider, row, button, form, input, markdown, createForm } from "./primitives";
 
 export type Listing = {
   id: string;
@@ -30,6 +30,66 @@ export const MarketplaceSearchCard = (): Widgets.Card =>
     spacer(8),
     caption("Results come back as cards — you contact sellers directly."),
   ]);
+
+/**
+ * Enhanced Business Onboarding Form with validation
+ */
+export const BusinessOnboardingForm = (): Widgets.Card => {
+  return createForm(
+    [
+      {
+        name: "business_name",
+        label: "Business Name",
+        type: "text",
+        placeholder: "Enter your business name",
+        required: true,
+        validation: {
+          required: true,
+          minLength: 2,
+          message: "Business name must be at least 2 characters",
+        },
+      },
+      {
+        name: "phone",
+        label: "Phone Number",
+        type: "tel",
+        placeholder: "+250XXXXXXXXX",
+        required: true,
+        validation: {
+          required: true,
+          pattern: "^\\+250\\d{9}$",
+          message: "Phone must be in format +250XXXXXXXXX",
+        },
+      },
+      {
+        name: "category",
+        label: "Category",
+        type: "select",
+        required: true,
+        options: [
+          { label: "Restaurant", value: "restaurant" },
+          { label: "Retail", value: "retail" },
+          { label: "Services", value: "services" },
+          { label: "Pharmacy", value: "pharmacy" },
+          { label: "Other", value: "other" },
+        ],
+      },
+      {
+        name: "description",
+        label: "Description",
+        type: "textarea",
+        placeholder: "Describe your business...",
+        validation: {
+          maxLength: 500,
+          message: "Description must be less than 500 characters",
+        },
+        rows: 4,
+      },
+    ],
+    action(Actions.BUSINESS_ONBOARD_SUBMIT),
+    "Register Your Business"
+  );
+};
 
 export const ListingsCard = (listings: Listing[]): Widgets.Card => {
   const body =

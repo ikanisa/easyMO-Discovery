@@ -9,6 +9,8 @@ import { mobilityTools, createRideIntent, createMatchCandidates, explainMatching
 import { mobilityRobustTools, setPresence, createRideIntentRobust, findDriverMatches, findPassengerRequests, revealContact } from '../tools/mobility-robust';
 import { geocodingTools, geocode, estimateETA } from '../tools/geocoding';
 import { geoRobustTools, geocodeRobust, reverseGeocodeRobust, estimateETARobust } from '../tools/geo-robust';
+import { webSearchTools } from '../tools/web-search';
+import { handoffTools, executeHandoff } from '../tools/handoff';
 
 const MOBILITY_SYSTEM_PROMPT = `You are the Mobility Agent for easyMO, helping users find rides and match drivers with passengers in Rwanda.
 
@@ -35,6 +37,8 @@ const MOBILITY_SYSTEM_PROMPT = `You are the Mobility Agent for easyMO, helping u
 5. **explain_matching** - Explain how the matching process works
 6. **geocode** - Resolve location queries to coordinates (requires location consent)
 7. **estimate_eta** - Calculate travel time between locations
+8. **web_search** - Search the web for real-time information (weather, events, news, etc.)
+9. **handoff_to_agent** - Transfer conversation to another agent if the user's request is better handled elsewhere
 
 **Response Format:**
 - Return structured JSON from tools (for UI cards)
@@ -46,7 +50,7 @@ Be helpful, concise, and location-aware. Always ask for location consent before 
 export const mobilityAgent = {
   name: 'mobility' as const,
   systemPrompt: MOBILITY_SYSTEM_PROMPT,
-  tools: [...mobilityTools, ...mobilityRobustTools, ...geocodingTools, ...geoRobustTools],
+  tools: [...mobilityTools, ...mobilityRobustTools, ...geocodingTools, ...geoRobustTools, ...webSearchTools, ...handoffTools],
   
   async executeTool(
     toolName: string,
@@ -92,7 +96,6 @@ export const mobilityAgent = {
       case 'estimate_eta':
         // Always use robust version (has Google Maps + fallback)
         return await estimateETARobust(args, env, userId, userIP);
-      
       default:
         return JSON.stringify({ error: `Unknown tool: ${toolName}` });
     }
