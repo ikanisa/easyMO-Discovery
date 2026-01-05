@@ -66,6 +66,8 @@ const App: React.FC = () => {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
   const [queuedCount, setQueuedCount] = useState(0);
+  const [failedCount, setFailedCount] = useState(0);
+  const [conflictCount, setConflictCount] = useState(0);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const { theme, toggleTheme } = useTheme();
   const [mode, setMode] = useState<AppMode>(AppMode.HOME);
@@ -168,7 +170,13 @@ const App: React.FC = () => {
         setLastSyncedAt(Date.now());
       }
       const count = await OfflineQueue.getCount();
-      if (isMounted) setQueuedCount(count);
+      const failed = await OfflineQueue.getFailed();
+      const conflicts = await OfflineQueue.getConflicts();
+      if (isMounted) {
+        setQueuedCount(count);
+        setFailedCount(failed.length);
+        setConflictCount(conflicts.length);
+      }
     };
 
     syncQueue();
@@ -183,7 +191,13 @@ const App: React.FC = () => {
 
     const refreshCount = async () => {
       const count = await OfflineQueue.getCount();
-      if (isMounted) setQueuedCount(count);
+      const failed = await OfflineQueue.getFailed();
+      const conflicts = await OfflineQueue.getConflicts();
+      if (isMounted) {
+        setQueuedCount(count);
+        setFailedCount(failed.length);
+        setConflictCount(conflicts.length);
+      }
     };
 
     refreshCount();
@@ -285,10 +299,23 @@ const App: React.FC = () => {
       <OfflineBanner
         isOnline={isOnline}
         queuedCount={queuedCount}
+        failedCount={failedCount}
+        conflictCount={conflictCount}
         lastSyncedAt={lastSyncedAt}
         onSync={async () => {
           const result = await flushQueuedRequests();
           if (result.flushed > 0) setLastSyncedAt(Date.now());
+          const count = await OfflineQueue.getCount();
+          const failed = await OfflineQueue.getFailed();
+          const conflicts = await OfflineQueue.getConflicts();
+          setQueuedCount(count);
+          setFailedCount(failed.length);
+          setConflictCount(conflicts.length);
+        }}
+        onClearFailed={async () => {
+          await OfflineQueue.clearFailed();
+          const failed = await OfflineQueue.getFailed();
+          setFailedCount(failed.length);
           const count = await OfflineQueue.getCount();
           setQueuedCount(count);
         }}

@@ -11,6 +11,7 @@ import { ListingResultsCard } from './components/ListingResultsCard';
 import { PaymentQRCard } from './components/PaymentQRCard';
 import { ScannerResultCard } from './components/ScannerResultCard';
 import { ToolCard } from './components/ToolCard';
+import ChatKitWidgetRenderer from './components/ChatKitWidgetRenderer';
 
 // Declare window.openai types
 declare global {
@@ -36,12 +37,20 @@ interface ToolResult {
 function App() {
   const [toolResult, setToolResult] = useState<ToolResult | null>(null);
   const [widgetState, setWidgetState] = useState<any>({});
+  const [chatKitWidget, setChatKitWidget] = useState<any>(null);
+  const [streamingWidgets, setStreamingWidgets] = useState<Map<string, any>>(new Map());
 
   useEffect(() => {
-    // Listen for tool calls from ChatGPT
+    // Listen for tool calls and widgets from ChatGPT
     const handleMessage = (event: MessageEvent) => {
+      // Handle tool results (legacy support)
       if (event.data?.type === 'tool_result') {
         setToolResult(event.data.result);
+        
+        // Check if tool result includes a widget
+        if (event.data.result?.widget) {
+          setChatKitWidget(event.data.result.widget);
+        }
         
         // Send tool output back to ChatGPT
         if (window.openai?.toolOutput) {
@@ -49,6 +58,21 @@ function App() {
         }
       }
       
+      // Handle ChatKit widget updates
+      if (event.data?.type === 'widget' && event.data.widget) {
+        const widget = event.data.widget;
+        if (widget.id) {
+          setStreamingWidgets(prev => {
+            const updated = new Map(prev);
+            updated.set(widget.id, widget);
+            return updated;
+          });
+        } else {
+          setChatKitWidget(widget);
+        }
+      }
+      
+      // Handle widget state
       if (event.data?.type === 'widget_state') {
         setWidgetState(event.data.state || {});
       }
@@ -61,6 +85,9 @@ function App() {
       const state = window.openai.getWidgetState();
       if (state) {
         setWidgetState(state);
+        if (state.widget) {
+          setChatKitWidget(state.widget);
+        }
       }
     }
 
@@ -72,9 +99,28 @@ function App() {
   // Update widget state when it changes
   useEffect(() => {
     if (window.openai?.setWidgetState) {
-      window.openai.setWidgetState(widgetState);
+      window.openai.setWidgetState({
+        ...widgetState,
+        widget: chatKitWidget,
+      });
     }
-  }, [widgetState]);
+  }, [widgetState, chatKitWidget]);
+
+  // Handle action from widgets
+  const handleAction = async (action: any) => {
+    // Call tool via ChatGPT Apps SDK
+    if (window.openai?.callTool) {
+      try {
+        const result = await window.openai.callTool(action.type, action);
+        // Handle result (may include updated widget)
+        if (result?.widget) {
+          setChatKitWidget(result.widget);
+        }
+      } catch (error: any) {
+        console.error('Action failed:', error);
+      }
+    }
+  };
 
   const renderToolCard = () => {
     if (!toolResult) return null;
@@ -117,6 +163,17 @@ function App() {
         return <ScannerResultCard data={data} />;
 
       default:
+        // Check if tool result includes a widget
+        if (data.widget) {
+          return (
+            <ChatKitWidgetRenderer
+              widget={data.widget}
+              onAction={handleAction}
+              streaming={false}
+            />
+          );
+        }
+        
         return (
           <ToolCard
             title={tool_name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
@@ -141,12 +198,35 @@ function App() {
   return (
     <div className="w-full min-h-screen bg-slate-50 dark:bg-slate-900 p-4">
       <div className="max-w-2xl mx-auto">
-        {toolResult ? (
+        {/* Render ChatKit widgets (priority) */}
+        {chatKitWidget && (
+          <ChatKitWidgetRenderer
+            widget={chatKitWidget}
+            onAction={handleAction}
+            streaming={false}
+          />
+        )}
+
+        {/* Render streaming widgets */}
+        {Array.from(streamingWidgets.values()).map((widget) => (
+          <ChatKitWidgetRenderer
+            key={widget.id}
+            widget={widget}
+            onAction={handleAction}
+            streaming={widget.streaming !== false}
+          />
+        ))}
+
+        {/* Legacy tool cards (fallback) */}
+        {!chatKitWidget && streamingWidgets.size === 0 && toolResult && (
           renderToolCard()
-        ) : (
+        )}
+
+        {/* Empty state */}
+        {!chatKitWidget && streamingWidgets.size === 0 && !toolResult && (
           <div className="text-center py-12 text-slate-500 dark:text-slate-400">
-            <p>Waiting for tool results...</p>
-            <p className="text-sm mt-2">This UI will render tool cards when tools are executed.</p>
+            <p>Waiting for tool results or widgets...</p>
+            <p className="text-sm mt-2">This UI will render widgets and tool cards when tools are executed.</p>
           </div>
         )}
       </div>

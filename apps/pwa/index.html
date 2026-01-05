@@ -23,7 +23,15 @@
     <!-- Font Optimization: System font stack (no external fonts loaded) -->
     <!-- Using system fonts ensures zero font load time and minimal bundle size -->
     <!-- If custom fonts are added later, use font-display: swap and preload critical fonts -->
-
+    
+    <!-- Performance: Preconnect to external domains -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+    
+    <!-- Performance: Prefetch likely next routes (on good connections) -->
+    <link rel="prefetch" href="/?mode=discovery" />
+    <link rel="prefetch" href="/?mode=business" />
+    <link rel="prefetch" href="/?mode=services" />
     
     <script>
       (function() {

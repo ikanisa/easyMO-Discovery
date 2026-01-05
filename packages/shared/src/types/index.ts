@@ -60,6 +60,10 @@ export interface Message {
   text: string;
   timestamp: number;
 
+  // ChatKit widget support
+  widget?: any; // ChatKit widget definition
+  actionPayload?: any; // Action payload for user actions
+
   // For AI rich responses
   groundingLinks?: { title: string; uri: string }[];
 

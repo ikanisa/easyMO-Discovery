@@ -48,7 +48,17 @@ export async function callBackend(
 
   if (!options.skipQueue && !NetworkService.isOnline()) {
     if (QUEUEABLE_ACTIONS.has(payload.action)) {
-      await OfflineQueue.enqueue(payload);
+      // Generate idempotency key from payload
+      const idempotencyKey = `${payload.action}-${JSON.stringify(payload).slice(0, 100)}-${Date.now()}`;
+      await OfflineQueue.enqueue(payload, {
+        idempotencyKey,
+        action: payload.action,
+        maxRetries: 5,
+        metadata: {
+          functionName,
+          timestamp: Date.now(),
+        },
+      });
       return {
         status: 'ok',
         result: 'queued',
@@ -104,7 +114,18 @@ export async function callBackend(
     }
 
     if (!options.skipQueue && QUEUEABLE_ACTIONS.has(payload.action)) {
-      await OfflineQueue.enqueue(payload);
+      // Generate idempotency key from payload
+      const idempotencyKey = `${payload.action}-${JSON.stringify(payload).slice(0, 100)}-${Date.now()}`;
+      await OfflineQueue.enqueue(payload, {
+        idempotencyKey,
+        action: payload.action,
+        maxRetries: 5,
+        metadata: {
+          functionName,
+          timestamp: Date.now(),
+          error: error.message,
+        },
+      });
       return { status: 'ok', result: 'queued', message: 'Action queued for sync.' };
     }
 
@@ -115,6 +136,38 @@ export async function callBackend(
   }
 }
 
+/**
+ * Flush queued requests with conflict handling
+ */
 export async function flushQueuedRequests() {
-  return OfflineQueue.flush((payload) => callBackend(payload, { skipQueue: true }));
+  return OfflineQueue.flush(async (payload, metadata) => {
+    try {
+      const response = await callBackend(payload, { skipQueue: true });
+      
+      // Check for conflict indicators in response
+      if (response.status === 'error' && response.message?.includes('conflict')) {
+        return {
+          status: 'error',
+          conflict: true,
+          conflictResolution: 'last-write-wins', // Default strategy
+          error: response.message,
+        };
+      }
+      
+      return response;
+    } catch (error: any) {
+      // Check for conflict errors (e.g., 409 status)
+      if (error.status === 409 || error.message?.includes('conflict')) {
+        return {
+          status: 'error',
+          conflict: true,
+          conflictResolution: 'last-write-wins',
+          error: error.message,
+        };
+      }
+      
+      // Re-throw for retry logic
+      throw error;
+    }
+  });
 }

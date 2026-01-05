@@ -13,6 +13,7 @@ const BUDGETS = {
 /**
  * Sends Web Vitals metrics to RUM endpoint or monitoring service
  * Includes budget violation detection for alerting
+ * Enhanced with additional context for better analysis
  */
 const sendMetric = (metric: Metric) => {
   const payload = {
@@ -23,9 +24,17 @@ const sendMetric = (metric: Metric) => {
     timestamp: Date.now(),
     url: window.location.href,
     userAgent: navigator.userAgent,
+    // Additional context for analysis
+    connectionType: (navigator as any).connection?.effectiveType || 'unknown',
+    deviceMemory: (navigator as any).deviceMemory || 'unknown',
+    hardwareConcurrency: navigator.hardwareConcurrency || 'unknown',
     // Check if metric violates budget
     violatesBudget: false,
     budgetThreshold: null as number | null,
+    // Metric-specific details
+    rating: metric.rating || 'unknown',
+    delta: (metric as any).delta || null,
+    entries: (metric as any).entries || null,
   };
 
   // Check budget violations
@@ -45,13 +54,30 @@ const sendMetric = (metric: Metric) => {
     try {
       // Use sendBeacon for reliable delivery (doesn't block page unload)
       const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
-      navigator.sendBeacon(RUM_ENDPOINT, blob);
+      const sent = navigator.sendBeacon(RUM_ENDPOINT, blob);
+      
+      if (!sent) {
+        // Fallback to fetch if sendBeacon fails
+        fetch(RUM_ENDPOINT, {
+          method: 'POST',
+          body: JSON.stringify(payload),
+          headers: { 'Content-Type': 'application/json' },
+          keepalive: true, // Keep request alive even after page unload
+        }).catch(() => {
+          // Silent fail - don't block user experience
+        });
+      }
       
       // Log budget violations for immediate alerting
       if (payload.violatesBudget) {
         console.warn(
           `⚠️ Budget violation: ${metric.name} = ${metric.value.toFixed(2)} ` +
           `(threshold: ${payload.budgetThreshold})`
+        );
+        // Also send to monitoring service for alerting
+        MonitoringService.captureMessage(
+          `WebVitals Budget Violation: ${metric.name} = ${metric.value.toFixed(2)} (threshold: ${payload.budgetThreshold})`,
+          'warning'
         );
       }
     } catch (error) {

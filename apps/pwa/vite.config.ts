@@ -45,14 +45,50 @@ export default defineConfig(({ mode }) => {
     // Note: Vite automatically exposes VITE_* env vars via import.meta.env
     // These are safe to use for non-sensitive config (e.g., VITE_SUPABASE_URL)
     build: {
-      // Disable manual chunking to prevent initialization order issues
-      // Let Vite handle chunking automatically
+      // Route-level code splitting with vendor chunking
       rollupOptions: {
         output: {
-          // Remove manual chunking - let Vite optimize automatically
-          // This prevents "Cannot access before initialization" errors
+          manualChunks(id) {
+            // Vendor chunks for better caching
+            if (id.includes('node_modules')) {
+              // React core (small, frequently updated)
+              if (id.includes('react') || id.includes('react-dom')) {
+                return 'react-vendor';
+              }
+              // UI libraries (larger, less frequently updated)
+              if (id.includes('framer-motion')) {
+                return 'motion-vendor';
+              }
+              // Data fetching
+              if (id.includes('@tanstack/react-query')) {
+                return 'query-vendor';
+              }
+              // Supabase (large, stable)
+              if (id.includes('@supabase')) {
+                return 'supabase-vendor';
+              }
+              // AI/ML libraries (large, can be lazy-loaded)
+              if (id.includes('@google/genai')) {
+                return 'genai-vendor';
+              }
+              // QR/Scanner (large, only needed on specific pages)
+              if (id.includes('html5-qrcode') || id.includes('qrcode')) {
+                return 'qrcode-vendor';
+              }
+              // Everything else
+              return 'vendor';
+            }
+          },
+          // Chunk size warning threshold (500KB)
+          chunkSizeWarningLimit: 500,
         },
       },
+      // Target modern browsers for smaller bundles
+      target: 'es2022',
+      // Minify for production
+      minify: 'esbuild',
+      // Source maps for debugging (disable in production for smaller bundles)
+      sourcemap: false,
     },
     resolve: {
       alias: {

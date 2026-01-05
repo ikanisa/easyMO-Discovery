@@ -75,5 +75,21 @@
       "form_factor": "wide",
       "label": "Mobile-first PWA shell"
     }
-  ]
+  ],
+  "share_target": {
+    "action": "/?mode=share",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url",
+      "files": [
+        {
+          "name": "media",
+          "accept": ["image/*", "video/*"]
+        }
+      ]
+    }
+  }
 }

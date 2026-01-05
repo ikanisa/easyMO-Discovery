@@ -19,6 +19,7 @@ import { getCurrentPosition } from '../../services/location';
 import { supabase } from '../../services/supabase';
 import { hapticFeedback } from '../../utils/ui';
 import { toast } from 'sonner';
+import WidgetRenderer, { ActionConfig } from '../ChatKit/WidgetRenderer';
 
 interface ChatShellProps {
   conversationId?: string;
@@ -85,6 +86,7 @@ const ChatShell: React.FC<ChatShellProps> = ({
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isOnline, setIsOnline] = useState(false);
   const [lastLocationUpdate, setLastLocationUpdate] = useState<Date | null>(null);
+  const [streamingWidgets, setStreamingWidgets] = useState<Map<string, any>>(new Map());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const recognitionRef = useRef<any>(null);
 
@@ -181,71 +183,92 @@ const ChatShell: React.FC<ChatShellProps> = ({
         timestamp: Date.now(),
       };
 
-      await AgentService.chatStream(
-        [userMessage],
+      // Use async generator for streaming
+      const stream = AgentService.chatStream(
+        [...messages, userMessage],
+        'router',
         userId,
         userLocation || undefined,
-        conversationId,
-        (chunk) => {
-          chunks.push(chunk);
+        conversationId
+      );
 
-          if (chunk.type === 'token' && chunk.content) {
-            assistantMessage.text += chunk.content;
-            setMessages(prev => {
-              const updated = [...prev];
-              const lastMsg = updated[updated.length - 1];
-              if (lastMsg.sender === 'ai') {
-                updated[updated.length - 1] = { ...assistantMessage };
-              } else {
-                updated.push({ ...assistantMessage });
-              }
+      for await (const chunk of stream) {
+        chunks.push(chunk);
+
+        // Handle text streaming with stable ID
+        if (chunk.type === 'token' && chunk.content) {
+          assistantMessage.text += chunk.content;
+          setMessages(prev => {
+            const updated = [...prev];
+            const lastMsg = updated[updated.length - 1];
+            if (lastMsg.sender === 'ai' && lastMsg.id === assistantMessage.id) {
+              updated[updated.length - 1] = { ...assistantMessage };
+            } else {
+              updated.push({ ...assistantMessage });
+            }
+            return updated;
+          });
+        }
+
+        // Handle widget streaming updates
+        if (chunk.type === 'widget' && chunk.widget) {
+          const widget = chunk.widget;
+          if (widget.id) {
+            setStreamingWidgets(prev => {
+              const updated = new Map(prev);
+              updated.set(widget.id, widget);
               return updated;
             });
           }
+        }
 
-          if (chunk.type === 'tool_result' && chunk.tool_result) {
-            try {
-              const result = JSON.parse(chunk.tool_result);
-              // Handle structured output for tool cards
-              if (result.matches) {
-                // Mobility matches
-                assistantMessage.mobilityPayload = result;
-              } else if (result.listings) {
-                // Marketplace listings
-                assistantMessage.businessPayload = result;
-              } else if (result.qr_data_url) {
-                // Payment QR
-                assistantMessage.paymentPayload = result;
-              } else if (result.parsed) {
-                // Scanner result
-                assistantMessage.scannerPayload = result;
-              }
-            } catch (e) {
-              console.warn('Failed to parse tool result:', e);
+        // Handle tool results (legacy support)
+        if (chunk.type === 'tool_result' && chunk.tool_result) {
+          try {
+            const result = JSON.parse(chunk.tool_result);
+            // Handle structured output for tool cards
+            if (result.matches) {
+              assistantMessage.mobilityPayload = result;
+            } else if (result.listings) {
+              assistantMessage.businessPayload = result;
+            } else if (result.qr_data_url) {
+              assistantMessage.paymentPayload = result;
+            } else if (result.parsed) {
+              assistantMessage.scannerPayload = result;
             }
-          }
-
-          if (chunk.type === 'done') {
-            if (chunk.structured_output) {
-              // Update message with structured output
-              const output = chunk.structured_output;
-              if (output.matches) {
-                assistantMessage.mobilityPayload = output;
-              } else if (output.listings) {
-                assistantMessage.businessPayload = output;
-              } else if (output.qr_data_url) {
-                assistantMessage.paymentPayload = output;
-              }
-            }
-            setIsTyping(false);
-          }
-
-          if (chunk.type === 'error') {
-            toast.error(chunk.error || 'An error occurred');
-            setIsTyping(false);
+          } catch (e) {
+            console.warn('Failed to parse tool result:', e);
           }
         }
-      );
+
+        if (chunk.type === 'done') {
+          // Finalize streaming widgets
+          setStreamingWidgets(prev => {
+            const updated = new Map(prev);
+            updated.forEach((widget, id) => {
+              updated.set(id, { ...widget, streaming: false });
+            });
+            return updated;
+          });
+
+          if (chunk.structured_output) {
+            const output = chunk.structured_output;
+            if (output.matches) {
+              assistantMessage.mobilityPayload = output;
+            } else if (output.listings) {
+              assistantMessage.businessPayload = output;
+            } else if (output.qr_data_url) {
+              assistantMessage.paymentPayload = output;
+            }
+          }
+          setIsTyping(false);
+        }
+
+        if (chunk.type === 'error') {
+          toast.error(chunk.error || 'An error occurred');
+          setIsTyping(false);
+        }
+      }
     } catch (error: any) {
       toast.error(error.message || 'Failed to send message');
       setIsTyping(false);
@@ -305,7 +328,81 @@ const ChatShell: React.FC<ChatShellProps> = ({
     }
   };
 
-  // Render tool cards from message payloads
+  // Handle action from widgets
+  const handleAction = async (action: ActionConfig) => {
+    hapticFeedback('medium');
+    
+    try {
+      // Send action to agent
+      const actionMessage: Message = {
+        id: Date.now().toString(),
+        sender: 'user',
+        text: `[Action: ${action.type}]`,
+        timestamp: Date.now(),
+        actionPayload: action,
+      };
+
+      setMessages(prev => [...prev, actionMessage]);
+      setIsTyping(true);
+
+      // Stream response for action
+      const stream = AgentService.chatStream(
+        [...messages, actionMessage],
+        'router',
+        userId,
+        userLocation || undefined,
+        conversationId
+      );
+
+      let assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        sender: 'ai',
+        text: '',
+        timestamp: Date.now(),
+      };
+
+      for await (const chunk of stream) {
+        if (chunk.type === 'token' && chunk.content) {
+          assistantMessage.text += chunk.content;
+          setMessages(prev => {
+            const updated = [...prev];
+            const lastMsg = updated[updated.length - 1];
+            if (lastMsg.sender === 'ai' && lastMsg.id === assistantMessage.id) {
+              updated[updated.length - 1] = { ...assistantMessage };
+            } else {
+              updated.push({ ...assistantMessage });
+            }
+            return updated;
+          });
+        }
+
+        if (chunk.type === 'widget' && chunk.widget) {
+          const widget = chunk.widget;
+          if (widget.id) {
+            setStreamingWidgets(prev => {
+              const updated = new Map(prev);
+              updated.set(widget.id, widget);
+              return updated;
+            });
+          }
+        }
+
+        if (chunk.type === 'done') {
+          setIsTyping(false);
+        }
+
+        if (chunk.type === 'error') {
+          toast.error(chunk.error || 'Action failed');
+          setIsTyping(false);
+        }
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to process action');
+      setIsTyping(false);
+    }
+  };
+
+  // Render tool cards from message payloads (legacy support)
   const renderToolCards = (message: Message) => {
     const cards = [];
 
@@ -317,12 +414,10 @@ const ChatShell: React.FC<ChatShellProps> = ({
             key={`mobility-${index}`}
             match={match}
             onRequestRide={(id) => {
-              setInputValue(`Request ride from match ${id}`);
-              handleSend();
+              handleAction({ type: 'request_ride', matchId: id });
             }}
             onAccept={(id) => {
-              setInputValue(`Accept ride request ${id}`);
-              handleSend();
+              handleAction({ type: 'accept_ride', requestId: id });
             }}
             onViewDetails={(id) => {
               onNavigate?.('discovery');
@@ -343,8 +438,7 @@ const ChatShell: React.FC<ChatShellProps> = ({
               onNavigate?.('business');
             }}
             onContact={(id) => {
-              setInputValue(`Contact business ${id}`);
-              handleSend();
+              handleAction({ type: 'contact_business', businessId: id });
             }}
           />
         );
@@ -371,7 +465,7 @@ const ChatShell: React.FC<ChatShellProps> = ({
           key="scanner-result"
           result={message.scannerPayload}
           onPay={(result) => {
-            toast.info('Processing payment...');
+            handleAction({ type: 'process_payment', qrData: result });
           }}
           onCopy={(result) => {
             toast.success('Copied!');
@@ -445,10 +539,29 @@ const ChatShell: React.FC<ChatShellProps> = ({
           {messages.map((message) => (
             <React.Fragment key={message.id}>
               <MessageBubble message={message} />
+              {/* Render ChatKit widgets */}
+              {message.widget && (
+                <WidgetRenderer
+                  widget={message.widget}
+                  onAction={handleAction}
+                  streaming={isTyping && message.id === messages[messages.length - 1]?.id}
+                />
+              )}
+              {/* Legacy tool cards */}
               {renderToolCards(message)}
             </React.Fragment>
           ))}
         </AnimatePresence>
+
+        {/* Streaming widgets (standalone) */}
+        {Array.from(streamingWidgets.values()).map((widget) => (
+          <WidgetRenderer
+            key={widget.id}
+            widget={widget}
+            onAction={handleAction}
+            streaming={widget.streaming !== false}
+          />
+        ))}
 
         {/* Typing Indicator */}
         {isTyping && (

@@ -8,13 +8,19 @@ import './index.css';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ThemeProvider } from './context/ThemeContext';
-import { DataSaverProvider } from './context/DataSaverContext';
+import { DataSaverProvider } from './src/context/DataSaverContext';
 import { MonitoringService } from './services/monitoring';
+import { LoggingService } from './services/logging';
 import { initVitals } from './services/vitals';
+import { initRoutePrefetching } from './utils/prefetch';
 
 // Initialize Monitoring
 MonitoringService.init();
+LoggingService.init();
 initVitals();
+
+// Initialize route prefetching (on good connections)
+initRoutePrefetching();
 
 const queryClient = new QueryClient({
   defaultOptions: {

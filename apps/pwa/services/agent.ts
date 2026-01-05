@@ -29,10 +29,11 @@ export interface AgentResponse {
 }
 
 export interface StreamingChunk {
-  type: 'start' | 'token' | 'tool_call' | 'tool_result' | 'done' | 'error';
+  type: 'start' | 'token' | 'tool_call' | 'tool_result' | 'widget' | 'done' | 'error';
   content?: string;
   tool_call?: any; // Present in tool_call chunks
   tool_result?: any; // Content of tool result (JSON string)
+  widget?: any; // ChatKit widget definition
   agent_type?: AgentType;
   conversation_id?: string;
   request_id?: string;

@@ -8,8 +8,11 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:debug": "playwright test --debug",
     "perf:lighthouse": "lighthouse http://localhost:4173 --only-categories=performance,pwa,accessibility --output=html --output-path=perf/lighthouse.html",
     "perf:budget": "node ../../scripts/check-bundle-size.js dist",
+    "security:check": "node ../../scripts/security-check.js",
     "pages:build": "npm run build",
     "pages:deploy": "npm run build && npx wrangler pages deploy dist --project-name discovery"
   },

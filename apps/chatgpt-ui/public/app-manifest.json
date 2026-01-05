@@ -1,0 +1,71 @@
+
+{
+  "name": "easyMO Discovery",
+  "short_name": "easyMO",
+  "description": "Discover mobility, marketplace, and payments in Rwanda. Find rides, search businesses, generate MoMo QR codes, and connect with local services through AI-powered chat.",
+  "version": "1.0.0",
+  "author": "easyMO",
+  "homepage_url": "https://easymo.discovery",
+  "privacy_policy_url": "https://easymo.discovery/privacy",
+  "data_minimization_url": "https://easymo.discovery/data-minimization",
+  "mcp_server_url": "https://easymo-agent-worker.your-subdomain.workers.dev/mcp",
+  "ui_bundle_url": "https://easymo.discovery/chatgpt-ui",
+  "categories": ["mobility", "marketplace", "payments", "travel"],
+  "tags": ["rwanda", "mobility", "marketplace", "mobile-money", "ride-sharing", "local-business"],
+  "icon": "https://easymo.discovery/icon-512.png",
+  "screenshots": [
+    {
+      "url": "https://easymo.discovery/screenshots/screen-1.png",
+      "label": "AI-first chat interface"
+    },
+    {
+      "url": "https://easymo.discovery/screenshots/screen-2.png",
+      "label": "Mobility matching"
+    }
+  ],
+  "capabilities": {
+    "know": [
+      "Find nearby drivers and passengers",
+      "Search local businesses and services",
+      "Generate Mobile Money QR codes",
+      "Parse QR codes for payments"
+    ],
+    "do": [
+      "Match riders with drivers",
+      "Search marketplace listings",
+      "Generate payment QR codes",
+      "Connect users with local businesses"
+    ],
+    "show": [
+      "Interactive mobility match cards",
+      "Business listing results",
+      "Payment QR codes",
+      "Real-time location-based results"
+    ]
+  },
+  "use_cases": [
+    {
+      "title": "Find a Ride",
+      "description": "Ask 'Find me a moto driver nearby' and get matched with available drivers in your area."
+    },
+    {
+      "title": "Search Businesses",
+      "description": "Ask 'Find restaurants near me' to discover local businesses and services."
+    },
+    {
+      "title": "Generate Payment QR",
+      "description": "Ask 'Generate a MoMo QR for 5000 RWF' to create a payment QR code."
+    }
+  ],
+  "requirements": {
+    "location": {
+      "required": true,
+      "description": "Location access is required for finding nearby drivers, passengers, and businesses."
+    },
+    "authentication": {
+      "required": true,
+      "description": "User authentication is required for creating ride requests and managing listings."
+    }
+  }
+}
+

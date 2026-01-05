@@ -123,6 +123,10 @@ export const LocationService = {
   watchId: null as number | null,
   wakeLock: null as WakeLockSentinel | null,
 
+  /**
+   * Start watching location with background-safe behavior
+   * Only watches when app is in foreground (not in background)
+   */
   startWatching: (
     onUpdate: (loc: Location) => void,
     onError: (err: string) => void
@@ -135,12 +139,34 @@ export const LocationService = {
         navigator.geolocation.clearWatch(LocationService.watchId);
     }
 
+    // Background-safe: Only watch when page is visible
+    const isPageVisible = () => {
+      if (typeof document === 'undefined') return true;
+      return !document.hidden;
+    };
+
+    // Stop watching when page goes to background
+    const handleVisibilityChange = () => {
+      if (document.hidden && LocationService.watchId !== null) {
+        navigator.geolocation.clearWatch(LocationService.watchId);
+        LocationService.watchId = null;
+      } else if (!document.hidden && LocationService.watchId === null && LocationService.isEnabled()) {
+        // Restart watching when page becomes visible
+        LocationService.startWatching(onUpdate, onError);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     LocationService.watchId = navigator.geolocation.watchPosition(
       (pos) => {
-        onUpdate({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        });
+        // Only update if page is visible (background-safe)
+        if (isPageVisible()) {
+          onUpdate({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          });
+        }
       },
       (err) => {
         if (err.code === err.PERMISSION_DENIED || err.code === err.POSITION_UNAVAILABLE) {

@@ -207,17 +207,38 @@ export async function handleMCPServer(
         resultData = { text: result };
       }
 
+      // Check if tool result includes a widget
+      let widget = null;
+      if (resultData.widget) {
+        widget = resultData.widget;
+      } else {
+        // Try to generate widget from tool result
+        try {
+          const { generateWidgetFromToolResult } = await import('./utils/widgets');
+          widget = generateWidgetFromToolResult(
+            name,
+            JSON.stringify(resultData),
+            { user_id: userId, user_location: userLocation }
+          );
+        } catch (error) {
+          // Widget generation is optional, continue without it
+          logger.warn('Widget generation failed', error);
+        }
+      }
+
       // Format as structured output for ChatGPT rendering
       const structuredOutput = {
         success: resultData.success !== false,
         ...resultData,
         tool_name: name,
         trace_id: traceId,
+        ...(widget ? { widget } : {}),
       };
 
       logger.info('MCP tool executed', {
         tool_name: name,
         success: structuredOutput.success,
+        has_widget: !!widget,
       });
 
       return new Response(

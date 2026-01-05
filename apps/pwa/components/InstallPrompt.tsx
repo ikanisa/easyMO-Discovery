@@ -51,23 +51,64 @@ const InstallPrompt: React.FC = () => {
     };
   }, []);
 
-  // Show logic
+  // Show logic - Respect heuristics, don't nag
   useEffect(() => {
     // If already installed, don't show
     if (isStandalone) return;
 
-    // Check if dismissed previously
-    const isDismissed = localStorage.getItem('easyMO_install_dismissed');
-    if (isDismissed) return;
-
-    // Trigger if we have a prompt (Android) OR we are on iOS (Manual Instruction)
-    // We add a delay to not annoy the user immediately upon load
-    if (deferredPrompt || isIOS) {
-      const timer = setTimeout(() => {
-        setIsVisible(true);
-      }, 3000); 
-      return () => clearTimeout(timer);
+    // Check if dismissed previously (persist for 7 days)
+    const dismissedAt = localStorage.getItem('easyMO_install_dismissed');
+    if (dismissedAt) {
+      const dismissedTime = parseInt(dismissedAt, 10);
+      const daysSinceDismissed = (Date.now() - dismissedTime) / (1000 * 60 * 60 * 24);
+      // Only show again after 7 days
+      if (daysSinceDismissed < 7) return;
     }
+
+    // Heuristic: Only show after user engagement
+    // Wait for user interaction (scroll, click, or 30s on page)
+    let engagementTimer: NodeJS.Timeout;
+    let engagementDetected = false;
+
+    const checkEngagement = () => {
+      if (engagementDetected) return;
+      engagementDetected = true;
+      
+      // Additional delay after engagement (don't interrupt user)
+      const showTimer = setTimeout(() => {
+        if (deferredPrompt || isIOS) {
+          setIsVisible(true);
+        }
+      }, 2000); // 2s after engagement
+      
+      return () => clearTimeout(showTimer);
+    };
+
+    // Track engagement events
+    const handleEngagement = () => {
+      if (!engagementDetected) {
+        checkEngagement();
+      }
+    };
+
+    // Listen for user engagement
+    window.addEventListener('scroll', handleEngagement, { once: true, passive: true });
+    window.addEventListener('click', handleEngagement, { once: true, passive: true });
+    window.addEventListener('touchstart', handleEngagement, { once: true, passive: true });
+
+    // Fallback: Show after 30s if no engagement (user might be reading)
+    engagementTimer = setTimeout(() => {
+      if (!engagementDetected) {
+        checkEngagement();
+      }
+    }, 30000);
+
+    return () => {
+      clearTimeout(engagementTimer);
+      window.removeEventListener('scroll', handleEngagement);
+      window.removeEventListener('click', handleEngagement);
+      window.removeEventListener('touchstart', handleEngagement);
+    };
   }, [deferredPrompt, isIOS, isStandalone]);
 
   const handleInstall = async () => {
@@ -84,7 +125,8 @@ const InstallPrompt: React.FC = () => {
 
   const handleDismiss = () => {
     setIsVisible(false);
-    localStorage.setItem('easyMO_install_dismissed', 'true');
+    // Store timestamp for 7-day cooldown
+    localStorage.setItem('easyMO_install_dismissed', String(Date.now()));
   };
 
   if (!isVisible) return null;

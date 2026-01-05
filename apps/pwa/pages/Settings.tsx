@@ -7,13 +7,15 @@ import { PushService } from '../services/push';
 import { StorageService } from '../services/storage';
 import Button from '../components/Button';
 import { useTheme } from '../context/ThemeContext';
-import { useDataSaver } from '../context/DataSaverContext';
+import { useDataSaver } from '../src/context/DataSaverContext';
 import { ALL_COUNTRIES, CountryData } from '../data/allCountries';
 import { normalizePhoneNumber } from '../utils/phone';
 import AddressBook from '../components/Address/AddressBook';
 import { MemoryService } from '../services/memory';
 import { LocationService } from '../services/location';
 import { toast } from 'sonner';
+import NotificationInbox from '../components/Notifications/NotificationInbox';
+import { NotificationInbox as InboxService, getNotificationPermission, requestNotificationPermission } from '../services/notifications';
 
 interface SettingsProps {
   onBack: () => void;
@@ -30,6 +32,9 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
   const [pushConfigured, setPushConfigured] = useState(true);
   const [storageSupported, setStorageSupported] = useState(false);
   const [storagePersisted, setStoragePersisted] = useState(false);
+  const [showNotificationInbox, setShowNotificationInbox] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+  const [inboxUnreadCount, setInboxUnreadCount] = useState(0);
   
   // Profile State
   const [displayName, setDisplayName] = useState('');
@@ -84,9 +89,26 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
       if (storageOk) {
         setStoragePersisted(await StorageService.isPersisted());
       }
+
+      // Check notification permission
+      const permission = getNotificationPermission();
+      setNotificationPermission(permission);
+
+      // Load inbox unread count
+      const unreadCount = InboxService.getUnreadCount();
+      setInboxUnreadCount(unreadCount);
     };
 
     initCapabilities();
+
+    // Listen for inbox updates
+    const handleInboxUpdate = () => {
+      setInboxUnreadCount(InboxService.getUnreadCount());
+    };
+    window.addEventListener('notification-inbox-updated', handleInboxUpdate);
+    return () => {
+      window.removeEventListener('notification-inbox-updated', handleInboxUpdate);
+    };
   }, []);
 
   const loadProfile = async () => {
@@ -134,9 +156,14 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
       return;
     }
 
-    const granted = await PushService.requestPermission();
-    if (!granted) {
-      toast.error('Notifications permission was denied.');
+    // Request permission with explanation
+    const permission = await requestNotificationPermission(
+      'Get notified about ride matches, messages, and important updates.'
+    );
+    setNotificationPermission(permission);
+
+    if (permission !== 'granted') {
+      toast.error('Notifications permission was denied. You can still receive notifications in the app inbox.');
       return;
     }
 
@@ -146,7 +173,7 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
       toast('Notifications enabled');
     } catch (error) {
       console.error(error);
-      toast.error('Unable to enable notifications.');
+      toast.error('Unable to enable notifications. Check your browser settings.');
     }
   };
 
@@ -263,6 +290,10 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-[#0f172a] absolute inset-0 z-50 overflow-y-auto no-scrollbar animate-in slide-in-from-right duration-300">
+      <NotificationInbox
+        isOpen={showNotificationInbox}
+        onClose={() => setShowNotificationInbox(false)}
+      />
       {renderCountryModal()}
       
       {/* Header */}
@@ -348,12 +379,25 @@ const Settings: React.FC<SettingsProps> = ({ onBack }) => {
                  <div className={`p-3 rounded-2xl transition-all duration-500 ${pushEnabled ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-100 text-slate-400'}`}>
                     <ICONS.Bell className="w-6 h-6" />
                  </div>
-                 <div>
+                 <div className="flex-1">
                     <div className="font-black text-slate-900 dark:text-white text-sm tracking-tight">Push Notifications</div>
                     <div className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider">
                        {!pushSupported ? 'Unsupported' : pushConfigured ? (pushEnabled ? 'Enabled' : 'Disabled') : 'Not Configured'}
                     </div>
                  </div>
+                 {/* Inbox button (always visible, shows unread count) */}
+                 <button
+                   onClick={() => setShowNotificationInbox(true)}
+                   className="relative p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 min-h-tap min-w-tap"
+                   aria-label="Open notification inbox"
+                 >
+                   <ICONS.Bell className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                   {inboxUnreadCount > 0 && (
+                     <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] font-bold flex items-center justify-center">
+                       {inboxUnreadCount > 9 ? '9+' : inboxUnreadCount}
+                     </span>
+                   )}
+                 </button>
               </div>
               <button
                 onClick={handleTogglePush}

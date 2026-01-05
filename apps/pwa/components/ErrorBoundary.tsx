@@ -3,6 +3,7 @@ import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ICONS } from '@easymo/shared/constants';
 import Button from './Button';
 import { MonitoringService } from '../services/monitoring';
+import { LoggingService } from '../services/logging';
 
 interface Props {
   children?: ReactNode;
@@ -32,7 +33,15 @@ class ErrorBoundary extends Component<Props, State> {
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Uncaught error:', error, errorInfo);
     // Report to Monitoring Service
-    MonitoringService.captureException(error, { errorInfo });
+    MonitoringService.captureException(error, { 
+      errorInfo,
+      component: 'ErrorBoundary',
+    });
+    // Log to structured logging
+    LoggingService.error('ErrorBoundary caught error', error, {
+      componentStack: errorInfo.componentStack,
+      errorBoundary: true,
+    });
   }
 
   // Use arrow function to maintain correct 'this' context pointing to the class instance

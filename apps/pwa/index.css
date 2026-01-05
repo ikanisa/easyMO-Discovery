@@ -64,6 +64,7 @@ html.dark .glass-panel {
   transform: scale(0.96);
 }
 
+/* Accessibility: Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -74,3 +75,53 @@ html.dark .glass-panel {
     scroll-behavior: auto !important;
   }
 }
+
+/* Accessibility: Focus Rings (visible by default, enhanced for keyboard) */
+*:focus-visible {
+  outline: 2px solid theme('colors.blue.500');
+  outline-offset: 2px;
+  border-radius: theme('borderRadius.lg');
+}
+
+/* Touch Target Helpers */
+.tap-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.tap-target-lg {
+  min-height: 56px;
+  min-width: 56px;
+}
+
+/* Thumb Zone: Primary actions should be in bottom 88px */
+.thumb-zone {
+  padding-bottom: calc(88px + env(safe-area-inset-bottom));
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.95);
+    border: 2px solid rgba(0, 0, 0, 0.3);
+  }
+  
+  html.dark .glass-panel {
+    background: rgba(15, 23, 42, 0.95);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+  }
+}
+
+/* Layout Shift Prevention: Reserve space for images */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Prevent layout shift from images without dimensions */
+img:not([width]):not([height]) {
+  aspect-ratio: attr(width) / attr(height);
+}
+
+/* Prevent layout shift from fonts (system fonts load instantly) */
+/* If custom fonts are added, use font-display: swap and preload */

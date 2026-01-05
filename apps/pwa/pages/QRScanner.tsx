@@ -2,6 +2,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { ICONS } from '@easymo/shared/constants';
+import CameraPermissionModal from '../components/Camera/CameraPermissionModal';
+import { checkCameraPermission } from '../services/camera';
 
 interface QRScannerProps {
   onBack: () => void;
@@ -17,11 +19,39 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
   const [scannedResult, setScannedResult] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(true);
   const [copySuccess, setCopySuccess] = useState(false);
+  const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [permissionChecked, setPermissionChecked] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const readerId = "qr-reader-container";
   const isMounted = useRef(true);
 
+  // Check camera permission on mount
   useEffect(() => {
+    const checkPermission = async () => {
+      const permission = await checkCameraPermission();
+      if (permission.denied || !permission.prompt) {
+        setError({
+          title: permission.denied ? 'Permission Denied' : 'Camera Not Available',
+          instruction: permission.error || 'Camera access is required to scan QR codes.',
+        });
+        setIsScanning(false);
+        setPermissionChecked(true);
+      } else if (permission.prompt && !permission.granted) {
+        // Show permission modal
+        setShowPermissionModal(true);
+        setPermissionChecked(true);
+      } else {
+        // Permission already granted, proceed
+        setPermissionChecked(true);
+      }
+    };
+
+    checkPermission();
+  }, []);
+
+  useEffect(() => {
+    if (!permissionChecked || showPermissionModal) return;
+    
     isMounted.current = true;
 
     // Initialize scanner
@@ -122,7 +152,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
          }
       }
     };
-  }, []);
+  }, [permissionChecked, showPermissionModal]);
 
   const handleScanSuccess = (text: string) => {
     if (scannerRef.current) {
@@ -205,7 +235,28 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
   const resultInfo = scannedResult ? getTypeInfo(scannedResult) : null;
 
   return (
-    <div className="flex flex-col h-full bg-black absolute inset-0 z-50 overflow-hidden">
+    <>
+      <CameraPermissionModal
+        isOpen={showPermissionModal}
+        onGranted={() => {
+          setShowPermissionModal(false);
+          // Scanner will start automatically after permission is granted
+        }}
+        onDenied={() => {
+          setShowPermissionModal(false);
+          setError({
+            title: 'Permission Denied',
+            instruction: 'Camera permission is required to scan QR codes. Please enable it in your browser settings.',
+          });
+          setIsScanning(false);
+        }}
+        onCancel={() => {
+          setShowPermissionModal(false);
+          onBack();
+        }}
+        purpose="scan QR codes"
+      />
+      <div className="flex flex-col h-full bg-black absolute inset-0 z-50 overflow-hidden">
       {/* Header */}
       <div className="absolute top-0 left-0 w-full z-20 flex justify-between items-center p-4 bg-gradient-to-b from-black/80 to-transparent pointer-events-none">
         <button 
@@ -321,6 +372,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ onBack }) => {
         }
       `}</style>
     </div>
+    </>
   );
 };
 

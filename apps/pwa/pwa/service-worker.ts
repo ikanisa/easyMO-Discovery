@@ -125,8 +125,14 @@ registerRoute(
 );
 
 // Route-specific offline fallbacks
+// Each route has a meaningful offline state
 const routeOfflineFallbacks: Record<string, string> = {
   '/': '/offline.html',
+  '/?mode=discovery': '/offline.html',
+  '/?mode=business': '/offline.html',
+  '/?mode=services': '/offline.html',
+  '/?mode=momo': '/offline.html',
+  '/?mode=scanner': '/offline.html',
   '/chat': '/offline.html',
   '/settings': '/offline.html',
   '/onboarding': '/offline.html',
