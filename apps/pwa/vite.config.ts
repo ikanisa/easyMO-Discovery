@@ -34,12 +34,15 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks(id) {
+            // Skip manual chunking for problematic dependencies
+            // Let Vite handle chunking automatically to avoid initialization issues
             if (!id.includes('node_modules')) return;
-            if (id.includes('react')) return 'react-vendor';
-            if (id.includes('framer-motion')) return 'motion-vendor';
-            if (id.includes('@supabase')) return 'supabase-vendor';
-            if (id.includes('@google/genai')) return 'genai-vendor';
-            if (id.includes('html5-qrcode') || id.includes('qrcode')) return 'qrcode-vendor';
+            
+            // Only chunk large, stable dependencies
+            if (id.includes('react') && !id.includes('react-dom')) return 'react-vendor';
+            if (id.includes('react-dom')) return 'react-dom-vendor';
+            
+            // Keep other dependencies together to avoid circular dependency issues
             return 'vendor';
           },
         },
