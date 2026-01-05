@@ -1,54 +1,56 @@
-
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>easyMO Discovery</title>
-    <meta name="description" content="Chat-first discovery for mobility and local business." />
-    
-    <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#0f172a" />
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="easyMO" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    
-    <link rel="icon" type="image/svg+xml" href="/icon.svg" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
-    <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192.png" />
-    <meta name="mobile-web-app-capable" content="yes" />
-    
-    <!-- Font Optimization: System font stack (no external fonts loaded) -->
-    <!-- Using system fonts ensures zero font load time and minimal bundle size -->
-    <!-- If custom fonts are added later, use font-display: swap and preload critical fonts -->
-    
-    <!-- Performance: Preconnect to external domains -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
-    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
-    
-    <!-- Performance: Prefetch likely next routes (on good connections) -->
-    <link rel="prefetch" href="/?mode=discovery" />
-    <link rel="prefetch" href="/?mode=business" />
-    <link rel="prefetch" href="/?mode=services" />
-    
-    <script>
-      (function() {
-        const storedTheme = localStorage.getItem('easyMO_theme');
-        if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
-      })();
-    </script>
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>easyMO Discovery</title>
+  <meta name="description" content="Chat-first discovery for mobility and local business." />
+
+  <!-- PWA Meta Tags -->
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="easyMO" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+
+  <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="/icons/icon-512.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192.png" />
+  <meta name="mobile-web-app-capable" content="yes" />
+
+  <!-- Font Optimization: System font stack (no external fonts loaded) -->
+  <!-- Using system fonts ensures zero font load time and minimal bundle size -->
+  <!-- If custom fonts are added later, use font-display: swap and preload critical fonts -->
+
+  <!-- Performance: Preconnect to external domains -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+
+  <!-- Performance: Prefetch likely next routes (on good connections) -->
+  <link rel="prefetch" href="/?mode=discovery" />
+  <link rel="prefetch" href="/?mode=business" />
+  <link rel="prefetch" href="/?mode=services" />
+
+  <script>
+    (function () {
+      const storedTheme = localStorage.getItem('easyMO_theme');
+      if (storedTheme === 'dark' || (!storedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    })();
+  </script>
 
 </head>
-  <body class="h-screen w-screen overflow-hidden antialiased selection:bg-blue-500/30">
-    <div id="root"></div>
+
+<body class="h-screen w-screen overflow-hidden antialiased selection:bg-blue-500/30">
+  <div id="root"></div>
   <!-- Runtime environment config (generated at build time by generate-env.mjs) -->
-  <script src="/env.js"></script>
+  <script vite-ignore src="/env.js"></script>
   <script type="module" src="/index.tsx"></script>
 </body>
+
 </html>
