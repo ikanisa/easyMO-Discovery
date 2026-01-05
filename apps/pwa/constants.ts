@@ -42,6 +42,19 @@ import {
   RefreshCcw,
   AlertTriangle,
   ExternalLink,
+  // Additional icons used throughout the app
+  Sparkles,
+  File,
+  Map,
+  Camera,
+  Paperclip,
+  Radio,
+  Filter,
+  Navigation,
+  Truck,
+  Bus,
+  CarTaxiFront,
+  MoreHorizontal,
 } from 'lucide-react';
 
 /**
@@ -58,6 +71,13 @@ export const ICONS = {
   Bike,
   Car,
 
+  // Vehicle variants (used in Discovery)
+  Moto: Bike,       // Motorcycle
+  Taxi: CarTaxiFront, // Taxi/Cab
+  Sedan: Car,       // Standard car
+  Pickup: Truck,    // Pickup truck
+  Bus,              // Bus
+
   // Business
   Store,
   Building,
@@ -70,14 +90,19 @@ export const ICONS = {
   Send,
   Microphone: Mic,
   Scan: ScanLine,
+  Filter,
 
   // Communication
   Phone,
   Chat: MessageCircle,
+  WhatsApp: MessageCircle, // Using MessageCircle as WhatsApp placeholder
+  Broadcast: Radio,        // For broadcasting feature
 
   // Location/Time
   MapPin,
   Clock,
+  Map,
+  Navigation,
 
   // Commerce
   Tag,
@@ -101,6 +126,14 @@ export const ICONS = {
   User,
   Users,
 
+  // Files & Media
+  File,
+  Camera,
+  PaperClip: Paperclip,
+
   // Misc
   RefreshCcw,
+  Sparkles,
+  MoreHorizontal,
 } as const;
+
