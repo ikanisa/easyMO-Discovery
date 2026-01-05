@@ -346,7 +346,7 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
         return;
       }
 
-      // Check if Worker is enabled and configured
+      // PRIMARY: Use OpenAI Worker when configured (AI-first architecture)
       const useWorker = CONFIG.ENABLE_WORKER_AGENT && CONFIG.WORKER_URL;
       
       if (useWorker) {
@@ -422,60 +422,86 @@ const ChatSession: React.FC<ChatSessionProps> = ({ session: initialSession, onCl
           setIsTyping(false);
           return;
         } catch (workerError: any) {
-          console.error('Worker error, falling back to Gemini:', workerError);
-          // Fall through to GeminiService fallback
+          console.error('Worker error:', workerError);
+          
+          // Show error message if Worker is required
+          if (CONFIG.ENABLE_WORKER_AGENT) {
+            const errorMsg: Message = {
+              id: Date.now().toString(),
+              sender: 'system',
+              text: `⚠️ AI service unavailable. Please check your connection and try again. ${workerError.message || ''}`,
+              timestamp: Date.now()
+            };
+            setMessages(prev => [...prev, errorMsg]);
+            setIsTyping(false);
+            return;
+          }
+          
+          // Only fall through to GeminiService if Worker is not required
+          console.warn('Worker unavailable, attempting legacy Gemini fallback');
         }
-      }
-      
-      // Fallback to GeminiService
-      if (initialSession.type === 'support') {
-        const responseText = await GeminiService.chatSupport(history, userText, attachment);
-        const aiMsg: Message = { id: Date.now().toString(), sender: 'ai', text: responseText, timestamp: Date.now() };
-        setMessages(prev => [...prev, aiMsg]);
+      } else if (!CONFIG.ENABLE_WORKER_AGENT) {
+        // LEGACY FALLBACK: Use GeminiService only if Worker is explicitly disabled
+        console.warn('Worker disabled, using legacy GeminiService');
+        
+        if (initialSession.type === 'support') {
+          const responseText = await GeminiService.chatSupport(history, userText, attachment);
+          const aiMsg: Message = { id: Date.now().toString(), sender: 'ai', text: responseText, timestamp: Date.now() };
+          setMessages(prev => [...prev, aiMsg]);
 
-      } else if (initialSession.type === 'business') {
-        const result = await GeminiService.chatBob(history, userText, loc, initialSession.isDemoMode, attachment);
-        const aiMsg: Message = {
+        } else if (initialSession.type === 'business') {
+          const result = await GeminiService.chatBob(history, userText, loc, initialSession.isDemoMode, attachment);
+          const aiMsg: Message = {
             id: Date.now().toString(),
             sender: 'ai',
             text: result.text,
             groundingLinks: result.groundingLinks,
             businessPayload: result.businessPayload,
             timestamp: Date.now()
-        };
-        setMessages(prev => [...prev, aiMsg]);
+          };
+          setMessages(prev => [...prev, aiMsg]);
 
-      } else if (initialSession.type === 'real_estate') {
-        const result = await GeminiService.chatKeza(history, userText, loc, initialSession.isDemoMode, attachment);
-        const aiMsg: Message = {
+        } else if (initialSession.type === 'real_estate') {
+          const result = await GeminiService.chatKeza(history, userText, loc, initialSession.isDemoMode, attachment);
+          const aiMsg: Message = {
             id: Date.now().toString(),
             sender: 'ai',
             text: result.text,
             groundingLinks: result.groundingLinks,
             propertyPayload: result.propertyPayload,
             timestamp: Date.now()
-        };
-        setMessages(prev => [...prev, aiMsg]);
-        
-      } else if (initialSession.type === 'legal') {
-        const result = await GeminiService.chatGatera(history, userText, loc, initialSession.isDemoMode, attachment);
-        const aiMsg: Message = {
+          };
+          setMessages(prev => [...prev, aiMsg]);
+          
+        } else if (initialSession.type === 'legal') {
+          const result = await GeminiService.chatGatera(history, userText, loc, initialSession.isDemoMode, attachment);
+          const aiMsg: Message = {
+            id: Date.now().toString(),
+            sender: 'ai',
+            text: result.text,
+            legalPayload: result.legalPayload,
+            timestamp: Date.now()
+          };
+          setMessages(prev => [...prev, aiMsg]);
+        } else if (initialSession.type === 'mobility') {
+          // Mobility: Use Worker or placeholder
+          const aiMsg: Message = {
+            id: Date.now().toString(),
+            sender: 'ai',
+            text: "Mobility matching is coming soon. Use Discovery page to find drivers/passengers.",
+            timestamp: Date.now()
+          };
+          setMessages(prev => [...prev, aiMsg]);
+        }
+      } else {
+        // Worker is required but not configured
+        const errorMsg: Message = {
           id: Date.now().toString(),
-          sender: 'ai',
-          text: result.text,
-          legalPayload: result.legalPayload,
+          sender: 'system',
+          text: "⚠️ Worker is required but not configured. Please set VITE_WORKER_URL environment variable.",
           timestamp: Date.now()
         };
-        setMessages(prev => [...prev, aiMsg]);
-      } else if (initialSession.type === 'mobility') {
-        // Mobility: Use Worker or placeholder
-        const aiMsg: Message = {
-          id: Date.now().toString(),
-          sender: 'ai',
-          text: "Mobility matching is coming soon. Use Discovery page to find drivers/passengers.",
-          timestamp: Date.now()
-        };
-        setMessages(prev => [...prev, aiMsg]);
+        setMessages(prev => [...prev, errorMsg]);
       }
     } catch (err) {
       console.error(err);

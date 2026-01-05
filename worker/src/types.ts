@@ -11,8 +11,11 @@ export interface Env {
   GOOGLE_MAPS_API_KEY?: string;
   // Custom bindings
   DB?: D1Database;
-  KV?: KVNamespace;
+  KV?: KVNamespace; // For rate limiting
   R2?: R2Bucket;
+  // Rate limiting config (optional env vars)
+  RATE_LIMIT_MAX_REQUESTS?: string; // Default: 100
+  RATE_LIMIT_WINDOW_SECONDS?: string; // Default: 60
 }
 
 export type Role = 'passenger' | 'driver' | 'vendor';

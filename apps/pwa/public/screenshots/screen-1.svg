@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="1280" viewBox="0 0 720 1280">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1d4ed8" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+  </defs>
+  <rect width="720" height="1280" fill="url(#bg)" />
+  <circle cx="560" cy="220" r="160" fill="#22c55e" opacity="0.18" />
+  <circle cx="140" cy="980" r="180" fill="#38bdf8" opacity="0.18" />
+  <text x="80" y="180" fill="#e2e8f0" font-size="54" font-family="Arial, sans-serif" font-weight="700">easyMO</text>
+  <text x="80" y="240" fill="#cbd5f5" font-size="24" font-family="Arial, sans-serif">Discovery</text>
+  <rect x="80" y="320" width="560" height="120" rx="32" fill="#0f172a" opacity="0.6" />
+  <text x="120" y="395" fill="#f8fafc" font-size="22" font-family="Arial, sans-serif">Find rides, shops, and services</text>
+  <rect x="80" y="520" width="260" height="260" rx="36" fill="#ffffff" opacity="0.14" />
+  <rect x="380" y="520" width="260" height="260" rx="36" fill="#ffffff" opacity="0.14" />
+  <rect x="80" y="820" width="560" height="120" rx="32" fill="#0f172a" opacity="0.6" />
+  <text x="120" y="895" fill="#f8fafc" font-size="20" font-family="Arial, sans-serif">Chat-first support with offline mode</text>
+</svg>
