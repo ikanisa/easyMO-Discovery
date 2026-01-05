@@ -307,7 +307,7 @@ Based on exploration of OpenAI's Agent Builder, ChatKit, Widgets, Realtime API, 
    - Implementation roadmap
    - Resource links
 
-### External Resources
+### External Resourceshttps://developers.openai.com/apps-sdk/deploy/troubleshooting
 - [OpenAI Agent Builder](https://platform.openai.com/docs/guides/agent-builder)
 - [OpenAI ChatKit Widgets](https://platform.openai.com/docs/guides/chatkit-widgets)
 - [OpenAI Realtime API](https://platform.openai.com/docs/guides/realtime)
